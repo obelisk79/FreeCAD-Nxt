@@ -1,0 +1,46 @@
+[project]
+name = "freecad.nxt"
+dynamic = ["version"]
+description = "A QtQuick model panel for FreeCAD."
+readme = "README.md"
+license = { text = "LGPL-2.1-or-later" }
+requires-python = ">=3.11"
+authors = [{ name = "Joe", email = "obelisk79@gmail.com" }]
+
+[project.urls]
+Repository = "https://github.com/obelisk79/FreeCAD-NXT"
+Issues = "https://github.com/obelisk79/FreeCAD-NXT/issues"
+
+[tool.setuptools.dynamic]
+version = { attr = "freecad.nxt.version.__version__" }
+
+[tool.ruff]
+line-length = 79
+target-version = "py311"
+
+[tool.ruff.lint]
+# pycodestyle (PEP 8), pyflakes, pep8-naming, PEP 257 docstring layout.
+select = ["E", "W", "F", "N", "D2", "D3", "D4", "I"]
+ignore = [
+    "D203",  # conflicts with D211
+    "D213",  # conflicts with D212
+    "D400",  # D415 instead: a question may end with "?"
+    "D401",  # imperative mood is a style preference, not PEP 257
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Qt and FreeCAD dictate camelCase names for overrides, slots, properties
+# and signals; PEP 8 defers to an existing API's conventions.
+"freecad/nxt/tree/{bridge,models,panel,theme,icons,observers,inspector_bridge}.py" = ["N802", "N815"]
+"freecad/nxt/{chrome,safety,controller}.py" = ["N802"]
+"tests/*" = ["N802", "N815", "E402"]
+
+[tool.mypy]
+python_version = "3.11"
+files = ["freecad"]
+# FreeCAD ships no type stubs; its objects are typed as Any in the code.
+ignore_missing_imports = true
+follow_imports = "silent"
+# Every function in the addon is fully annotated, and stays that way.
+disallow_untyped_defs = true
+disallow_incomplete_defs = true

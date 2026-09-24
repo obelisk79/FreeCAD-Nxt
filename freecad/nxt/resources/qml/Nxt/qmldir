@@ -1,0 +1,14 @@
+module Nxt
+TreeRow 1.0 TreeRow.qml
+Chip 1.0 Chip.qml
+SearchBox 1.0 SearchBox.qml
+Disclosure 1.0 Disclosure.qml
+EyeToggle 1.0 EyeToggle.qml
+TimelineBar 1.0 TimelineBar.qml
+SeverityMark 1.0 SeverityMark.qml
+DetailStrip 1.0 DetailStrip.qml
+TextField 1.0 TextField.qml
+ScrollHint 1.0 ScrollHint.qml
+KeyValue 1.0 KeyValue.qml
+ChoiceList 1.0 ChoiceList.qml
+ValueEditor 1.0 ValueEditor.qml
