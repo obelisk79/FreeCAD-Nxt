@@ -328,6 +328,16 @@ class TreeRowModel(QtCore.QAbstractListModel):
         self._touch({name})
         return want
 
+    def close_details(self, names: Iterable[str] | None = None) -> bool:
+        """Close these rows' detail strips, or every one. True if any was."""
+        closing = self._detail & (set(names) if names is not None
+                                  else set(self._detail))
+        if not closing:
+            return False
+        self._detail -= closing
+        self._touch(closing)
+        return True
+
     def set_highlight(self, names: Iterable[str]) -> None:
         """Emphasise the rows related to a hovered reference chip.
 

@@ -89,6 +89,30 @@ class Reload(_Command):
         reload_all()
 
 
+class MenuGroup:
+    """The FreeCAD-Nxt submenu of the View menu.
+
+    A FreeCAD command group: a command whose `GetCommands` lists others.
+    With DropDownMenu set, FreeCAD draws a group placed in a menu as a
+    submenu holding those commands, which is how the addon's entries are
+    kept together rather than scattered along the View menu.
+    """
+
+    def GetCommands(self) -> list[str]:  # noqa: N802 - FreeCAD command API
+        return list(MENU)
+
+    def GetResources(self) -> dict[str, object]:  # noqa: N802
+        return {"MenuText": "FreeCAD-Nxt",
+                "ToolTip": QT_TRANSLATE_NOOP("Nxt_Menu",
+                                             "The Nxt model panel's commands"),
+                "Pixmap": ICON,
+                "DropDownMenu": True,
+                "Exclusive": False}
+
+    def IsActive(self) -> bool:  # noqa: N802 - FreeCAD command API
+        return True
+
+
 COMMANDS: dict[str, type[_Command]] = {
     "Nxt_ModelPanel": ModelPanel,
     "Nxt_ModelPanelOverlay": ModelPanelOverlay,
@@ -96,11 +120,16 @@ COMMANDS: dict[str, type[_Command]] = {
     "Nxt_Reload": Reload,
 }
 
-#: Listed in the View menu. Reload stays console-only: it is a
-#: development tool, not a feature.
-MENU = ("Nxt_ModelPanel", "Nxt_ModelPanelOverlay", "Nxt_PropertyInspector")
+#: The FreeCAD-Nxt submenu of the View menu. Reload is listed for now,
+#: while the addon is being developed; it is not a feature.
+MENU = ("Nxt_ModelPanel", "Nxt_ModelPanelOverlay", "Nxt_PropertyInspector",
+        "Nxt_Reload")
+
+#: What goes in the View menu itself: the submenu.
+GROUP = "Nxt_Menu"
 
 
 def register() -> None:
     for name, command in COMMANDS.items():
         Gui.addCommand(name, command())
+    Gui.addCommand(GROUP, MenuGroup())

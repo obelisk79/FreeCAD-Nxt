@@ -380,6 +380,153 @@ def overlay() -> tuple[list[str], list[str]]:
     return commands, hits
 
 
+def context_menu() -> dict[str, list[dict[str, Any]]]:
+    """Read FreeCAD's own tree menu for the selection, without showing it.
+
+    Select one object in FreeCAD's Model tree, then:
+
+        from freecad.nxt.tree import probe; probe.context_menu()
+
+    This is the check behind the Nxt menu's promise that nothing FreeCAD
+    offers is lost: it opens the native tree's menu for the selected
+    object, reads every entry, closes it before it is drawn, and reports:
+
+      * commands - entries that name a FreeCAD command, which Nxt can run
+        later with Gui.runCommand;
+      * view provider actions - entries with no command; those carrying an
+        edit mode replay as setEdit, the rest can only be triggered from
+        a live menu;
+      * which commands Nxt's definitions would not place, and so would go
+        under More.
+    """
+    from ..qt import QtCore, QtGui, QtWidgets
+
+    App.Console.PrintMessage("\n=== FreeCAD's tree menu ===\n")
+    tree = _native_tree()
+    if tree is None:
+        App.Console.PrintError("  FreeCAD's Model tree was not found\n")
+        return {}
+    items = tree.selectedItems()
+    if len(items) != 1:
+        App.Console.PrintError("  select exactly one object in the Model "
+                               "tree first\n")
+        return {}
+    tree.scrollToItem(items[0])
+    point = tree.visualItemRect(items[0]).center()
+
+    captured: list[dict[str, Any]] = []
+
+    class Catch(QtCore.QObject):
+        def eventFilter(self, obj: QtCore.QObject,  # noqa: N802
+                        event: QtCore.QEvent) -> bool:
+            if (event.type() == QtCore.QEvent.Type.Show
+                    and isinstance(obj, QtWidgets.QMenu)
+                    and obj.parentWidget() is None and not captured):
+                # Wayland cannot fade a window; there it may flash.
+                if QtGui.QGuiApplication.platformName() != "wayland":
+                    obj.setWindowOpacity(0.0)
+                captured.extend(_menu_entries(obj))
+                QtCore.QTimer.singleShot(0, obj.close)
+            return False
+
+    catcher = Catch()
+    app = QtWidgets.QApplication.instance()
+    if app is None:
+        return {}
+    app.installEventFilter(catcher)
+    try:
+        event = QtGui.QContextMenuEvent(
+            QtGui.QContextMenuEvent.Reason.Mouse, point,
+            tree.viewport().mapToGlobal(point))
+        QtWidgets.QApplication.sendEvent(tree.viewport(), event)
+    finally:
+        app.removeEventFilter(catcher)
+
+    if not captured:
+        App.Console.PrintError("  no menu was opened: is the Model tree "
+                               "shown?\n")
+        return {}
+
+    flat = list(_flatten(captured))
+    commands = [e for e in flat if e["command"]]
+    groups = [e for e in flat if e["submenu"] and not e["command"]]
+    # A submenu's own entries are listed with the submenu, not here.
+    actions = [e for e in captured
+               if not e["command"] and not e["submenu"]]
+    App.Console.PrintMessage("\n  commands (%d)\n" % len(commands))
+    for entry in commands:
+        App.Console.PrintMessage("    %-34s %s%s\n" % (
+            entry["command"], entry["text"],
+            "" if entry["enabled"] else "  (disabled)"))
+    App.Console.PrintMessage("\n  submenus with no command name (%d)\n"
+                             % len(groups))
+    for entry in groups:
+        App.Console.PrintMessage("    %s: %s\n" % (
+            entry["text"],
+            ", ".join(e["text"] for e in entry["submenu"])))
+    App.Console.PrintMessage("\n  view provider and tree actions (%d)\n"
+                             % len(actions))
+    for entry in actions:
+        App.Console.PrintMessage("    %-34s data=%r%s\n" % (
+            entry["text"], entry["data"],
+            "  (default)" if entry["default"] else ""))
+
+    try:
+        from .. import menus
+        menu = menus.for_selection(menus.current_selection())
+        placed = set(menu.commands()) | menu.dropped
+        missing = sorted({e["command"] for e in commands} - placed)
+    except Exception as exc:
+        missing = []
+        App.Console.PrintError("  Nxt's definitions failed: %s\n" % exc)
+    App.Console.PrintMessage("\n  not placed by Nxt's definitions, so "
+                             "they go under More (%d)\n" % len(missing))
+    for name in missing or ["(none)"]:
+        App.Console.PrintMessage("    %s\n" % name)
+    App.Console.PrintMessage("=== end ===\n\n")
+    return {"commands": commands, "actions": actions,
+            "missing": [{"command": m} for m in missing]}
+
+
+def _native_tree() -> Any:
+    from ..qt import QtWidgets
+
+    trees = [w for w in Gui.getMainWindow().findChildren(
+        QtWidgets.QTreeWidget)
+        if w.metaObject().className() == "Gui::TreeWidget"]
+    shown = [w for w in trees if w.isVisible()]
+    return (shown or trees or [None])[0]
+
+
+def _menu_entries(menu: Any) -> list[dict[str, Any]]:
+    entries: list[dict[str, Any]] = []
+    default = menu.defaultAction()
+    for action in menu.actions():
+        if action.isSeparator():
+            continue
+        sub = action.menu()
+        data = action.data()
+        # A command with a choice of actions (Std_Expressions,
+        # Std_LinkMakeGroup) is a submenu; its name may be on the menu
+        # rather than on the action that opens it.
+        name = action.objectName() or (sub.objectName() if sub else "")
+        entries.append({
+            "text": action.text().replace("&", ""),
+            "command": name if "_" in name else "",
+            "data": data if isinstance(data, (int, str)) else None,
+            "enabled": action.isEnabled(),
+            "default": action is default,
+            "submenu": _menu_entries(sub) if sub is not None else [],
+        })
+    return entries
+
+
+def _flatten(entries: list[dict[str, Any]]) -> Any:
+    for entry in entries:
+        yield entry
+        yield from _flatten(entry["submenu"])
+
+
 def run(doc: Any = None, widen: bool = False) -> scene.Snapshot | None:
     App.Console.PrintMessage("\n=== Nxt panel probe ===\n")
 

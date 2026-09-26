@@ -3,7 +3,12 @@ import QtQuick
 // Row status, as a silhouette first and a colour second:
 //   1 hollow ring   under-constrained
 //   2 triangle + !  redundant constraints
-//   3 disc + x      conflicting, malformed, or failed to recompute
+//   3 disc + !      conflicting, malformed, or failed to recompute
+//
+// Not an x on the disc: a round mark with an x is the shape of a close
+// button, and without the red - to anyone who cannot see it - that is
+// what it looked like. The error and the warning share the bang and
+// differ in outline, disc against triangle.
 Item {
     id: mark
 
@@ -56,16 +61,18 @@ Item {
                 ctx.arc(c, c, r, 0, 2 * Math.PI);
                 ctx.fill();
 
-                // An x, cut through the disc in the canvas colour.
-                var a = r * 0.46;
+                // A bang, cut through the disc in the canvas colour: the
+                // same stroke as the warning's, sized to the disc.
                 ctx.strokeStyle = theme.markInk;
                 ctx.lineWidth = Math.max(1.4, width * 0.13);
                 ctx.lineCap = "round";
                 ctx.beginPath();
-                ctx.moveTo(c - a, c - a);
-                ctx.lineTo(c + a, c + a);
-                ctx.moveTo(c + a, c - a);
-                ctx.lineTo(c - a, c + a);
+                ctx.moveTo(c, c - r * 0.55);
+                ctx.lineTo(c, c + r * 0.12);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(c, c + r * 0.50);
+                ctx.lineTo(c, c + r * 0.53);
                 ctx.stroke();
             } else {
                 // A triangle sitting on its base, nudged down so its visual

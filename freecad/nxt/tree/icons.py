@@ -6,6 +6,7 @@ reimplementing that composition. Instead we hand QML a URL and render the
 real QIcon on demand:
 
     image://nxticon/<document>/<object>/<revision>[/gray]
+    image://nxticon/@cmd/<Command>
 
 The revision segment exists purely to defeat QML's image cache: when an
 object changes in a way that alters its overlay, the model bumps the number
@@ -32,6 +33,9 @@ from ..qt import QtCore, QtGui, QtWidgets
 _IMAGE_TYPE = QQuickImageProvider.ImageType.Pixmap
 
 PROVIDER_ID = "nxticon"
+#: `image://nxticon/@cmd/<Command>` is a FreeCAD command's icon, for the
+#: context menu. No document can be named this: names start with a letter.
+COMMAND_PREFIX = "@cmd"
 VIRTUAL_PREFIX = "~"      # scene.VIRTUAL_PREFIX; no scene import here
 DEFAULT_ICON_PX = 16
 
@@ -68,6 +72,12 @@ class IconProvider(QQuickImageProvider):
             if len(parts) < 2:
                 return self._blank(width, height)
             doc_name, obj_name = parts[0], parts[1]
+            if doc_name == COMMAND_PREFIX:
+                from ..menus import runner
+                command_icon = runner.command_icon(obj_name)
+                if command_icon is None:
+                    return self._blank(width, height)
+                return command_icon.pixmap(width, height)
             gray = parts[-1] == "gray"
             if obj_name.startswith(VIRTUAL_PREFIX):
                 return self._folder().pixmap(width, height)

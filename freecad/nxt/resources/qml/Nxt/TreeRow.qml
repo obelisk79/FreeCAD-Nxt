@@ -131,7 +131,15 @@ Item {
     // list twitching rather than as a space being made.
     readonly property bool gapBelow: ListView.view
                                      && ListView.view.gapAfterRow === row.index
-    readonly property int dragGapHeight: Math.round(theme.rowHeight * 0.55)
+    // A reorder within a Body opens a whole row's height: the dragged row
+    // itself is on its way into that space. Any other drop only hints.
+    readonly property int dragGapHeight:
+        ListView.view && ListView.view.reorderDrag
+            ? theme.rowHeight : Math.round(theme.rowHeight * 0.55)
+    // This row is the one in your hand: it stays where it was, faded, as a
+    // reminder of where it came from, while its image follows the pointer.
+    readonly property bool dragSource: ListView.view
+                                       && ListView.view.dragSource === row.name
     property real gap: 0
     onGapBelowChanged: gap = gapBelow ? row.dragGapHeight : 0
 
@@ -174,6 +182,15 @@ Item {
     }
 
     readonly property int leftPad: theme.rowPad + depth * theme.indent
+    // The detail strip lines up with the row's pill, so it reads as part of
+    // it. Past two levels deep it stops following the indent - a narrow
+    // dock cannot spare the width - and a tick under the pill keeps the
+    // two joined.
+    readonly property int detailIndentCap: 2
+    readonly property real pillLeft: icon.x - 5
+    readonly property real detailLeft:
+        Math.max(2, pillLeft - Math.max(0, depth - detailIndentCap)
+                               * theme.indent)
     readonly property int guideOffset: Math.round(theme.rowHeight * 0.3)
 
     readonly property var shownRefs: {
@@ -213,6 +230,7 @@ Item {
         id: head
         width: parent.width
         height: theme.rowHeight
+        opacity: row.dragSource ? 0.3 : 1.0
 
         // Never animate a colour to or from "transparent". That value is
         // transparent *black*, so ColorAnimation interpolates through
@@ -556,6 +574,10 @@ Item {
 
         DropArea {
             anchors.fill: parent
+            // A reorder within a Body finds its slot from where the dragged
+            // row is, not from the row under the pointer; see the drag
+            // ghost in NxtTree.qml.
+            enabled: !(row.ListView.view && row.ListView.view.reorderDrag)
 
             function setGap(open) {
                 if (row.ListView.view)
@@ -594,11 +616,20 @@ Item {
         MouseArea {
             anchors.fill: parent
             z: -1
-            acceptedButtons: Qt.LeftButton
+            acceptedButtons: Qt.LeftButton | Qt.RightButton
             property point origin
             property bool armed: false
 
             onPressed: function (mouse) {
+                if (mouse.button === Qt.RightButton) {
+                    // Opens where the row was clicked, once the selection
+                    // has settled; the point is in the panel's scene.
+                    var at = mapToItem(null, mouse.x, mouse.y);
+                    if (row.ListView.view)
+                        row.ListView.view.forceActiveFocus();
+                    nxt.requestContextMenu(row.name, at.x, at.y);
+                    return;
+                }
                 origin = Qt.point(mouse.x, mouse.y);
                 armed = true;
                 var wasSelected = row.selected;
@@ -626,10 +657,28 @@ Item {
                         return;
                     // Moving the object is not asking to rename it.
                     row.disarmRename();
-                    row.dragGhost.begin([row.name], row.label, row.iconUrl);
+                    // Within a Body, a drag reorders: the row itself slides
+                    // up and down its column, held where it was grabbed.
+                    // Anything else can go anywhere, so a label follows the
+                    // pointer instead.
+                    var sliding = row.bodyName !== "";
+                    row.dragGhost.begin([row.name], row.label, row.iconUrl,
+                                        sliding ? origin : null);
+                    if (sliding) {
+                        head.grabToImage(function (result) {
+                            row.dragGhost.picture(result.url, head.width,
+                                                  head.height);
+                        });
+                        var corner = row.mapToItem(row.dragGhost.parent, 0, 0);
+                        row.dragGhost.x = corner.x;
+                    }
                 }
-                row.dragGhost.x = here.x + 10;
-                row.dragGhost.y = here.y + 6;
+                if (row.dragGhost.sliding) {
+                    row.dragGhost.y = here.y - origin.y;
+                } else {
+                    row.dragGhost.x = here.x + 10;
+                    row.dragGhost.y = here.y + 6;
+                }
             }
 
             onReleased: {
@@ -665,7 +714,7 @@ Item {
 
         Rectangle {
             anchors.fill: parent
-            anchors.leftMargin: row.leftPad
+            anchors.leftMargin: row.detailLeft
             anchors.rightMargin: 8
             anchors.bottomMargin: 3
             radius: 4
@@ -676,7 +725,7 @@ Item {
         Rectangle {
             visible: theme.overlay
             anchors.fill: parent
-            anchors.leftMargin: row.leftPad
+            anchors.leftMargin: row.detailLeft
             anchors.rightMargin: 8
             anchors.bottomMargin: 3
             radius: 4
@@ -685,10 +734,56 @@ Item {
             border.color: theme.pillBorder
         }
 
+        // Only when the strip has stopped short of the pill: a tick on its
+        // top edge, under the pill's start, says whose strip it is.
+        Rectangle {
+            visible: row.detailLeft < row.pillLeft - 1
+            x: row.pillLeft
+            y: 0
+            width: 14
+            height: 2
+            radius: 1
+            color: theme.accent
+        }
+
+        // Close. The strip's own button, so a strip opened from the gutter
+        // mark or the menu can be closed where it is; Escape does the same.
+        Item {
+            id: closeButton
+            z: 2
+            anchors.right: parent.right
+            anchors.rightMargin: 10
+            y: 2
+            width: 18
+            height: 18
+
+            Rectangle {
+                anchors.fill: parent
+                radius: 3
+                color: theme.hover
+                visible: closeMouse.containsMouse
+            }
+            Text {
+                anchors.centerIn: parent
+                text: "\u00d7"
+                font.pixelSize: theme.fontRow
+                color: closeMouse.containsMouse ? theme.text : theme.textDim
+            }
+            MouseArea {
+                id: closeMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: nxt.toggleDetail(row.name)
+            }
+            Accessible.role: Accessible.Button
+            Accessible.name: qsTr("Close details")
+        }
+
         DetailStrip {
             id: content
-            x: row.leftPad + 8
-            width: Math.max(40, parent.width - x - 14)
+            x: row.detailLeft + 8
+            width: Math.max(40, parent.width - x - 14 - closeButton.width)
             level: row.markLevel
             notes: row.notes
             dof: row.dof

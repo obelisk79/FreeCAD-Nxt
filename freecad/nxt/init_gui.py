@@ -18,12 +18,11 @@ from .qt import QtCore
 
 
 class Manipulator:
-    """Adds the panel commands to the View menu of every workbench."""
+    """Adds the FreeCAD-Nxt submenu to the View menu of every workbench."""
 
     def modifyMenuBar(self) -> list[dict[str, str]]:  # noqa: N802 - FreeCAD manipulator API
         # "append" adds to the end of the menu holding `menuItem`.
-        return [{"append": name, "menuItem": "Std_DockViewMenu"}
-                for name in commands.MENU]
+        return [{"append": commands.GROUP, "menuItem": "Std_DockViewMenu"}]
 
 
 def _restore_panel() -> None:

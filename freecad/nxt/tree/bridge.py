@@ -22,7 +22,7 @@ import FreeCAD as App
 import FreeCADGui as Gui
 
 from ..qt import QtCore
-from . import icons, models, properties, scene, settings
+from . import icons, models, properties, reorder, scene, settings
 
 
 def _err(message: str) -> None:
@@ -48,6 +48,11 @@ class TreeBridge(QtCore.QObject):
     tipBarsChanged = QtCore.Signal()
     searchResultsChanged = QtCore.Signal()
     propertyInspectorRequested = QtCore.Signal(int)
+    #: Open the context menu for the selection at this point in the
+    #: panel's scene: where the row was right-clicked.
+    contextMenuRequested = QtCore.Signal(float, float)
+    #: Start renaming this row, as F2 does; asked for by the menu.
+    renameRowRequested = QtCore.Signal(int)
 
     def __init__(self, parent: QtCore.QObject | None = None,
                  widen: bool = False) -> None:
@@ -76,6 +81,9 @@ class TreeBridge(QtCore.QObject):
         # branch opens or closes.
         self._anchor: str | None = None
         self._cursor: str | None = None
+        # What the open context menu is for: the selection when it opened,
+        # which an item that changes the selection must not change under it.
+        self._menu_names: list[str] = []
 
         # Deferrals go through timers parented to this object, never through
         # the static QTimer.singleShot. A static single-shot holds a bound
@@ -871,10 +879,69 @@ class TreeBridge(QtCore.QObject):
         else:
             self.openPropertyInspector(name or "", -1.0, -1.0)
 
+    # ------------------------------------------------------------------ #
+    # context menu
+    # ------------------------------------------------------------------ #
+
+    @QtCore.Slot(str, float, float)
+    def requestContextMenu(self, name: str, x: float, y: float) -> None:
+        """Right-click on a row: select it, then open the menu at (x, y).
+
+        The point is in the panel's scene, not on the screen: under
+        Wayland an application cannot read the pointer's position on the
+        screen, so a menu told to open "at the pointer" opened in a corner.
+
+        A row that is already part of the selection keeps the selection as
+        it is, as every file manager does, so a menu can act on several.
+        """
+        if name and name not in self._selected_names():
+            self.select(name, False)
+        # Opened on the next turn of the event loop, not inside the press
+        # that asked for it: the selection change above is still being
+        # delivered to FreeCAD's observers, and the menu is built from it.
+        QtCore.QTimer.singleShot(
+            0, self, lambda: self.contextMenuRequested.emit(x, y))
+
+    @QtCore.Slot(result=int)
+    def contextMenuRow(self) -> int:
+        """The row the keyboard's menu opens beside.
+
+        The cursor's row if it is selected, else the first selected row;
+        -1 with nothing selected.
+        """
+        selected = self._selected_names()
+        if self._cursor in selected:
+            return self._tree.row_of(self._cursor or "")
+        rows = [r for r in (self._tree.row_of(n) for n in selected)
+                if r >= 0]
+        return min(rows) if rows else -1
+
+    @QtCore.Slot(result="QVariant")
+    def contextMenu(self) -> dict[str, Any]:
+        """The menu for the current selection, as plain data."""
+        from . import menu_actions
+        self._menu_names = self._selected_names()
+        try:
+            return menu_actions.build(self, self._menu_names)
+        except Exception:
+            _err("the context menu could not be built")
+            return {}
+
+    @QtCore.Slot(str)
+    def runMenuItem(self, command: str) -> None:
+        from . import menu_actions
+        menu_actions.run(self, command, list(self._menu_names))
+
     @QtCore.Slot(str, result=bool)
     def toggleDetail(self, name: str) -> bool:
         """Open or close a row's detail strip."""
         return self._tree.toggle_detail(name)
+
+    @QtCore.Slot(result=bool)
+    def closeDetail(self) -> bool:
+        """Escape: close the selected rows' strips, else every open one."""
+        return (self._tree.close_details(self._selected_names())
+                or self._tree.close_details())
 
     # ------------------------------------------------------------------ #
     # search
@@ -1147,6 +1214,9 @@ class TreeBridge(QtCore.QObject):
         doc = App.ActiveDocument
         if doc is None or not sources:
             return False
+        body, plan = self._body_reorder(sources, target_name)
+        if body is not None:
+            return plan.ok
         target = doc.getObject(target_name)
         tvo = getattr(target, "ViewObject", None)
         if tvo is None:
@@ -1176,6 +1246,20 @@ class TreeBridge(QtCore.QObject):
 
     @QtCore.Slot("QVariantList", str, result=bool)
     def dropOn(self, sources: list[Any], target_name: str) -> bool:
+        body, plan = self._body_reorder(sources, target_name)
+        if body is not None:
+            # Within a Body a drop reorders: onto a member, just after it;
+            # onto the Body, first. See reorder.py.
+            if not plan.ok:
+                reorder.report(plan.problem)
+                return False
+            try:
+                reorder.apply(body, plan)
+            except Exception:
+                _err("could not reorder %s" % body.Name)
+                return False
+            self.invalidate(icons=True)
+            return True
         if not self.canDropOn(sources, target_name):
             return False
         doc = App.ActiveDocument
@@ -1204,6 +1288,20 @@ class TreeBridge(QtCore.QObject):
         self._recompute_timer.start()
         self.invalidate(icons=True)
         return moved
+
+    def _body_reorder(self, sources: list[Any],
+                      target_name: str) -> tuple[Any, reorder.Plan]:
+        """The Body and plan when this drop reorders a Body, else None."""
+        doc = App.ActiveDocument
+        objects = [doc.getObject(str(n)) for n in sources]
+        target = doc.getObject(target_name)
+        if target is None or any(o is None for o in objects):
+            return None, reorder.Plan()
+        try:
+            return reorder.plan_drop(objects, target)
+        except Exception:
+            _err("could not plan a reorder onto %s" % target_name)
+            return None, reorder.Plan()
 
     def _detach(self, doc: Any, source: Any) -> None:
         """Ask the current parent's view provider to release the object."""

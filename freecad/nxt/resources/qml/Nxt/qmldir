@@ -12,3 +12,4 @@ ScrollHint 1.0 ScrollHint.qml
 KeyValue 1.0 KeyValue.qml
 ChoiceList 1.0 ChoiceList.qml
 ValueEditor 1.0 ValueEditor.qml
+ContextMenu 1.0 ContextMenu.qml

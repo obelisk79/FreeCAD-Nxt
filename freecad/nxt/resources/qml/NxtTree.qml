@@ -165,6 +165,10 @@ Rectangle {
             property int barGap: -1
             property int dropGap: -1
             readonly property int gapAfterRow: barGap >= 0 ? barGap : dropGap
+            // The row being dragged, and whether the drag is a reorder
+            // within a Body (see the drag ghost below).
+            property string dragSource: ""
+            property bool reorderDrag: false
 
             delegate: TreeRow { dragGhost: ghost; detailCap: root.contentCap }
 
@@ -234,31 +238,143 @@ Rectangle {
     Item {
         id: ghost
         z: 1000
-        width: label.implicitWidth + 34
+        width: sliding ? shot.width : label.implicitWidth + 34
         height: theme.rowHeight
         visible: Drag.active
 
         property var names: []
+        // Sliding: a reorder within a Body. The ghost is then a picture of
+        // the row itself, locked to its column and held at the point it was
+        // grabbed, so the row moves rather than a label beside the pointer.
+        property bool sliding: false
+        // While sliding: the row it would be dropped after, if the drop
+        // is allowed there, and what the panel said about each row asked.
+        property string slideTarget: ""
+        property var verdicts: ({})
 
         Drag.active: false
         Drag.hotSpot.x: 12
         Drag.hotSpot.y: height / 2
 
-        function begin(objectNames, text, icon) {
+        function begin(objectNames, text, icon, grabbedAt) {
             names = objectNames;
             label.text = text;
             ghostIcon.source = icon;
+            sliding = grabbedAt !== null && grabbedAt !== undefined;
+            shot.source = "";
+            slideTarget = "";
+            verdicts = ({});
+            // The drop target is the row under the pointer, so the hot spot
+            // is the point that was grabbed.
+            Drag.hotSpot.x = sliding ? grabbedAt.x : 12;
+            Drag.hotSpot.y = sliding ? grabbedAt.y : height / 2;
+            treeList.dragSource = objectNames.length === 1
+                                  ? objectNames[0] : "";
+            treeList.reorderDrag = sliding;
             Drag.active = true;
         }
 
+        // The row's picture, once grabToImage has it; until then (a frame
+        // or so) the label stands in.
+        function picture(url, w, h) {
+            if (!Drag.active)
+                return;
+            shot.width = w;
+            shot.height = h;
+            shot.source = url;
+        }
+
         function finish() {
-            Drag.drop();
-            Drag.active = false;
+            if (sliding) {
+                Drag.active = false;
+                if (slideTarget !== "")
+                    nxt.dropOn(names, slideTarget);
+                treeList.dropGap = -1;
+            } else {
+                Drag.drop();
+                Drag.active = false;
+            }
             names = [];
+            sliding = false;
+            shot.source = "";
+            treeList.dragSource = "";
+            treeList.reorderDrag = false;
+        }
+
+        // A drag moves pixels over the translucent surface in overlay mode;
+        // see treeList's onContentYChanged.
+        onYChanged: {
+            if (!Drag.active)
+                return;
+            if (sliding)
+                slide();
+            if (theme.overlay)
+                host.repaintBehind();
+        }
+
+        function allowed(target) {
+            if (verdicts[target] === undefined)
+                verdicts[target] = nxt.canDropOn(names, target);
+            return verdicts[target];
+        }
+
+        // Opens the gap where the dragged row is, so it sits over the
+        // space it will drop into. Worked out on the list as it would be
+        // with no gap open: the gap moves rows, and measuring rows that
+        // are moving because of the answer would make the answer flicker.
+        // The slot chosen is the row boundary nearest the dragged row's
+        // top edge; the gap opens there, a row high, under the ghost.
+        function slide() {
+            var want = ghost.mapToItem(treeList.contentItem, 0, 0).y;
+            var first = treeList.indexAt(10, treeList.contentY);
+            var last = treeList.indexAt(10, treeList.contentY
+                                            + treeList.height);
+            if (first < 0) first = 0;
+            if (last < 0) last = treeList.count - 1;
+            var gapRow = treeList.dropGap;
+            var open = gapRow >= 0 ? treeList.itemAtIndex(gapRow) : null;
+            var shift = open ? open.gap : 0;
+            var best = -1, bestDistance = 1e9;
+            for (var i = first; i <= last; ++i) {
+                var item = treeList.itemAtIndex(i);
+                if (!item)
+                    continue;
+                var top = item.y - (gapRow >= 0 && i > gapRow ? shift : 0);
+                var bottom = top + item.height - (i === gapRow ? shift : 0);
+                var distance = Math.abs(bottom - want);
+                if (distance < bestDistance) {
+                    bestDistance = distance;
+                    best = i;
+                }
+            }
+            var target = best >= 0 ? treeList.itemAtIndex(best).name : "";
+            var ok = target !== "" && allowed(target);
+            slideTarget = ok ? target : "";
+            treeList.dropGap = ok ? best : -1;
+        }
+
+        Image {
+            id: shot
+            visible: ghost.sliding && status === Image.Ready
+
+            // Lifted: a shadow line under it and a little transparency, so
+            // it reads as held above the list rather than part of it.
+            opacity: 0.95
+            Rectangle {
+                anchors.fill: parent
+                z: -1
+                radius: 4
+                color: theme.surface
+                border.width: 1
+                // Accent where it can drop; plain where it cannot.
+                border.color: ghost.slideTarget !== "" ? theme.accent
+                                                       : theme.border
+            }
         }
 
         Rectangle {
             anchors.fill: parent
+            visible: !shot.visible
             radius: 4
             color: theme.accent
             opacity: 0.92
@@ -283,6 +399,59 @@ Rectangle {
         }
     }
 
+    // ========================================================= context menu
+
+    Component {
+        id: contextMenuComponent
+        ContextMenu {}
+    }
+
+    // What the context menu opens from: a point, not a control. Under
+    // Wayland a menu in a window of its own is placed against the whole
+    // rectangle of the item it opens from - opened from the panel, it sat
+    // at the panel's bottom-left corner - so it opens from this one-pixel
+    // item, moved to the click first. See host.menuAnchorOffset().
+    Item {
+        id: menuAnchor
+        width: 1
+        height: 1
+    }
+
+    // Built afresh for each opening, from the selection as it is now:
+    // where the row was right-clicked, or under a row from the keyboard.
+    // The menu is a window of its own (see ContextMenu.qml).
+    function openContextMenu(rowItem, x, y) {
+        var data = nxt.contextMenu();
+        if (!data || !data.bar)
+            return;
+        var menu = contextMenuComponent.createObject(root);
+        menu.load(data);
+        // Run once the menu has gone, so a command that opens a dialog or
+        // a task panel does not start underneath it.
+        menu.chosen.connect(function (command) {
+            Qt.callLater(function () { nxt.runMenuItem(command); });
+        });
+        menu.closed.connect(function () { treeList.forceActiveFocus(); });
+        var at = rowItem
+            ? rowItem.mapToItem(root, theme.rowPad + theme.indent,
+                                rowItem.height)
+            : Qt.point(x, y);
+        var offset = host.menuAnchorOffset();
+        menuAnchor.x = at.x + offset.x;
+        menuAnchor.y = at.y + offset.y;
+        menu.parent = menuAnchor;
+        menu.popup(menuAnchor, 0, 0);
+    }
+
+    function startRename(row) {
+        if (row < 0)
+            return;
+        treeList.positionViewAtIndex(row, ListView.Contain);
+        var item = treeList.itemAtIndex(row);
+        if (item)
+            item.beginRename();
+    }
+
     // ============================================================= keyboard
 
     // Driven by the selection rather than by the list's currentIndex, so a
@@ -292,14 +461,25 @@ Rectangle {
     // search box or a rename field does not toggle anything.
     Keys.onPressed: function (event) {
         if (event.key === Qt.Key_F2) {
-            var row = nxt.treeRenameRow();
-            if (row >= 0) {
-                treeList.positionViewAtIndex(row, ListView.Contain);
-                var item = treeList.itemAtIndex(row);
-                if (item)
-                    item.beginRename();
+            root.startRename(nxt.treeRenameRow());
+            event.accepted = true;
+        } else if (event.key === Qt.Key_Menu
+                   || (event.key === Qt.Key_F10
+                       && (event.modifiers & Qt.ShiftModifier))) {
+            // Beside the row it is for, under its icon.
+            var at = nxt.contextMenuRow();
+            if (at >= 0) {
+                treeList.positionViewAtIndex(at, ListView.Contain);
+                var rowItem = treeList.itemAtIndex(at);
+                if (rowItem) {
+                    root.openContextMenu(rowItem, 0, 0);
+                }
             }
             event.accepted = true;
+        } else if (event.key === Qt.Key_Escape) {
+            // Only taken when it closed something, so Escape still
+            // reaches FreeCAD (clearing the selection) otherwise.
+            event.accepted = nxt.closeDetail();
         } else if (event.key === Qt.Key_Space) {
             nxt.toggleSelectedVisibility();
             event.accepted = true;
@@ -322,6 +502,12 @@ Rectangle {
 
     Connections {
         target: nxt
+        function onContextMenuRequested(x, y) {
+            root.openContextMenu(null, x, y);
+        }
+        function onRenameRowRequested(row) {
+            root.startRename(row);
+        }
         function onRevealTreeRow(row) {
             treeList.positionViewAtIndex(row, ListView.Contain);
         }

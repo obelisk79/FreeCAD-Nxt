@@ -1,0 +1,266 @@
+# Nxt's tree context menu.
+#
+# Why each item is where it is: freecad/nxt/tree/CONTEXT_MENU.md.
+#
+# The shape of a file
+# -------------------
+# [bar]      the fixed icon row; only Nxt's own file sets it.
+# [[menu]]   what a kind of object adds. Every menu whose `when` holds for
+#            the whole selection applies, in file order; a later menu's
+#            `lead` or `delete` replaces an earlier one, and sections and
+#            More groups accumulate.
+#
+# Keys of a menu:
+#   id       a name, for error messages and nxt.menus.explain().
+#   when     a condition (below); none means every object.
+#   lead     the object's own action, drawn bold.
+#   state    rows for the object's condition, tinted.
+#   section  { Model, Organize, Relations, Inspect, or a new name } = [items]
+#   more     { group name = [items] }, the More submenu.
+#   delete   the item drawn apart at the bottom.
+#   hide     command names to remove wherever they were placed.
+#   drop     FreeCAD commands left out on purpose, or replaced by an Nxt
+#            action, so they are not carried over into More with the
+#            commands no file mentions.
+#
+# An item is a command name, a submenu
+#   { label = "...", submenu = [items], <condition keys> }
+# or an inline table (on one line: TOML does not let an inline table break
+# across lines):
+#   { command = "...", label = "...", before = "...", after = "...",
+#     <condition keys> }
+# A command is a FreeCAD command (Std_Delete), an Nxt action (nxt:isolate)
+# or a view provider edit mode (edit:default, edit:transform, edit:color).
+# FreeCAD commands and Nxt actions bring their own translated labels; set
+# `label` only to rename one here, and list the text in menus/labels.py so
+# it is translated too.
+#
+# A condition holds when every test it states holds for every selected
+# object. On a menu it is the `when` table; on an item its keys sit in the
+# item itself.
+#   type          TypeId patterns, matched against the type and its bases
+#   proxy_module  module patterns for a Python object's proxy class
+#   in_body       true / false
+#   flags         all of these; a leading ! means "not":
+#                 failed past_tip is_tip solver_issues has_expression
+#                 has_dependents has_inputs out_of_date editable_placement
+#                 suppressible has_shape shown_in_3d editing attachable
+#   count         a number, "N+" or "any" (the default), against the
+#                 selection's size
+#
+# FreeCAD commands also pass through the command's own isActive(), so a
+# condition never needs to restate what the command already checks.
+
+version = 1
+
+[bar]
+items = [
+    "Std_ToggleVisibility",
+    { command = "nxt:isolate", flags = ["has_shape"] },
+    { command = "Std_ViewFitSelection", flags = ["has_shape"] },
+    { command = "Std_SetAppearance", flags = ["has_shape"] },
+    "nxt:inspector",
+]
+
+# --------------------------------------------------------------- every object
+
+[[menu]]
+id = "common"
+state = [
+    { command = "nxt:reveal_failure", flags = ["failed"] },
+    { command = "nxt:recompute_object", flags = ["failed"] },
+]
+delete = "Std_Delete"
+# Show and Hide Selection give way to the bar's toggle; Properties to the
+# Property Inspector.
+# Std_Expressions crashes FreeCAD when run from here (menus/runner.py);
+# the Expressions submenu above does the same with Nxt's own actions.
+drop = ["Std_ShowSelection", "Std_HideSelection", "Std_Properties",
+        "Std_Expressions"]
+
+[menu.section]
+Model = [
+    "nxt:recompute_object",
+    { command = "Std_ToggleSuppress", flags = ["suppressible"] },
+    { command = "Std_TransformManip", count = 1, flags = ["editable_placement"] },
+    { command = "Std_Placement", count = 1, flags = ["editable_placement"] },
+    { command = "nxt:edit_attachment", count = 1, flags = ["attachable"] },
+]
+Organize = [
+    { command = "nxt:rename", count = 1 },
+    "Std_DuplicateSelection",
+    { command = "Std_LinkMake", label = "Make link" },
+]
+Relations = [
+    { command = "nxt:select_consumers", flags = ["has_dependents"] },
+    { command = "nxt:select_support", flags = ["has_inputs"] },
+    "Std_TreeSelectAllInstances",
+]
+Inspect = [
+    { label = "Expressions", submenu = ["nxt:expressions_copy_selected", "nxt:expressions_copy_document", "nxt:expressions_copy_all", "nxt:expressions_paste"] },
+    "Std_SendToPythonConsole",
+]
+
+[menu.more]
+Clipboard = ["Std_Cut", "Std_Copy", "Std_Paste"]
+Display = [
+    "Std_SetMaterial",
+    "Std_RandomColor",
+    "Std_ToggleTransparency",
+    "Std_ToggleSelectability",
+]
+Recompute = ["Std_MarkToRecompute", "Std_ToggleFreeze"]
+Links = [
+    "Std_LinkMakeGroup",
+    "Std_LinkMakeRelative",
+    "Std_LinkUnlink",
+    "Std_LinkReplace",
+    "Std_LinkImport",
+    "Std_LinkImportAll",
+]
+
+# --------------------------------------------------------------------- sketch
+
+[[menu]]
+id = "sketch"
+when = { type = "Sketcher::SketchObject" }
+lead = "edit:default"
+state = [{ command = "nxt:show_solver_issues", flags = ["solver_issues"] }]
+
+[menu.more]
+Sketcher = [
+    "Sketcher_MapSketch",
+    "Sketcher_ValidateSketch",
+    "Sketcher_MirrorSketch",
+    "Sketcher_MergeSketches",
+]
+
+# ----------------------------------------------------- Part Design features
+
+[[menu]]
+id = "partdesign-feature"
+when = { type = "PartDesign::Feature" }
+lead = "edit:default"
+# Set Tip is nxt:set_tip, which moves the panel's rollback bar with it.
+drop = ["PartDesign_MoveTip"]
+
+[menu.section]
+Model = [
+    { command = "nxt:set_tip", count = 1, flags = ["!is_tip", "!past_tip"] },
+    { command = "nxt:roll_forward", count = 1, flags = ["past_tip"] },
+    { command = "PartDesign_MultiTransform", count = 1, type = "PartDesign::Transformed" },
+]
+
+[menu.more]
+"Part Design" = [{ command = "edit:color", label = "Set face colors" }]
+
+# ------------------------------------------------- anything inside a Body
+
+# Part Design offers these for sketches and datums in a Body as well as for
+# features.
+[[menu]]
+id = "in-body"
+when = { in_body = true }
+
+[menu.section]
+Organize = [
+    { command = "PartDesign_MoveFeature", label = "Move to another Body" },
+    { command = "PartDesign_MoveFeatureInTree", label = "Move after another feature" },
+]
+
+# ----------------------------------------------------------------------- Body
+
+[[menu]]
+id = "body"
+when = { type = "PartDesign::Body" }
+lead = "nxt:make_active"
+state = [{ command = "nxt:reveal_first_problem", flags = ["failed"] }]
+
+[menu.section]
+Model = ["PartDesign_NewSketch", "Std_ToggleFreeze"]
+
+# ---------------------------------------------------------------------- datum
+
+[[menu]]
+id = "datum"
+when = { type = ["Part::Datum", "PartDesign::CoordinateSystem"] }
+lead = "edit:default"
+
+# ---------------------------------------------------------------------- group
+
+[[menu]]
+id = "group"
+when = { type = "App::DocumentObjectGroup", count = 1 }
+lead = "nxt:select_group_contents"
+
+[menu.section]
+Organize = [
+    { command = "Std_Group", label = "New group inside" },
+    "nxt:expand_all",
+    "nxt:collapse_all",
+]
+
+# ------------------------------------------------------------ Part primitives
+
+[[menu]]
+id = "part-primitive"
+when = { type = "Part::Primitive" }
+lead = "edit:default"
+
+[[menu]]
+id = "part-shape"
+when = { type = "Part::Feature", in_body = false }
+
+[menu.more]
+Part = [{ command = "edit:color", label = "Appearance per face" }]
+
+# ---------------------------------------------------------- links and binders
+
+[[menu]]
+id = "binder"
+when = { type = ["PartDesign::ShapeBinder", "PartDesign::SubShapeBinder"] }
+lead = "edit:default"
+state = [{ command = "nxt:synchronize_binder", flags = ["out_of_date"] }]
+
+[menu.section]
+Relations = ["nxt:select_bound"]
+
+[[menu]]
+id = "link"
+when = { type = "App::Link" }
+
+[menu.section]
+Relations = [
+    "Std_LinkSelectLinked",
+    "Std_LinkSelectLinkedFinal",
+    "Std_LinkSelectAllLinks",
+]
+
+# ----------------------------------------------------------------------- Draft
+
+[[menu]]
+id = "draft"
+when = { proxy_module = "draftobjects.*" }
+
+[menu.more]
+Draft = [
+    "Draft_SetStyle",
+    "Draft_ApplyStyle",
+    "Draft_Layer",
+    "Draft_LayerManager",
+    "Draft_AddNamedGroup",
+    "Draft_SelectGroup",
+    "Draft_ToggleConstructionMode",
+    "Draft_AddToLayer",
+    "Draft_AddToGroup",
+    "Draft_AddConstruction",
+    "Draft_Hyperlink",
+    "Draft_UpdateShape2DView",
+]
+
+# ----------------------------------------------------------------- spreadsheet
+
+[[menu]]
+id = "spreadsheet"
+when = { type = "Spreadsheet::Sheet" }
+lead = { command = "edit:default", label = "Show spreadsheet" }

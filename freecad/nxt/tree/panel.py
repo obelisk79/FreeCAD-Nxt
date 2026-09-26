@@ -563,6 +563,25 @@ class ModelPanel(QtWidgets.QDockWidget):
         except Exception:
             pass
 
+    @QtCore.Slot(result=QtCore.QPointF)
+    def menuAnchorOffset(self) -> QtCore.QPointF:  # noqa: N802 - QML API
+        """Where the panel's scene sits in FreeCAD's window, under Wayland.
+
+        A Qt Quick menu that opens in a window of its own is placed, under
+        Wayland, relative to the rectangle of the item it was opened from -
+        and Qt takes that rectangle in the coordinates of the item's own
+        window. The panel's items live in a QQuickWidget, whose window is
+        an offscreen one lying at the corner of FreeCAD's, so the menu has
+        to be opened from an item shifted by where the panel really is.
+        Elsewhere the menu is placed from global coordinates, which already
+        account for this, and the offset is zero.
+        """
+        if (self._view is None or not QtGui.QGuiApplication.platformName()
+                .startswith("wayland")):
+            return QtCore.QPointF(0, 0)
+        corner = self._view.mapTo(self._view.window(), QtCore.QPoint(0, 0))
+        return QtCore.QPointF(corner)
+
     @QtCore.Slot()
     def repaintBehind(self) -> None:
         """Nudge whatever is under the panel to repaint.

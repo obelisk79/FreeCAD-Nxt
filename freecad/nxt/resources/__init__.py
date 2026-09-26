@@ -19,6 +19,9 @@ ICONS = Path(str(_ROOT / "icons"))
 #: QML: the panel's and inspector's root files, and the `Nxt` module.
 QML = Path(str(_ROOT / "qml"))
 
+#: Context menu definitions; `default.toml` is Nxt's own.
+MENUS = Path(str(_ROOT / "menus"))
+
 #: Compiled translations, Nxt_<locale>.qm, for FreeCAD's language path.
 TRANSLATIONS = Path(str(_ROOT / "translations"))
 

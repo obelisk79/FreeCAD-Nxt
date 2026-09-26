@@ -251,6 +251,9 @@ def make_bridge():
     ns = {
         "changed": QtCore.Signal(),
         "revealTreeRow": QtCore.Signal(int),
+        "propertyInspectorRequested": QtCore.Signal(int),
+        "contextMenuRequested": QtCore.Signal(float, float),
+        "renameRowRequested": QtCore.Signal(int),
         "treeModel": QtCore.Property(QtCore.QObject,
                                      lambda self: ROWS_MODEL, constant=True),
         "hasDocument": QtCore.Property(bool, lambda self: True),
@@ -273,6 +276,10 @@ class Host(QtCore.QObject):
     @QtCore.Slot()
     def repaintBehind(self):
         pass
+
+    @QtCore.Slot(result=QtCore.QPointF)
+    def menuAnchorOffset(self):
+        return QtCore.QPointF(0, 0)
 
 
 def visual_tree(item, depth=0):

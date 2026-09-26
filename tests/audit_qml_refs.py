@@ -88,7 +88,9 @@ builtin = {"Item", "Rectangle", "Text", "TextInput", "Image", "Row", "Column",
            "HoverHandler", "TapHandler", "Connections", "NumberAnimation",
            "ColorAnimation", "Behavior", "Timer", "Component", "Drag",
            "ListModel", "Keys", "Qt", "Math", "PropertyChanges", "State",
-           "TextMetrics", "FontMetrics", "Application"}
+           "TextMetrics", "FontMetrics", "Application", "Flickable",
+           # Qt Quick Controls, used by the context menu only.
+           "Menu", "MenuItem", "MenuSeparator", "Popup"}
 unknown = sorted(c for c in components
                  if c not in registered and c not in builtin)
 print("%-28s used %3d  unregistered: %s"

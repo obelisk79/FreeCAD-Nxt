@@ -37,10 +37,10 @@ tests/                one test file per area, see Development
 
 | Command | Where | What |
 |---|---|---|
-| `Nxt_ModelPanel` | View menu | show or hide the model panel |
-| `Nxt_ModelPanelOverlay` | View menu | draw the panel as floating labels |
-| `Nxt_PropertyInspector` | View menu | the selection's properties in an inspector |
-| `Nxt_Reload` | console | hot-reload the addon's Python modules |
+| `Nxt_ModelPanel` | View › FreeCAD-Nxt | show or hide the model panel |
+| `Nxt_ModelPanelOverlay` | View › FreeCAD-Nxt | draw the panel as floating labels |
+| `Nxt_PropertyInspector` | View › FreeCAD-Nxt | the selection's properties in an inspector |
+| `Nxt_Reload` | View › FreeCAD-Nxt, for now | hot-reload the addon's Python modules |
 
 ```python
 Gui.runCommand("Nxt_Reload")
@@ -55,6 +55,9 @@ python3 tests/test_qml.py          # offscreen QML load; needs PySide6
 python3 tests/test_properties.py   # the detail strip's key values
 python3 tests/test_property_inspector.py  # borrowing the Property editor; PySide6
 python3 tests/test_inspector.py    # the inspector's automatic layout
+python3 tests/test_menus.py        # context menu definitions
+python3 tests/test_reorder.py      # reordering a Body by drag and drop
+python3 tests/test_context_menu_qml.py  # the context menu's QML; PySide6
 python3 tests/test_inspector_qml.py  # the inspector's QML; PySide6
 python3 tests/test_selection_keys.py # Space, arrows, Shift+click; PySide6
 ruff check . && pycodestyle freecad tests && mypy
@@ -86,8 +89,9 @@ two can be compared directly.
 
 ### Known gaps
 
-* No context menu yet. The stock tree's actions are C++ `QAction`s; they need
-  either rebuilding or bridging, and that is its own piece of work.
+* The context menu covers the common object types (see
+  `freecad/nxt/tree/CONTEXT_MENU.md`); anything else falls back to
+  FreeCAD's own menu, the last entry under More.
 * Drag-drop leans on `canDropObject`/`dropObject`. Check `probe.run()` for
   how widely your build exposes them.
 * Cross-Body reuse is still a PartDesign restriction, not a UI one. Drawing
