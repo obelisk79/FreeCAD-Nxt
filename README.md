@@ -4,6 +4,8 @@
 
 A revolutionary take for the FreeCAD user interface based on QtQuick and established User Experience(UX) principles. 
 
+[![Support me on Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/K4H827QS0N)
+
 
 ## Install
 
