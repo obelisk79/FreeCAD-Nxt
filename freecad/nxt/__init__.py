@@ -36,6 +36,7 @@ _RELOAD_ORDER = (
     "freecad.nxt.menus.runner",
     "freecad.nxt.menus",
     "freecad.nxt.tree.menu_actions",
+    "freecad.nxt.tree.prefs",
     "freecad.nxt.tree.panel",
     "freecad.nxt.property_inspector",
 )

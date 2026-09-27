@@ -1,3 +1,5 @@
+<img src="freecad/nxt/resources/icons/FreeCAD-Nxt.svg" alt="" width="64" align="right">
+
 # FreeCAD-Nxt
 
 A revolutionary take for the FreeCAD user interface based on QtQuick and established User Experience(UX) principles. 
@@ -58,6 +60,7 @@ python3 tests/test_inspector.py    # the inspector's automatic layout
 python3 tests/test_menus.py        # context menu definitions
 python3 tests/test_reorder.py      # reordering a Body by drag and drop
 python3 tests/test_context_menu_qml.py  # the context menu's QML; PySide6
+python3 tests/test_tree_settings_qml.py # the gear's quick settings; PySide6
 python3 tests/test_inspector_qml.py  # the inspector's QML; PySide6
 python3 tests/test_selection_keys.py # Space, arrows, Shift+click; PySide6
 ruff check . && pycodestyle freecad tests && mypy

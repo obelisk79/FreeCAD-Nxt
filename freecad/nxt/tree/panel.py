@@ -19,6 +19,7 @@ from ..qt import QtCompat, QtCore, QtGui, QtWidgets
 from . import bridge as bridge_mod
 from . import icons as icons_mod
 from . import observers as observers_mod
+from . import prefs as prefs_mod
 from . import settings as settings_mod
 from . import theme as theme_mod
 
@@ -139,6 +140,15 @@ class PanelTitleBar(QtWidgets.QWidget):
         layout.setContentsMargins(6, 2, 2, 2)
         layout.setSpacing(1)
 
+        # The project's logo, at the title's text height.
+        self._logo = QtWidgets.QLabel(self)
+        logo = QtGui.QIcon(str(resources.LOGO))
+        side = self.fontMetrics().height()
+        self._logo.setPixmap(logo.pixmap(side, side))
+        layout.addWidget(self._logo)
+        layout.addSpacing(4)
+        dock.setWindowIcon(logo)
+
         self._label = QtWidgets.QLabel(dock.windowTitle(), self)
         font = self._label.font()
         font.setBold(True)
@@ -147,7 +157,7 @@ class PanelTitleBar(QtWidgets.QWidget):
         layout.addStretch(1)
 
         self._overlay = self._button(
-            translate("Nxt", "Float this panel over the 3D view"))
+            translate("Nxt", "Activate overlay mode over the 3D view"))
         self._overlay.setCheckable(True)
         self._overlay.clicked.connect(self._on_overlay_clicked)
         layout.addWidget(self._overlay)
@@ -244,6 +254,7 @@ class ModelPanel(QtWidgets.QDockWidget):
         self._theme = theme_mod.Theme(
             self, theme_mod.find_reference_widget(parent))
         self._bridge = bridge_mod.TreeBridge(self)
+        self._prefs = prefs_mod.Preferences(self)
         self._observers = observers_mod.Observers(self._bridge)
 
         self.setWidget(self._build_body())
@@ -297,6 +308,7 @@ class ModelPanel(QtWidgets.QDockWidget):
         context.setContextProperty("nxt", self._bridge)
         context.setContextProperty("theme", self._theme)
         context.setContextProperty("host", self)
+        context.setContextProperty("prefs", self._prefs)
 
         source = str(resources.qml("NxtTree.qml"))
         view.setSource(QtCore.QUrl.fromLocalFile(source))

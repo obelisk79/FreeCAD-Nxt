@@ -44,6 +44,10 @@ DEFAULTS: dict[str, bool | int | float | str] = {
     "FloatHeight": 0,
     # How Part workbench models are drawn: "expression" or "nested".
     "PartLayout": "expression",
+    # The tree's quick settings; see prefs.py for the values each takes.
+    "RowDensity": "normal",
+    "ReferenceChips": "problems",
+    "UnderConstrainedMarks": True,
     # The header and detail strips are capped at this percentage
     # of the screen's width, but never below HeaderMinWidth pixels.
     "HeaderMaxPercent": 25,

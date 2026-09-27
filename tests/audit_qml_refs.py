@@ -53,6 +53,7 @@ roles = set(re.findall(r':\s*"([A-Za-z]+)",', models_src))
 
 calls = {"nxt": set(), "theme": set(), "host": set()}
 components = set()
+inline: set[str] = set()
 declared = set()
 for path in qml_files():
     src = strip_comments(path.read_text())
@@ -60,6 +61,8 @@ for path in qml_files():
         calls[obj] |= set(re.findall(r"(?<![A-Za-z0-9_.])" + obj +
                                      r"\.([A-Za-z_][A-Za-z0-9_]*)", src))
     components |= set(re.findall(r"^\s{0,12}([A-Z][A-Za-z]+)\s*\{", src, re.M))
+    # Inline components (`component Name: Base`) are declared where used.
+    inline |= set(re.findall(r"^\s*component\s+([A-Z]\w*)\s*:", src, re.M))
     if path.name == "TreeRow.qml":
         declared = set(re.findall(r"required property \w+ (\w+)", src))
 
@@ -90,9 +93,11 @@ builtin = {"Item", "Rectangle", "Text", "TextInput", "Image", "Row", "Column",
            "ListModel", "Keys", "Qt", "Math", "PropertyChanges", "State",
            "TextMetrics", "FontMetrics", "Application", "Flickable",
            # Qt Quick Controls, used by the context menu only.
-           "Menu", "MenuItem", "MenuSeparator", "Popup"}
+           "Menu", "MenuItem", "MenuSeparator", "Popup", "Switch",
+           "FocusScope"}
 unknown = sorted(c for c in components
-                 if c not in registered and c not in builtin)
+                 if c not in registered and c not in builtin
+                 and c not in inline)
 print("%-28s used %3d  unregistered: %s"
       % ("components -> qmldir", len(components), unknown or "none"))
 if unknown:

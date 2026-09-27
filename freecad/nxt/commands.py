@@ -11,7 +11,7 @@ import FreeCADGui as Gui
 
 from .i18n import QT_TRANSLATE_NOOP
 
-ICON = "Nxt.svg"
+ICON = "FreeCAD-Nxt.svg"
 
 
 class _Command:

@@ -119,12 +119,76 @@ Rectangle {
             anchors.verticalCenter: parent.verticalCenter
             anchors.left: problems.visible ? problems.right : docLabel.right
             anchors.leftMargin: 10
-            anchors.right: parent.right
-            anchors.rightMargin: 8
+            anchors.right: gear.left
+            anchors.rightMargin: 4
             placeholder: qsTr("search")
             results: nxt.searchResults
             onQueryChanged: function (value) { nxt.setSearch(value); }
             onChosen: function (name) { nxt.revealObject(name); }
+        }
+
+        // The tree's quick settings. In the header rather than the title
+        // bar: FreeCAD's overlay mode replaces the title bar, and the
+        // header is the one part of the panel that is always there.
+        Item {
+            id: gear
+            objectName: "gear"
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.right: parent.right
+            anchors.rightMargin: 6
+            width: Math.round(theme.rowHeight * 0.9)
+            height: width
+
+            Rectangle {
+                anchors.fill: parent
+                radius: 4
+                color: theme.hover
+                visible: gearMouse.containsMouse || root.settingsOpen
+            }
+
+            // Drawn, so it takes the theme's colour in light and dark.
+            Canvas {
+                id: gearIcon
+                anchors.centerIn: parent
+                width: Math.round(parent.width * 0.7)
+                height: width
+                antialiasing: true
+                property color ink: gearMouse.containsMouse
+                                    ? theme.text : theme.textDim
+                onInkChanged: requestPaint()
+                onWidthChanged: requestPaint()
+                onPaint: {
+                    var ctx = getContext("2d");
+                    ctx.reset();
+                    var c = width / 2, outer = width / 2, inner = outer * 0.72;
+                    var teeth = 8;
+                    ctx.fillStyle = ink;
+                    ctx.beginPath();
+                    for (var i = 0; i < teeth * 2; ++i) {
+                        var r = i % 2 === 0 ? outer : inner;
+                        var a0 = (i - 0.5) * Math.PI / teeth;
+                        var a1 = (i + 0.5) * Math.PI / teeth;
+                        ctx.lineTo(c + r * Math.cos(a0), c + r * Math.sin(a0));
+                        ctx.lineTo(c + r * Math.cos(a1), c + r * Math.sin(a1));
+                    }
+                    ctx.closePath();
+                    // The hub, cut out.
+                    ctx.moveTo(c + outer * 0.32, c);
+                    ctx.arc(c, c, outer * 0.32, 0, 2 * Math.PI, true);
+                    ctx.fill("evenodd");
+                }
+            }
+
+            MouseArea {
+                id: gearMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: root.openSettings()
+            }
+
+            Accessible.role: Accessible.Button
+            Accessible.name: qsTr("Tree settings")
         }
 
         Rectangle {
@@ -420,6 +484,35 @@ Rectangle {
     // Built afresh for each opening, from the selection as it is now:
     // where the row was right-clicked, or under a row from the keyboard.
     // The menu is a window of its own (see ContextMenu.qml).
+    // The gear's quick settings: one at a time, opened below the gear with
+    // its right edge on the gear's, from the same anchor the context menu
+    // uses (see menuAnchor).
+    property bool settingsOpen: false
+
+    function openSettings() {
+        if (settingsOpen)
+            return;
+        var popup = settingsComponent.createObject(root);
+        var at = gear.mapToItem(root, gear.width - popup.width, gear.height);
+        var offset = host.menuAnchorOffset();
+        menuAnchor.x = Math.max(0, at.x) + offset.x;
+        menuAnchor.y = at.y + 2 + offset.y;
+        popup.parent = menuAnchor;
+        popup.x = 0;
+        popup.y = 0;
+        settingsOpen = true;
+        popup.closed.connect(function () {
+            root.settingsOpen = false;
+            treeList.forceActiveFocus();
+        });
+        popup.open();
+    }
+
+    Component {
+        id: settingsComponent
+        TreeSettings {}
+    }
+
     function openContextMenu(rowItem, x, y) {
         var data = nxt.contextMenu();
         if (!data || !data.bar)

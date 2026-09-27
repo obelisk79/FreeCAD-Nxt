@@ -13,3 +13,6 @@ KeyValue 1.0 KeyValue.qml
 ChoiceList 1.0 ChoiceList.qml
 ValueEditor 1.0 ValueEditor.qml
 ContextMenu 1.0 ContextMenu.qml
+NxtSwitch 1.0 NxtSwitch.qml
+Segmented 1.0 Segmented.qml
+TreeSettings 1.0 TreeSettings.qml

@@ -40,4 +40,10 @@ Gui.addLanguagePath(str(resources.TRANSLATIONS))
 Gui.updateLocale()
 commands.register()
 Gui.addWorkbenchManipulator(Manipulator())
+try:
+    from .tree import prefs as _prefs
+    Gui.addPreferencePage(_prefs.PreferencesPage, _prefs.GROUP)
+except Exception:
+    App.Console.PrintError("Nxt: could not add the Preferences page\n")
+    App.Console.PrintError(traceback.format_exc())
 QtCore.QTimer.singleShot(0, _restore_panel)

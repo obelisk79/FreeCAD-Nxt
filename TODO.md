@@ -46,7 +46,8 @@ Tick items off as they land; add notes under an item as decisions are made.
 
 ## Housekeeping
 
-- [ ] **M** Nxt preferences page: overlay mode, row density, Recent section, replace vs. beside the native tree
+- [x] Preferences: gear quick panel in the tree header (Part layout, row density, reference chips, under-constrained marks) and Edit › Preferences › FreeCAD-Nxt page; `NxtSwitch` and `Segmented` controls
+- [ ] Preferences still to add as their features land: follow 3D selection, dependency arrows, detail strip auto-show, context-menu Recent, replace vs. beside the native tree
 - [ ] **S** GitHub workflow: mypy, ruff, pycodestyle and the offscreen tests on every push
 
 ## Suggested first picks

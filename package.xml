@@ -10,7 +10,7 @@
   <url type="readme">https://github.com/obelisk79/FreeCAD-Nxt/blob/main/README.md</url>
   <url type="repository" branch="main">https://github.com/obelisk79/FreeCAD-Nxt</url>
   <url type="bugtracker">https://github.com/obelisk79/FreeCAD-Nxt/issues</url>
-  <icon>freecad/nxt/resources/icons/Nxt.svg</icon>
+  <icon>freecad/nxt/resources/icons/FreeCAD-Nxt.svg</icon>
   <freecadmin>1.1.0</freecadmin>
   <pythonmin>3.11</pythonmin>
   <tag>model tree</tag>
@@ -22,7 +22,7 @@
       <name>Nxt</name>
       <description>A model panel and property card. Adds no workbench; its commands appear in the View menu of every workbench.</description>
       <subdirectory>./</subdirectory>
-      <icon>freecad/nxt/resources/icons/Nxt.svg</icon>
+      <icon>freecad/nxt/resources/icons/FreeCAD-Nxt.svg</icon>
     </other>
   </content>
 </package>

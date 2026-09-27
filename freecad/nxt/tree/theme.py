@@ -41,6 +41,11 @@ BRANCH_INK = QtGui.QColor("#495057")
 #: Metrics, as a fraction of the row height unless named otherwise.
 MIN_ROW_HEIGHT = 20
 ROW_TEXT_PADDING = 8
+#: Space around a row's text, by the RowDensity preference. Everything else
+#: in a row - icon, marks, fonts, chips - is a share of the row's height,
+#: so this one number scales them all.
+ROW_PADDING_BY_DENSITY = {"compact": 3, "normal": ROW_TEXT_PADDING,
+                          "roomy": 14}
 INDENT = 14
 ROW_PAD = 4
 MIN_TIP_GUTTER = 14
@@ -158,6 +163,9 @@ class Theme(QtCore.QObject):
         self._viewport_palette = viewport_palette or widget_palette
         self._header_max_percent: Any = settings.get("HeaderMaxPercent")
         self._header_min_width: Any = settings.get("HeaderMinWidth")
+        self._density = str(settings.get("RowDensity"))
+        self._chip_mode = str(settings.get("ReferenceChips"))
+        self._under_constrained = bool(settings.get("UnderConstrainedMarks"))
         self._rebuild()
         self.changed.emit()
 
@@ -255,8 +263,20 @@ class Theme(QtCore.QObject):
                 font = None
         if font is None:
             font = QtWidgets.QApplication.font()
-        return max(MIN_ROW_HEIGHT,
-                   QtGui.QFontMetrics(font).height() + ROW_TEXT_PADDING)
+        padding = ROW_PADDING_BY_DENSITY.get(
+            getattr(self, "_density", "normal"), ROW_TEXT_PADDING)
+        return max(MIN_ROW_HEIGHT - (ROW_TEXT_PADDING - padding),
+                   QtGui.QFontMetrics(font).height() + padding)
+
+    @QtCore.Property(str, notify=changed)
+    def chipMode(self) -> str:  # noqa: N802 - QML API
+        """Which reference chips a row shows: problems, all or none."""
+        return getattr(self, "_chip_mode", "problems")
+
+    @QtCore.Property(bool, notify=changed)
+    def showUnderConstrained(self) -> bool:  # noqa: N802 - QML API
+        """Whether a merely under-constrained sketch gets its ring."""
+        return getattr(self, "_under_constrained", True)
 
     @QtCore.Property(bool, notify=changed)
     def dark(self) -> bool:

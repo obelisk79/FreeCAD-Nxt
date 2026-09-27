@@ -154,7 +154,8 @@ Item {
     readonly property int markLevel: {
         if (row.severity >= 2) return 3;
         if (row.severity >= 1) return 2;
-        if (row.isProfile && row.constrained !== 1) return 1;
+        if (row.isProfile && row.constrained !== 1
+                && theme.showUnderConstrained) return 1;
         return 0;
     }
 
@@ -194,11 +195,15 @@ Item {
     readonly property int guideOffset: Math.round(theme.rowHeight * 0.3)
 
     readonly property var shownRefs: {
+        // Which ones is a preference (theme.chipMode): only those with a
+        // problem, as it was designed; every one; or none, leaving the
+        // detail strip to name them.
         var out = [];
-        if (!row.refs)
+        if (!row.refs || theme.chipMode === "none")
             return out;
+        var all = theme.chipMode === "all";
         for (var i = 0; i < row.refs.length; ++i)
-            if (row.refs[i].severity > 0 || row.refs[i].pinned)
+            if (all || row.refs[i].severity > 0 || row.refs[i].pinned)
                 out.push(row.refs[i]);
         return out;
     }

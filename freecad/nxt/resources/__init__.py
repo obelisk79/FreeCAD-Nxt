@@ -15,6 +15,9 @@ _ROOT = files(__name__)
 
 #: Command and addon icons, registered with FreeCAD's icon path.
 ICONS = Path(str(_ROOT / "icons"))
+#: The project's logo. A copy named preferences-freecad-nxt.svg is what
+#: FreeCAD's Preferences dialog finds for the FreeCAD-Nxt group.
+LOGO = ICONS / "FreeCAD-Nxt.svg"
 
 #: QML: the panel's and inspector's root files, and the `Nxt` module.
 QML = Path(str(_ROOT / "qml"))
