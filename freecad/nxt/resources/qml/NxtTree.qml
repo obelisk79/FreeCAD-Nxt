@@ -184,7 +184,7 @@ Rectangle {
                 anchors.fill: parent
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
-                onClicked: root.openSettings()
+                onClicked: root.toggleSettings()
             }
 
             Accessible.role: Accessible.Button
@@ -488,11 +488,30 @@ Rectangle {
     // its right edge on the gear's, from the same anchor the context menu
     // uses (see menuAnchor).
     property bool settingsOpen: false
+    property var settingsPopup: null
+    // When the popup last closed, in ms. A press on the gear while the
+    // popup is open closes it (a press outside it) before the gear's click
+    // arrives - and the click then opened it again. A click that lands
+    // just after a close is that same press, so it does not reopen.
+    property double settingsClosedAt: 0
+
+    // The gear: open the settings, or close them if they are open.
+    function toggleSettings() {
+        if (settingsOpen) {
+            if (settingsPopup)
+                settingsPopup.close();
+            return;
+        }
+        if (Date.now() - settingsClosedAt < 300)
+            return;
+        openSettings();
+    }
 
     function openSettings() {
         if (settingsOpen)
             return;
         var popup = settingsComponent.createObject(root);
+        settingsPopup = popup;
         var at = gear.mapToItem(root, gear.width - popup.width, gear.height);
         var offset = host.menuAnchorOffset();
         menuAnchor.x = Math.max(0, at.x) + offset.x;
@@ -503,6 +522,8 @@ Rectangle {
         settingsOpen = true;
         popup.closed.connect(function () {
             root.settingsOpen = false;
+            root.settingsPopup = null;
+            root.settingsClosedAt = Date.now();
             treeList.forceActiveFocus();
         });
         popup.open();
