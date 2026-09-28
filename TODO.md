@@ -17,6 +17,13 @@ Tick items off as they land; add notes under an item as decisions are made.
 - [x] Close button (×) on the strip; Escape closes the selected row's strip, else all open strips
 - [ ] **M** Optional auto-show: follow selection after ~300 ms, single tree pick only, keep the clicked row in place; setting plus pin toggle
 
+## 3D drag handles (FreeCAD 26.3 gizmos)
+
+- [x] Step settings on the Nxt Preferences page (tree/gizmos.py): plain drag fine or coarse, the switch key, fine step, coarse multipliers; Nxt default on first run: fine on a plain drag, Ctrl for coarse
+- [x] Floating value field beside the visible arrow, typing into the task's own field (tree/float_input.py; Pad/Pocket `lengthEdit`)
+- [ ] Floating fields for a second arrow (two-length pads) and the taper/rotation handles
+- [ ] **M–L** Snap the dragged length to a nearby parallel face (Pad and Pocket first)
+
 ## Tree — finding and navigating
 
 - [x] 3D-view picks, as SolidWorks does: a face is traced through the element map to the feature that made it (tree/picking.py), which stays outlined until the selection changes; its path opens, the tree scrolls to it and it flashes (setting "Show objects picked in the 3D view")

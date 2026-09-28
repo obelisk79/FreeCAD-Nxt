@@ -27,6 +27,8 @@ _RELOAD_ORDER = (
     "freecad.nxt.tree.reorder",
     "freecad.nxt.tree.picking",
     "freecad.nxt.tree.face_edit",
+    "freecad.nxt.tree.gizmos",
+    "freecad.nxt.tree.float_input",
     "freecad.nxt.tree.models",
     "freecad.nxt.tree.bridge",
     "freecad.nxt.tree.observers",

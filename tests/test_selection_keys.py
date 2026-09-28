@@ -1,5 +1,7 @@
-"""Space, the arrow keys and Shift+click, against a stand-in selection;
-and revealing objects picked in the 3D view.
+"""Selection keys and 3D picks, against a stand-in selection.
+
+Space, the arrow keys and Shift+click; revealing objects picked in the
+3D view; and the undo step an edit begun from Nxt runs in.
 
 Run with: python3 tests/test_selection_keys.py   (needs PySide6)
 """
@@ -28,6 +30,9 @@ class Selection:
 
     def getSelection(self, *_doc: Any) -> list[Any]:
         return [DOC.getObject(n) for n in self.names]
+
+    def getSelectionEx(self, *_args: Any) -> list[Any]:
+        return []
 
     def clearSelection(self) -> None:
         self.names = []
@@ -70,7 +75,8 @@ DOC = Doc()
 SELECTION = Selection()
 App = types.ModuleType("FreeCAD")
 App.Console = types.SimpleNamespace(PrintError=lambda _m: None,
-                                    PrintMessage=lambda _m: None)
+                                    PrintMessage=lambda _m: None,
+                                    PrintLog=lambda _m: None)
 App.ActiveDocument = DOC
 App.ParamGet = lambda _g: types.SimpleNamespace(
     GetBool=lambda _k, d: d, GetInt=lambda _k, d: d,
@@ -249,6 +255,7 @@ class PickTests(unittest.TestCase):
         rows.reveal = rows.revealed.append
         self.bridge._snapshot.nodes = dict.fromkeys("ABCDE")
         self.bridge._picked = []
+        self.bridge._origins = []
         self.bridge._reveal_timer = types.SimpleNamespace(start=lambda: None)
         self.bridge.sync_selection = types.MethodType(
             bridge_mod.TreeBridge.sync_selection, self.bridge)
@@ -284,6 +291,29 @@ class PickTests(unittest.TestCase):
         self.bridge._reveal_picked()
         self.assertEqual(self.scrolled, [])
 
+    def test_the_maker_is_marked_until_the_selection_changes(self) -> None:
+        original = bridge_mod.picking.target
+        bridge_mod.App.getDocument = lambda _name: DOC
+        bridge_mod.picking.target = lambda _doc, _top, _sub: "B"
+        try:
+            SELECTION.addSelection("Doc", "E")
+            self.bridge.sync_selection()
+            self.bridge.picked("Doc", "E", "Face1")
+            self.bridge._reveal_picked()
+        finally:
+            bridge_mod.picking.target = original
+        self.assertEqual(self.bridge.pickOrigins, ["B"])
+        SELECTION.clearSelection()
+        self.bridge.sync_selection()
+        self.assertEqual(self.bridge.pickOrigins, [])
+
+    def test_the_selected_object_is_not_marked_as_well(self) -> None:
+        SELECTION.addSelection("Doc", "D")
+        self.bridge.sync_selection(picked=True)
+        self.bridge._reveal_picked()
+        self.assertEqual(self.bridge.pickOrigins, [])
+        self.assertEqual(self.flashed, [["D"]])
+
     def test_it_can_be_turned_off(self) -> None:
         original = bridge_mod.settings.get
         bridge_mod.settings.get = lambda key: (
@@ -293,6 +323,52 @@ class PickTests(unittest.TestCase):
         finally:
             bridge_mod.settings.get = original
         self.assertEqual(self.scrolled, [])
+
+
+class EditTransactionTests(unittest.TestCase):
+    """An edit begun from Nxt runs in an undo step Cancel can abort."""
+
+    def setUp(self) -> None:
+        self.log: list[Any] = []
+        self.active: str | None = None
+        self.editing: Any = None
+        App.getActiveTransaction = lambda: self.active
+        App.setActiveTransaction = self.open
+        App.closeActiveTransaction = lambda abort=False: self.log.append(
+            ("close", abort))
+        pad = types.SimpleNamespace(Name="Pad", Label="Pad")
+        gui_doc = types.SimpleNamespace(
+            Document=types.SimpleNamespace(getObject=lambda n: pad),
+            getInEdit=lambda: self.editing,
+            resetEdit=lambda: None,
+            setEdit=self.set_edit)
+        Gui.getDocument = lambda _name: gui_doc
+        self.bridge = make_bridge()
+        self.can_edit = True
+
+    def open(self, name: str, persist: bool = False) -> None:
+        self.active = name
+        self.log.append(("open", name, persist))
+
+    def set_edit(self, obj: Any) -> None:
+        self.log.append(("edit", obj.Name))
+        if self.can_edit:
+            self.editing = obj
+
+    def test_the_edit_opens_its_own_undo_step_first(self) -> None:
+        self.bridge._enter_edit("Doc", "Pad")
+        self.assertEqual(self.log, [("open", "Edit Pad", True),
+                                    ("edit", "Pad")])
+
+    def test_an_open_step_is_left_to_whoever_opened_it(self) -> None:
+        self.active = "Something else"
+        self.bridge._enter_edit("Doc", "Pad")
+        self.assertEqual(self.log, [("edit", "Pad")])
+
+    def test_no_edit_no_step(self) -> None:
+        self.can_edit = False
+        self.bridge._enter_edit("Doc", "Pad")
+        self.assertEqual(self.log[-1], ("close", True))
 
 
 if __name__ == "__main__":

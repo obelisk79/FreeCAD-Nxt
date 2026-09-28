@@ -527,6 +527,191 @@ def _flatten(entries: list[dict[str, Any]]) -> Any:
         yield from _flatten(entry["submenu"])
 
 
+#: Coin field types whose value is safe to read as text: plain values, no
+#: nodes, paths or engines behind them.
+_PLAIN_FIELDS = frozenset({
+    "SFFloat", "SFDouble", "SFInt32", "SFUInt32", "SFShort", "SFUShort",
+    "SFBool", "SFEnum", "SFBitMask", "SFVec2f", "SFVec3f", "SFVec3d",
+    "SFVec4f", "SFRotation", "SFColor", "SFString", "SFName", "SFMatrix",
+    "SFPlane", "SFTime",
+})
+
+
+def draggers(to_file: bool = True) -> dict[str, Any]:
+    """What the 3D view's interactive arrows are made of, and what they expose.
+
+        from freecad.nxt.tree import probe; probe.draggers()
+
+    Run it while a feature's arrows are showing - a Pad open for editing.
+    Reports:
+      * every dragger or gizmo node in the view's scene: its type, its type
+        ancestry, and every field with its current value - whether the
+        drag step is a field Python can change;
+      * the number fields in the open task panel, which a floating input
+        in the 3D view would drive;
+      * preferences whose names mention gizmos, draggers or steps.
+    Printed to the Report view and, unless `to_file` is False, written to
+    nxt-draggers.txt in FreeCAD's user data folder.
+    """
+    lines: list[str] = []
+    say = lines.append
+    found: dict[str, Any] = {"nodes": [], "fields": [], "params": []}
+
+    try:
+        from pivy import coin
+    except Exception as exc:
+        say("pivy is not importable: %s" % exc)
+        coin = None
+
+    view = getattr(Gui.ActiveDocument, "ActiveView", None) \
+        if Gui.ActiveDocument is not None else None
+    say("=== Nxt dragger probe ===")
+    say("view: %s" % (type(view).__name__ if view is not None else None))
+    edit = Gui.ActiveDocument.getInEdit() if Gui.ActiveDocument else None
+    say("in edit: %s" % (getattr(getattr(edit, "Object", None), "Name", edit)))
+
+    roots: list[tuple[str, Any]] = []
+    if view is not None:
+        try:
+            roots.append(("view scene", view.getSceneGraph()))
+        except Exception as exc:
+            say("getSceneGraph failed: %s" % exc)
+        try:
+            viewer = view.getViewer()
+            manager = viewer.getSoRenderManager()
+            roots.append(("render manager", manager.getSceneGraph()))
+        except Exception as exc:
+            say("render manager scene not reachable: %s" % exc)
+
+    def ancestry(node: Any) -> list[str]:
+        chain: list[str] = []
+        kind = node.getTypeId()
+        while kind is not None and not kind.isBad():
+            chain.append(str(kind.getName()))
+            kind = kind.getParent()
+        return chain
+
+    def fields_of(node: Any) -> list[str]:
+        out: list[str] = []
+        try:
+            field_list = coin.SoFieldList()
+            node.getFields(field_list)
+            for i in range(field_list.getLength()):
+                field = field_list.get(i)
+                name = str(node.getFieldName(field))
+                kind = str(field.getTypeId().getName())
+                # Only plain values are read. field.get() writes a field
+                # out as text, and for a field holding a node - a node
+                # kit's parts - that writes the node's whole subgraph,
+                # which crashed FreeCAD (SIGSEGV in SoField::countWriteRefs).
+                # Coin names field types without "So": "SFFloat".
+                bare = kind[2:] if kind.startswith("So") else kind
+                if bare in _PLAIN_FIELDS:
+                    try:
+                        value = str(field.get()).strip()[:120]
+                    except Exception:
+                        value = "?"
+                elif bare.startswith("MF") and not any(
+                        w in bare for w in ("Node", "Path", "Engine")):
+                    try:
+                        value = "%d values" % field.getNum()
+                    except Exception:
+                        value = "?"
+                else:
+                    value = "(not read)"
+                out.append("%s (%s) = %s" % (name, kind, value))
+        except Exception as exc:
+            out.append("fields not readable: %s" % exc)
+        return out
+
+    seen: set[int] = set()
+    words = ("dragger", "gizmo", "manip", "arrow")
+    if coin is not None:
+        for label, root in roots:
+            if root is None:
+                continue
+            search = coin.SoSearchAction()
+            search.setType(coin.SoNode.getClassTypeId(), True)
+            search.setInterest(coin.SoSearchAction.ALL)
+            search.setSearchingAll(True)
+            search.apply(root)
+            paths = search.getPaths()
+            say("\n%s: %d nodes" % (label, paths.getLength()))
+            for i in range(paths.getLength()):
+                node = paths[i].getTail()
+                chain = ancestry(node)
+                if not any(w in " ".join(chain).lower() for w in words):
+                    continue
+                key = hash(str(node.this)) if hasattr(node, "this") \
+                    else id(node)
+                if key in seen:
+                    continue
+                seen.add(key)
+                say("\n  %s" % " < ".join(chain))
+                fields = fields_of(node)
+                for line in fields:
+                    say("      %s" % line)
+                found["nodes"].append({"types": chain, "fields": fields})
+
+    say("\nTask panel number fields")
+    try:
+        from ..qt import QtWidgets
+        main = Gui.getMainWindow()
+        for widget in main.findChildren(QtWidgets.QWidget):
+            kind = widget.metaObject().className()
+            if "QuantitySpinBox" in kind or "SpinBox" in kind:
+                if not widget.isVisible():
+                    continue
+                entry = "%s %r = %s" % (kind, widget.objectName(),
+                                        widget.property("text")
+                                        or widget.property("value"))
+                say("  " + entry)
+                found["fields"].append(entry)
+    except Exception as exc:
+        say("  not readable: %s" % exc)
+
+    say("\nPreferences mentioning gizmos, draggers or steps")
+
+    def walk(group: Any, path: str, depth: int = 0) -> None:
+        try:
+            contents = group.GetContents() or []
+        except Exception:
+            contents = []
+        for item in contents:
+            try:
+                kind, key, value = item
+            except (TypeError, ValueError):
+                continue
+            text = ("%s/%s" % (path, key)).lower()
+            if any(w in text for w in ("gizmo", "dragger", "increment",
+                                       "step", "snap")):
+                entry = "%s/%s = %r (%s)" % (path, key, value, kind)
+                say("  " + entry)
+                found["params"].append(entry)
+        try:
+            subgroups = group.GetGroups() or []
+        except Exception:
+            subgroups = []
+        for name in subgroups:
+            if depth < 5:
+                walk(group.GetGroup(name), "%s/%s" % (path, name), depth + 1)
+
+    try:
+        walk(App.ParamGet("User parameter:BaseApp"), "BaseApp")
+    except Exception as exc:
+        say("  could not walk the parameter tree: %s" % exc)
+    say("\n=== end ===")
+
+    text = "\n".join(lines)
+    App.Console.PrintMessage(text + "\n")
+    if to_file:
+        path = App.getUserAppDataDir() + "nxt-draggers.txt"
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write(text + "\n")
+        App.Console.PrintMessage("Nxt: written to %s\n" % path)
+    return found
+
+
 def pick() -> list[dict[str, Any]]:
     """What the panel makes of the current 3D selection.
 

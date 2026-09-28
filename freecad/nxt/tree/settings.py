@@ -52,6 +52,10 @@ DEFAULTS: dict[str, bool | int | float | str] = {
     "FollowSelection": True,
     # Double-clicking a face in the 3D view edits the feature that made it.
     "EditOnDoubleClick": True,
+    # Set once Nxt has put its drag-handle defaults in place (gizmos.py).
+    "GizmoDefaultsApplied": False,
+    # A value field floats beside a feature's drag arrow (float_input.py).
+    "FloatingValues": True,
     # The header and detail strips are capped at this percentage
     # of the screen's width, but never below HeaderMinWidth pixels.
     "HeaderMaxPercent": 25,

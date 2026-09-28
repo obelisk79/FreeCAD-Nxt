@@ -124,6 +124,7 @@ class Observers(object):
         self._gui: _GuiObserver | None = None
         self._sel: _SelectionObserver | None = None
         self._dbl: Any = None
+        self._float: Any = None
 
     def install(self) -> None:
         if self._app is not None:
@@ -153,6 +154,13 @@ class Observers(object):
         except Exception:
             _err("could not install the 3D double-click editor")
             self._dbl = None
+        try:
+            from .float_input import FloatingInput
+            self._float = FloatingInput(self._bridge)
+            self._float.install()
+        except Exception:
+            _err("could not install the floating value field")
+            self._float = None
 
     def remove(self) -> None:
         if self._app is not None:
@@ -179,3 +187,9 @@ class Observers(object):
             except Exception:
                 _err("could not remove the 3D double-click editor")
             self._dbl = None
+        if self._float is not None:
+            try:
+                self._float.remove()
+            except Exception:
+                _err("could not remove the floating value field")
+            self._float = None

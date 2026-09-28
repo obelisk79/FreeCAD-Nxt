@@ -41,6 +41,11 @@ Gui.updateLocale()
 commands.register()
 Gui.addWorkbenchManipulator(Manipulator())
 try:
+    from .tree import gizmos as _gizmos
+    _gizmos.apply_defaults_once()
+except Exception:
+    App.Console.PrintError("Nxt: could not set the drag defaults\n")
+try:
     from .tree import prefs as _prefs
     Gui.addPreferencePage(_prefs.PreferencesPage, _prefs.GROUP)
 except Exception:

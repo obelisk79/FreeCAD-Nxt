@@ -25,6 +25,21 @@ from ..qt import QtCore
 from . import icons, models, picking, properties, reorder, scene, settings
 
 
+def open_edit_transaction(obj: Any) -> bool:
+    """Open the undo step an edit of `obj` runs in. True if one was opened.
+
+    None is opened when one is already active: whatever opened it owns it.
+    """
+    try:
+        if App.getActiveTransaction():
+            return False
+        # Kept open past this event (persist): the task closes it.
+        App.setActiveTransaction("Edit %s" % obj.Label, True)
+        return True
+    except Exception:
+        return False
+
+
 def _err(message: str) -> None:
     App.Console.PrintError("Nxt: %s\n" % message)
     App.Console.PrintError(traceback.format_exc())
@@ -1297,6 +1312,15 @@ class TreeBridge(QtCore.QObject):
             _err("could not recompute after a drop")
 
     def _enter_edit(self, doc_name: str, name: str) -> None:
+        """Edit an object, inside an undo step of its own.
+
+        FreeCAD's tree opens a transaction before it edits; Part Design's
+        task commits it on OK and aborts it on Cancel, which is what puts
+        the model back as it was and what Ctrl+Z undoes afterwards.
+        setEdit alone opens none, so an edit begun from Nxt - a row or a
+        face double-clicked - could be neither cancelled nor undone.
+        """
+        opened = False
         try:
             gui_doc = Gui.getDocument(doc_name)
             obj = gui_doc.Document.getObject(name)
@@ -1304,8 +1328,13 @@ class TreeBridge(QtCore.QObject):
                 return
             if gui_doc.getInEdit() is not None:
                 gui_doc.resetEdit()
+            opened = open_edit_transaction(obj)
             gui_doc.setEdit(obj)
+            if gui_doc.getInEdit() is None and opened:
+                App.closeActiveTransaction(True)    # nothing was edited
         except Exception:
+            if opened:
+                App.closeActiveTransaction(True)
             _err("could not open %s for editing" % name)
 
     # ------------------------------------------------------------------ #

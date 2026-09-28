@@ -45,6 +45,9 @@ python3 tests/test_menus.py        # context menu definitions
 python3 tests/test_reorder.py      # reordering a Body by drag and drop
 python3 tests/test_picking.py      # a 3D pick traced to the feature that made it
 python3 tests/test_face_edit.py    # double-click a face to edit its feature; PySide6
+python3 tests/test_gizmos.py       # drag-handle step settings
+python3 tests/test_float_input.py  # the value field beside a drag arrow; PySide6
+python3 tests/test_placement.py    # where floating fields go
 python3 tests/test_context_menu_qml.py  # the context menu's QML; PySide6
 python3 tests/test_tree_settings_qml.py # the gear's quick settings; PySide6
 python3 tests/test_inspector_qml.py  # the inspector's QML; PySide6

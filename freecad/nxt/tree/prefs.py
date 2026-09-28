@@ -20,7 +20,7 @@ import FreeCAD as App
 from .. import resources
 from ..i18n import translate
 from ..qt import QtCore, QtGui, QtWidgets
-from . import settings
+from . import gizmos, settings
 
 #: The page's group in FreeCAD's Preferences dialog.
 GROUP = "FreeCAD-Nxt"
@@ -181,6 +181,53 @@ class PreferencesPage:
         layout.addRow(self._pinned)
         outer.addWidget(panel)
 
+        # FreeCAD's own preferences (gizmos.py), which no FreeCAD page
+        # shows. Nxt sets fine-first and Ctrl once, on its first run.
+        drag = QtWidgets.QGroupBox(
+            translate("Nxt", "3D drag handles"), self.form)
+        layout = QtWidgets.QFormLayout(drag)
+        self._plain = QtWidgets.QComboBox(drag)
+        self._plain.addItem(translate("Nxt", "Fine steps"), "fine")
+        self._plain.addItem(translate("Nxt", "Coarse steps"), "coarse")
+        layout.addRow(translate("Nxt", "A plain drag moves in"), self._plain)
+        self._key = QtWidgets.QComboBox(drag)
+        for key, text in (("ctrl", "Ctrl"), ("shift", "Shift"),
+                          ("alt", "Alt")):
+            self._key.addItem(text, key)
+        layout.addRow(translate("Nxt", "Hold to switch steps"), self._key)
+        self._step = QtWidgets.QDoubleSpinBox(drag)
+        self._step.setRange(0.001, 1000.0)
+        self._step.setDecimals(3)
+        self._step.setSuffix(" mm")
+        self._step.setToolTip(translate(
+            "Nxt", "Kept with FreeCAD's dialog history: another tool, "
+                   "such as Transform, may change it."))
+        layout.addRow(translate("Nxt", "Fine step"), self._step)
+        self._coarse = QtWidgets.QCheckBox(
+            translate("Nxt", "Coarse steps"), drag)
+        layout.addRow(self._coarse)
+        self._linear = QtWidgets.QSpinBox(drag)
+        self._linear.setRange(1, 100)
+        self._linear.setPrefix("× ")
+        self._linear_note = QtWidgets.QLabel(drag)
+        row = QtWidgets.QHBoxLayout()
+        row.addWidget(self._linear)
+        row.addWidget(self._linear_note, 1)
+        layout.addRow(translate("Nxt", "Coarse step"), row)
+        self._rotation = QtWidgets.QSpinBox(drag)
+        self._rotation.setRange(1, 100)
+        self._rotation.setPrefix("× ")
+        layout.addRow(translate("Nxt", "Coarse rotation step"),
+                      self._rotation)
+        self._floating = QtWidgets.QCheckBox(translate(
+            "Nxt", "Show the value beside the arrow while dragging"), drag)
+        layout.addRow(self._floating)
+        for signal in (self._step.valueChanged, self._linear.valueChanged):
+            signal.connect(self._update_note)
+        self._coarse.toggled.connect(self._linear.setEnabled)
+        self._coarse.toggled.connect(self._rotation.setEnabled)
+        outer.addWidget(drag)
+
         reset = QtWidgets.QPushButton(
             translate("Nxt", "Reset to defaults"), self.form)
         reset.clicked.connect(self._reset)
@@ -202,6 +249,8 @@ class PreferencesPage:
         self._percent.setValue(int(settings.get("HeaderMaxPercent")))
         self._min_width.setValue(int(settings.get("HeaderMinWidth")))
         self._pinned.setChecked(bool(settings.get("InspectorPinned")))
+        self._show_drag(gizmos.read())
+        self._floating.setChecked(bool(settings.get("FloatingValues")))
 
     def saveSettings(self) -> None:  # noqa: N802
         for key, box in self._choices.items():
@@ -213,6 +262,15 @@ class PreferencesPage:
         settings.put("HeaderMaxPercent", self._percent.value())
         settings.put("HeaderMinWidth", self._min_width.value())
         settings.put("InspectorPinned", self._pinned.isChecked())
+        settings.put("FloatingValues", self._floating.isChecked())
+        gizmos.write({
+            "plain": self._plain.currentData(),
+            "key": self._key.currentData(),
+            "coarse": self._coarse.isChecked(),
+            "step": self._step.value(),
+            "linear": self._linear.value(),
+            "rotation": self._rotation.value(),
+        })
         try:
             apply(set(QUICK) | _VIEW)
         except Exception as exc:
@@ -231,3 +289,21 @@ class PreferencesPage:
         self._percent.setValue(int(settings.DEFAULTS["HeaderMaxPercent"]))
         self._min_width.setValue(int(settings.DEFAULTS["HeaderMinWidth"]))
         self._pinned.setChecked(bool(settings.DEFAULTS["InspectorPinned"]))
+        self._show_drag(gizmos.DEFAULTS)
+        self._floating.setChecked(bool(settings.DEFAULTS["FloatingValues"]))
+
+    def _show_drag(self, values: dict[str, Any]) -> None:
+        self._plain.setCurrentIndex(
+            max(0, self._plain.findData(values["plain"])))
+        self._key.setCurrentIndex(max(0, self._key.findData(values["key"])))
+        self._step.setValue(float(values["step"]))
+        self._coarse.setChecked(bool(values["coarse"]))
+        self._linear.setValue(int(values["linear"]))
+        self._rotation.setValue(int(values["rotation"]))
+        self._linear.setEnabled(bool(values["coarse"]))
+        self._rotation.setEnabled(bool(values["coarse"]))
+        self._update_note()
+
+    def _update_note(self) -> None:
+        size = self._step.value() * self._linear.value()
+        self._linear_note.setText("= %s mm" % ("%g" % round(size, 3)))
