@@ -4,6 +4,7 @@
 
 A revolutionary take for the FreeCAD user interface based on QtQuick and established User Experience(UX) principles. 
 
+[![Checks](https://github.com/obelisk79/FreeCAD-Nxt/actions/workflows/checks.yml/badge.svg)](https://github.com/obelisk79/FreeCAD-Nxt/actions/workflows/checks.yml)
 [![Support me on Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/K4H827QS0N)
 
 

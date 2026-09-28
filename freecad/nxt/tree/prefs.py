@@ -74,7 +74,9 @@ class Preferences(QtCore.QObject):
         super().__init__(parent)
         _live.add(self)
 
-    @QtCore.Property("QVariantMap", notify=changed)
+    # A type name as a string is how PySide spells QVariantMap; its stubs
+    # only allow a Python type here.
+    @QtCore.Property("QVariantMap", notify=changed)  # type: ignore[arg-type]
     def values(self) -> dict[str, Any]:
         return {key: settings.get(key) for key in QUICK}
 

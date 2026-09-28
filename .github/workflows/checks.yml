@@ -1,0 +1,50 @@
+# Runs on every push and pull request: lint, style, types and the tests.
+# Results show on the repository's Actions tab and beside each commit.
+name: Checks
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    env:
+      # The QML tests draw into an offscreen window: no display needed.
+      QT_QPA_PLATFORM: offscreen
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Libraries Qt needs on a bare Linux runner
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libegl1 libgl1 libxkbcommon0 \
+            libfontconfig1 libdbus-1-3
+
+      - name: Python tools
+        run: pip install "pyside6>=6.8" ruff pycodestyle mypy
+
+      - name: Lint (ruff)
+        run: ruff check .
+
+      - name: Style (pycodestyle)
+        run: pycodestyle freecad tests
+
+      - name: Types (mypy)
+        run: mypy
+
+      # Every test file runs even if one fails, so a single run shows them
+      # all; the step fails at the end if any did.
+      - name: Tests
+        run: |
+          status=0
+          for test in tests/test_*.py tests/audit_qml_refs.py; do
+            echo "::group::$test"
+            python "$test" || status=1
+            echo "::endgroup::"
+          done
+          exit $status
