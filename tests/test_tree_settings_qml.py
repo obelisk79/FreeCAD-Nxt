@@ -57,7 +57,8 @@ class Prefs(QtCore.QObject):
         super().__init__()
         self.store: dict[str, Any] = {
             "PartLayout": "expression", "RowDensity": "normal",
-            "ReferenceChips": "problems", "UnderConstrainedMarks": True}
+            "ReferenceChips": "problems", "UnderConstrainedMarks": True,
+            "FollowSelection": True}
         self.writes: list[tuple[str, Any]] = []
         self.opened = 0
 
@@ -163,9 +164,12 @@ def click(window: QtGui.QWindow, item: Any) -> None:
     settle()
 
 
-def switch_of(window: QtGui.QWindow) -> Any:
+def switch_of(window: QtGui.QWindow,
+              label: str = "Mark under-constrained sketches") -> Any:
+    """The switch with this label (a Switch, whatever its QML type)."""
     return next(i for i in items_of(window.contentItem())
-                if "Switch" in i.metaObject().className())
+                if i.property("text") == label
+                and i.property("checked") is not None)
 
 
 print("opening")
@@ -201,6 +205,13 @@ prefs.changed.emit()
 settle()
 check("it follows the store, not the last click",
       switch_of(window).property("checked") is True)
+
+follow = "Show objects picked in the 3D view"
+check("the follow switch shows the stored value",
+      switch_of(window, follow).property("checked") is True)
+click(window, switch_of(window, follow))
+check("and writes its own key",
+      prefs.writes[-1] == ("FollowSelection", False))
 
 print("keyboard")
 click(window, text_item(window, "Roomy"))    # focus the density row

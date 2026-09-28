@@ -99,14 +99,17 @@ class _SelectionObserver(object):
     def __init__(self, bridge: Any) -> None:
         self._bridge = bridge
 
+    # Adding to the selection from outside the panel is what reveals rows;
+    # removing and clearing only update them.
     def addSelection(self, doc: Any, obj: Any, sub: Any, pnt: Any) -> None:
         self._bridge.sync_selection()
+        self._bridge.picked(str(doc), str(obj), str(sub or ""))
 
     def removeSelection(self, doc: Any, obj: Any, sub: Any) -> None:
         self._bridge.sync_selection()
 
     def setSelection(self, doc: Any, *args: Any) -> None:
-        self._bridge.sync_selection()
+        self._bridge.sync_selection(picked=True)
 
     def clearSelection(self, doc: Any) -> None:
         self._bridge.sync_selection()

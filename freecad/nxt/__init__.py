@@ -25,6 +25,7 @@ _RELOAD_ORDER = (
     "freecad.nxt.tree.inspector",
     "freecad.nxt.tree.inspector_bridge",
     "freecad.nxt.tree.reorder",
+    "freecad.nxt.tree.picking",
     "freecad.nxt.tree.models",
     "freecad.nxt.tree.bridge",
     "freecad.nxt.tree.observers",

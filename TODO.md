@@ -19,7 +19,8 @@ Tick items off as they land; add notes under an item as decisions are made.
 
 ## Tree — finding and navigating
 
-- [ ] **S** 3D-view selection reveals the row: scroll to it, expand its path, flash it briefly
+- [x] 3D-view picks, as SolidWorks does: a face is traced through the element map to the feature that made it (tree/picking.py), which stays outlined until the selection changes; its path opens, the tree scrolls to it and it flashes (setting "Show objects picked in the 3D view")
+- [ ] **S** Right-click a face in the 3D view: "Find in tree", for when automatic scrolling is off (as Fusion 360)
 - [ ] **M** Search as a filter: narrow the tree to matches and their parents; support `type:sketch`, `failed`
 - [ ] **S** Keyboard jumps: Home/End for first/last row; Alt+Up/Down steps between problems
 - [ ] **S** Breadcrumb header pinned when scrolled deep into a Body (e.g. Body › Pocket001)
@@ -47,7 +48,7 @@ Tick items off as they land; add notes under an item as decisions are made.
 ## Housekeeping
 
 - [x] Preferences: gear quick panel in the tree header (Part layout, row density, reference chips, under-constrained marks) and Edit › Preferences › FreeCAD-Nxt page; `NxtSwitch` and `Segmented` controls
-- [ ] Preferences still to add as their features land: follow 3D selection, dependency arrows, detail strip auto-show, context-menu Recent, replace vs. beside the native tree
+- [ ] Preferences still to add as their features land: dependency arrows, detail strip auto-show, context-menu Recent, replace vs. beside the native tree
 - [x] GitHub workflow (`.github/workflows/checks.yml`): ruff, pycodestyle, mypy and the offscreen tests on every push
 - [ ] **S** Type-check against `freecad-stubs` too: with them installed mypy reports 36 errors, mostly unchecked `None` from `ActiveDocument`/`ActiveView`
 

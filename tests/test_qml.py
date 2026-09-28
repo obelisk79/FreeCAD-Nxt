@@ -39,7 +39,8 @@ QML = ROOT / "freecad" / "nxt" / "resources" / "qml"
 problems = []
 BAD = ("binding loop", "is not defined", "cannot read property",
        "unable to assign", "typeerror", "referenceerror", "cannot assign",
-       "is not a function", "required property")
+       "is not a function", "required property",
+       "no signal of the target matches")
 
 
 def _handler(mode, context, message):
@@ -254,6 +255,7 @@ def make_bridge():
         "propertyInspectorRequested": QtCore.Signal(int),
         "contextMenuRequested": QtCore.Signal(float, float),
         "renameRowRequested": QtCore.Signal(int),
+        "flashRows": QtCore.Signal(list),
         "treeModel": QtCore.Property(QtCore.QObject,
                                      lambda self: ROWS_MODEL, constant=True),
         "hasDocument": QtCore.Property(bool, lambda self: True),
@@ -263,6 +265,9 @@ def make_bridge():
         "problemCount": QtCore.Property(int, lambda self: 1),
         "searchResults": QtCore.Property(list, lambda self: []),
         "tipBars": QtCore.Property(list, lambda self: BARS),
+        # One row marked as the origin of a 3D pick, so its binding runs.
+        "pickOrigins": QtCore.Property(list, lambda self: ["Pad"],
+                                       constant=True),
     }
     for name, types in bridge_slots().items():
         if name in ns:

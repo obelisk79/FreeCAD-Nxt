@@ -22,7 +22,7 @@ import FreeCAD as App
 import FreeCADGui as Gui
 
 from ..qt import QtCore
-from . import icons, models, properties, reorder, scene, settings
+from . import icons, models, picking, properties, reorder, scene, settings
 
 
 def _err(message: str) -> None:
@@ -53,6 +53,9 @@ class TreeBridge(QtCore.QObject):
     contextMenuRequested = QtCore.Signal(float, float)
     #: Start renaming this row, as F2 does; asked for by the menu.
     renameRowRequested = QtCore.Signal(int)
+    #: Briefly light up these rows: objects just picked outside the panel.
+    flashRows = QtCore.Signal(list)
+    pickOriginsChanged = QtCore.Signal()
 
     def __init__(self, parent: QtCore.QObject | None = None,
                  widen: bool = False) -> None:
@@ -99,6 +102,15 @@ class TreeBridge(QtCore.QObject):
         self._edit_timer = self._deferral(self._enter_pending_edit)
         self._recompute_timer = self._deferral(self._recompute_document)
         self._restore_timer = self._deferral(self._show_finished_models)
+        # Objects picked outside the panel since the last reveal, collected
+        # so a box selection - one observer call per object - reveals once.
+        self._picked: list[str] = []
+        # The features that made what was last picked in the 3D view, when
+        # that is not the selected object itself: marked in the tree as
+        # SolidWorks marks the feature a picked face belongs to, until the
+        # selection next changes.
+        self._origins: list[str] = []
+        self._reveal_timer = self._deferral(self._reveal_picked)
         self._pending_edit: tuple[str, str] | None = None
         # model -> (tip, steps it was set against)
         self._model_tips: dict[str, tuple[str, tuple[str, ...]]] = {}
@@ -331,17 +343,93 @@ class TreeBridge(QtCore.QObject):
     # selection
     # ------------------------------------------------------------------ #
 
-    def sync_selection(self) -> None:
-        """Pull Gui.Selection into the model. Called by the observer."""
+    def sync_selection(self, picked: bool = False) -> None:
+        """Pull Gui.Selection into the model. Called by the observer.
+
+        `picked` says the selection grew from outside the panel - a click
+        in the 3D view, most often - and the rows it added should be
+        brought into view; see _reveal_picked. The panel's own selections
+        go through _push_selection, which this ignores while it runs.
+        """
         if self._pushing_selection:
             return
-        names = set()
+        if self._origins:
+            self._origins = []
+            self.pickOriginsChanged.emit()
+        names: list[str] = []
         try:
+            # Resolved (the default): a face picked on a Body's solid
+            # gives the feature that made it, not the Body.
             for obj in Gui.Selection.getSelection(self._snapshot.doc_name):
-                names.add(obj.Name)
+                if obj.Name not in names:
+                    names.append(obj.Name)
         except Exception:
             pass
+        before = set(self._tree.selection())
         self._tree.set_selection(names)
+        if picked:
+            added = [n for n in names
+                     if n not in before and n in self._snapshot.nodes]
+            if added:
+                self._picked += [n for n in added if n not in self._picked]
+                self._reveal_timer.start()
+
+    def picked(self, doc_name: str, top: str, subname: str) -> None:
+        """Something was picked outside the panel: reveal what made it.
+
+        Called by the selection observer with what it was given. A face on
+        a Body's solid is reported against the tip; picking.target goes
+        back to the feature that made the face (see picking.py).
+        """
+        if self._pushing_selection:
+            return
+        full = subname
+        try:
+            top, full = picking.full_pick(
+                top, subname, Gui.Selection.getSelectionEx(doc_name, 0))
+            name = picking.target(App.getDocument(doc_name), top, full)
+        except Exception:
+            _err("could not trace the pick %s.%s" % (top, subname))
+            name = None
+        # Log level: shown in the Report view only with log messages on.
+        App.Console.PrintLog("Nxt pick: %s -> %s.%s -> %s\n"
+                             % (subname, top, full, name))
+        if name and name in self._snapshot.nodes:
+            if name not in self._picked:
+                self._picked.append(name)
+            self._reveal_timer.start()
+
+    @QtCore.Property(list, notify=pickOriginsChanged)
+    def pickOrigins(self) -> list[str]:  # noqa: N802 - QML API
+        return list(self._origins)
+
+    def _reveal_picked(self) -> None:
+        """Mark what made the pick; open its path, scroll to it, flash it.
+
+        The mark is always made. Scrolling, and the flash that says where
+        the list moved to, follow the "Show objects picked in the 3D view"
+        setting - SolidWorks' "Scroll selected item into view". Scrolls to
+        the first picked row in tree order, so a box selection lands at
+        the top of what it caught; every picked row flashes.
+        """
+        picked, self._picked = self._picked, []
+        picked = [n for n in picked if n in self._snapshot.nodes]
+        if not picked:
+            return
+        selected = self._tree.selection()
+        origins = [n for n in picked if n not in selected]
+        if origins != self._origins:
+            self._origins = origins
+            self.pickOriginsChanged.emit()
+        if not settings.get("FollowSelection"):
+            return
+        for name in picked:
+            self._tree.reveal(name)
+        rows = sorted(r for r in (self._tree.row_of(n) for n in picked)
+                      if r >= 0)
+        if rows:
+            self.revealTreeRow.emit(rows[0])
+            self.flashRows.emit(picked)
 
     def _push_selection(self, names: Iterable[str],
                         additive: bool) -> None:

@@ -527,6 +527,43 @@ def _flatten(entries: list[dict[str, Any]]) -> Any:
         yield from _flatten(entry["submenu"])
 
 
+def pick() -> list[dict[str, Any]]:
+    """What the panel makes of the current 3D selection.
+
+        from freecad.nxt.tree import probe; probe.pick()
+
+    Select a face in the 3D view first. For each selected element, prints
+    the object FreeCAD selected, the element's history from the shape's
+    element map, and the row the panel reveals for it (see picking.py).
+    """
+    from . import picking
+    out: list[dict[str, Any]] = []
+    for sel in Gui.Selection.getSelectionEx("", 0):
+        doc = sel.Document
+        for sub in sel.SubElementNames or [""]:
+            leaf = sel.Object.getSubObject(sub, retType=1) if sub else None
+            leaf = leaf or sel.Object
+            element = picking.element_of(sub)
+            mapped = picking.mapped_of(sub)
+            history: dict[str, Any] = {}
+            for name in (element, mapped, ";" + mapped):
+                try:
+                    history[name] = leaf.Shape.getElementHistory(name)
+                except Exception as exc:
+                    history[name] = "error: %s" % exc
+            made_by = picking.origin(leaf, sub)
+            row = picking.target(doc, sel.Object.Name, sub)
+            entry = {"top": sel.Object.Name, "sub": sub, "leaf": leaf.Name,
+                     "element": element, "mapped": mapped,
+                     "history": history,
+                     "made_by": getattr(made_by, "Name", None),
+                     "ids": {o.Name: o.ID for o in doc.Objects},
+                     "row": row}
+            out.append(entry)
+            App.Console.PrintMessage("%s\n" % entry)
+    return out
+
+
 def run(doc: Any = None, widen: bool = False) -> scene.Snapshot | None:
     App.Console.PrintMessage("\n=== Nxt panel probe ===\n")
 

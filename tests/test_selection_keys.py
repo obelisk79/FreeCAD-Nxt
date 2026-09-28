@@ -1,4 +1,5 @@
-"""Space, the arrow keys and Shift+click, against a stand-in selection.
+"""Space, the arrow keys and Shift+click, against a stand-in selection;
+and revealing objects picked in the 3D view.
 
 Run with: python3 tests/test_selection_keys.py   (needs PySide6)
 """
@@ -231,6 +232,67 @@ class BranchTests(unittest.TestCase):
         self.assertEqual(self.bridge.stepBranch(1), -1)
         self.assertEqual(self.bridge.stepBranch(-1), -1)
         self.assertEqual(SELECTION.names, ["D"])
+
+
+class PickTests(unittest.TestCase):
+    """Picking in the 3D view scrolls to the row and flashes it."""
+
+    def setUp(self) -> None:
+        SELECTION.names = []
+        self.bridge = make_bridge()
+        rows = self.bridge._tree
+        rows.selected = frozenset()
+        rows.revealed = []
+        rows.selection = lambda: rows.selected
+        rows.set_selection = lambda names: setattr(
+            rows, "selected", frozenset(names))
+        rows.reveal = rows.revealed.append
+        self.bridge._snapshot.nodes = dict.fromkeys("ABCDE")
+        self.bridge._picked = []
+        self.bridge._reveal_timer = types.SimpleNamespace(start=lambda: None)
+        self.bridge.sync_selection = types.MethodType(
+            bridge_mod.TreeBridge.sync_selection, self.bridge)
+        self.scrolled: list[int] = []
+        self.flashed: list[list[str]] = []
+        self.bridge.revealTreeRow.connect(self.scrolled.append)
+        self.bridge.flashRows.connect(self.flashed.append)
+
+    def pick(self, *names: str) -> None:
+        for name in names:
+            SELECTION.addSelection("Doc", name)
+            self.bridge.sync_selection(picked=True)
+        self.bridge._reveal_picked()
+
+    def test_a_pick_opens_its_path_scrolls_and_flashes(self) -> None:
+        self.pick("D")
+        self.assertEqual(self.bridge._tree.revealed, ["D"])
+        self.assertEqual(self.scrolled, [3])
+        self.assertEqual(self.flashed, [["D"]])
+
+    def test_a_box_selection_scrolls_to_the_first_row(self) -> None:
+        self.pick("E", "B", "D")
+        self.assertEqual(self.scrolled, [1])
+        self.assertEqual(self.flashed, [["E", "B", "D"]])
+
+    def test_only_what_was_added_is_revealed(self) -> None:
+        self.pick("B")
+        self.pick("D")
+        self.assertEqual(self.flashed[-1], ["D"])
+
+    def test_the_panels_own_selection_does_not_scroll(self) -> None:
+        self.bridge.select("C")
+        self.bridge._reveal_picked()
+        self.assertEqual(self.scrolled, [])
+
+    def test_it_can_be_turned_off(self) -> None:
+        original = bridge_mod.settings.get
+        bridge_mod.settings.get = lambda key: (
+            False if key == "FollowSelection" else original(key))
+        try:
+            self.pick("D")
+        finally:
+            bridge_mod.settings.get = original
+        self.assertEqual(self.scrolled, [])
 
 
 if __name__ == "__main__":

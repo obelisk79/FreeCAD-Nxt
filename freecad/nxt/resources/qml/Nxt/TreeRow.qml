@@ -44,6 +44,13 @@ Item {
     required property var keyProps
     required property int propertyCount
 
+    // The feature that made the face just picked in the 3D view, when that
+    // is not the selected object - the tip, for a face on a Body's solid.
+    // Outlined in the accent colour, over a hover-coloured fill, until the
+    // selection changes: marked, not selected, because the selection is
+    // FreeCAD's and is the face.
+    readonly property bool pickOrigin: nxt.pickOrigins.indexOf(row.name) >= 0
+
     property Item dragGhost
     property bool dropTarget: false
     property bool renaming: false
@@ -261,19 +268,60 @@ Item {
             radius: 4
 
             color: row.selected ? theme.accent
+                 : row.pickOrigin ? theme.hover
                  : !theme.overlay ? theme.hover
                  : hover.hovered ? theme.pillHover
                  : theme.pill
             opacity: theme.overlay ? 1.0
-                   : (row.selected || hover.hovered || row.dropTarget) ? 1.0
+                   : (row.selected || hover.hovered || row.dropTarget
+                      || row.pickOrigin) ? 1.0
                    : row.highlighted ? 0.5
                    : row.isActive ? 0.28
                    : 0.0
-            border.width: theme.overlay && !row.selected ? 1 : 0
-            border.color: theme.pillBorder
+            border.width: row.pickOrigin && !row.selected ? 2
+                        : theme.overlay && !row.selected ? 1 : 0
+            border.color: row.pickOrigin ? theme.accent : theme.pillBorder
 
             Behavior on opacity { NumberAnimation { duration: 70 } }
             Behavior on color { ColorAnimation { duration: 70 } }
+        }
+
+        // A brief glow over the row when it was just picked in the 3D view
+        // and scrolled into sight: says "here it is" after the list moved.
+        // Over the fill rather than a change to it, so the selection colour
+        // underneath is never animated.
+        Rectangle {
+            id: flash
+            x: fill.x
+            y: fill.y
+            width: fill.width
+            height: fill.height
+            radius: fill.radius
+            color: "transparent"
+            border.width: 2
+            border.color: theme.accent
+            opacity: 0
+
+            SequentialAnimation {
+                id: flashAnimation
+                NumberAnimation {
+                    target: flash; property: "opacity"
+                    to: 1; duration: 120; easing.type: Easing.OutQuad
+                }
+                PauseAnimation { duration: 450 }
+                NumberAnimation {
+                    target: flash; property: "opacity"
+                    to: 0; duration: 500; easing.type: Easing.InQuad
+                }
+            }
+
+            Connections {
+                target: nxt
+                function onFlashRows(names) {
+                    if (names.indexOf(row.name) >= 0)
+                        flashAnimation.restart();
+                }
+            }
         }
 
         // Drop feedback rides on its own outline so it stays visible while

@@ -287,6 +287,9 @@ class TreeRowModel(QtCore.QAbstractListModel):
         if len(self._expanded) != before:
             self.refresh_rows()
 
+    def selection(self) -> frozenset[str]:
+        return frozenset(self._selection)
+
     def set_selection(self, names: Iterable[str]) -> None:
         names = set(names)
         if names == self._selection:

@@ -94,7 +94,7 @@ builtin = {"Item", "Rectangle", "Text", "TextInput", "Image", "Row", "Column",
            "TextMetrics", "FontMetrics", "Application", "Flickable",
            # Qt Quick Controls, used by the context menu only.
            "Menu", "MenuItem", "MenuSeparator", "Popup", "Switch",
-           "FocusScope"}
+           "FocusScope", "SequentialAnimation", "PauseAnimation"}
 unknown = sorted(c for c in components
                  if c not in registered and c not in builtin
                  and c not in inline)

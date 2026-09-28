@@ -48,6 +48,8 @@ DEFAULTS: dict[str, bool | int | float | str] = {
     "RowDensity": "normal",
     "ReferenceChips": "problems",
     "UnderConstrainedMarks": True,
+    # Picking an object in the 3D view scrolls the tree to its row.
+    "FollowSelection": True,
     # The header and detail strips are capped at this percentage
     # of the screen's width, but never below HeaderMinWidth pixels.
     "HeaderMaxPercent": 25,

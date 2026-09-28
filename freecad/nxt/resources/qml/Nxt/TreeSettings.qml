@@ -80,18 +80,27 @@ Popup {
 
         Item { width: 1; height: 2 }
 
-        NxtSwitch {
+        // An on/off setting. Written back, then shown from the store:
+        // `checked` stays bound to what is saved, not to the last click.
+        component Setting: NxtSwitch {
+            required property string key
             width: parent.width
-            text: qsTr("Mark under-constrained sketches")
-            checked: settingsPopup.values.UnderConstrainedMarks === true
-            // Written back, then shown from the store: `checked` stays
-            // bound to what is saved, not to the last click.
+            checked: settingsPopup.values[key] === true
             onToggled: {
-                prefs.set("UnderConstrainedMarks", checked);
+                prefs.set(key, checked);
                 checked = Qt.binding(function () {
-                    return settingsPopup.values.UnderConstrainedMarks === true;
+                    return settingsPopup.values[key] === true;
                 });
             }
+        }
+
+        Setting {
+            key: "UnderConstrainedMarks"
+            text: qsTr("Mark under-constrained sketches")
+        }
+        Setting {
+            key: "FollowSelection"
+            text: qsTr("Show objects picked in the 3D view")
         }
 
         Rectangle {
