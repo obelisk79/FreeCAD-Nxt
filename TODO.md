@@ -20,6 +20,7 @@ Tick items off as they land; add notes under an item as decisions are made.
 ## Tree — finding and navigating
 
 - [x] 3D-view picks, as SolidWorks does: a face is traced through the element map to the feature that made it (tree/picking.py), which stays outlined until the selection changes; its path opens, the tree scrolls to it and it flashes (setting "Show objects picked in the 3D view")
+- [x] Double-click a face in the 3D view to edit the feature that made it (tree/face_edit.py; setting "Double-click a face to edit its feature")
 - [ ] **S** Right-click a face in the 3D view: "Find in tree", for when automatic scrolling is off (as Fusion 360)
 - [ ] **M** Search as a filter: narrow the tree to matches and their parents; support `type:sketch`, `failed`
 - [ ] **S** Keyboard jumps: Home/End for first/last row; Alt+Up/Down steps between problems

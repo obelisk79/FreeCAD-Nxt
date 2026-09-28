@@ -102,6 +102,10 @@ Popup {
             key: "FollowSelection"
             text: qsTr("Show objects picked in the 3D view")
         }
+        Setting {
+            key: "EditOnDoubleClick"
+            text: qsTr("Double-click a face to edit its feature")
+        }
 
         Rectangle {
             width: parent.width

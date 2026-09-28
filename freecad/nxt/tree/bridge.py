@@ -1267,6 +1267,21 @@ class TreeBridge(QtCore.QObject):
         self._pending_edit = (doc.Name, name)
         self._edit_timer.start()
 
+    def edit_feature(self, doc_name: str, name: str) -> None:
+        """Open a feature for editing from outside the panel.
+
+        For a double-clicked face (face_edit.py): mark and reveal the row
+        as a pick does, then edit - deferred, as a row's double-click is,
+        because it is reached from inside an input event. If the feature
+        has no edit mode, the reveal is what is left.
+        """
+        if name in self._snapshot.nodes:
+            if name not in self._picked:
+                self._picked.append(name)
+            self._reveal_timer.start()
+        self._pending_edit = (doc_name, name)
+        self._edit_timer.start()
+
     def _enter_pending_edit(self) -> None:
         pending, self._pending_edit = self._pending_edit, None
         if pending is not None:

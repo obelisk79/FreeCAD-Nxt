@@ -123,6 +123,7 @@ class Observers(object):
         self._app: _AppObserver | None = None
         self._gui: _GuiObserver | None = None
         self._sel: _SelectionObserver | None = None
+        self._dbl: Any = None
 
     def install(self) -> None:
         if self._app is not None:
@@ -145,6 +146,13 @@ class Observers(object):
         except Exception:
             _err("could not install selection observer")
             self._sel = None
+        try:
+            from .face_edit import DoubleClickEditor
+            self._dbl = DoubleClickEditor(self._bridge)
+            self._dbl.install()
+        except Exception:
+            _err("could not install the 3D double-click editor")
+            self._dbl = None
 
     def remove(self) -> None:
         if self._app is not None:
@@ -165,3 +173,9 @@ class Observers(object):
             except Exception:
                 _err("could not remove selection observer")
             self._sel = None
+        if self._dbl is not None:
+            try:
+                self._dbl.remove()
+            except Exception:
+                _err("could not remove the 3D double-click editor")
+            self._dbl = None
