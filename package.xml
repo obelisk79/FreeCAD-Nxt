@@ -13,10 +13,14 @@
   <icon>freecad/nxt/resources/icons/FreeCAD-Nxt.svg</icon>
   <freecadmin>1.1.0</freecadmin>
   <pythonmin>3.11</pythonmin>
-  <tag>model tree</tag>
+  <tag>tree</tag>
   <tag>timeline</tag>
-  <tag>QML</tag>
+  <tag>Fusion</tag>
+  <tag>OnShape</tag>
+  <tag>Inventor</tag>
   <tag>UI</tag>
+  <tag>UX</tag>
+  <tag>interface</tag>
   <content>
     <other>
       <name>Nxt</name>

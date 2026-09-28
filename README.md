@@ -9,33 +9,14 @@ A revolutionary take for the FreeCAD user interface based on QtQuick and establi
 
 ## Install
 
-With the Addon Manager, once published. By hand, clone or copy this folder
+With the Addon Manager. By hand, clone or copy this folder
 into FreeCAD's `Mod` directory and restart FreeCAD:
+
 
 ```bash
 git clone https://github.com/obelisk79/FreeCAD-NXT ~/.local/share/FreeCAD/Mod/FreeCAD-Nxt
 ```
 
-
-## Layout
-
-The addon follows FreeCAD's namespaced layout from the official
-[Addon-Template](https://github.com/FreeCAD/Addon-Template):
-
-```
-package.xml, pyproject.toml, LICENSE, README.md
-freecad/nxt/
-    init_gui.py       icon and language paths, commands, View menu, autostart
-    commands.py       Nxt_* commands
-    property_inspector.py  the Property Inspector
-    qt.py             the Qt binding (FreeCAD's PySide shim) and QtCompat
-    qtquick.py        QtQuick, imported only when a QML surface is built
-    i18n.py           translate() and QT_TRANSLATE_NOOP
-    version.py
-    tree/             the model panel (see tree/DESIGN.md)
-    resources/        icons/, qml/, translations/ - found via importlib
-tests/                one test file per area, see Development
-```
 
 ## Commands
 
