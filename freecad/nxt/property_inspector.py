@@ -33,6 +33,53 @@ from .i18n import translate
 from .qt import QtCore, QtGui, QtWidgets
 from .tree import settings
 
+
+def pin_icon(size: int, pinned: bool, colour: QtGui.QColor,
+             ratio: float = 1.0) -> QtGui.QIcon:
+    """A pushpin: upright and filled when pinned, tilted and hollow when not.
+
+    The tilt is the convention from other desktop software: a pin lying
+    on its side is not holding anything, one standing in the board is.
+    Drawn rather than shipped, like the panel's other small icons, so it
+    stays sharp at any scale factor and takes the theme's text colour.
+    """
+    ratio = ratio or 1.0
+    pixmap = QtGui.QPixmap(round(size * ratio), round(size * ratio))
+    pixmap.setDevicePixelRatio(ratio)
+    pixmap.fill(QtCore.Qt.GlobalColor.transparent)
+    painter = QtGui.QPainter(pixmap)
+    painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing, True)
+    painter.translate(size / 2, size / 2)
+    if not pinned:
+        painter.rotate(45)
+    painter.scale(size, size)
+    painter.translate(-0.5, -0.5)
+
+    pen = QtGui.QPen(colour)
+    pen.setWidthF(0.08)
+    pen.setJoinStyle(QtCore.Qt.PenJoinStyle.RoundJoin)
+    pen.setCapStyle(QtCore.Qt.PenCapStyle.RoundCap)
+    painter.setPen(pen)
+    painter.setBrush(QtGui.QBrush(colour) if pinned
+                     else QtCore.Qt.BrushStyle.NoBrush)
+
+    # Head, tapered body, collar - then the needle.
+    head = QtGui.QPainterPath()
+    head.addRoundedRect(QtCore.QRectF(0.30, 0.08, 0.40, 0.12), 0.04, 0.04)
+    body = QtGui.QPolygonF([QtCore.QPointF(0.38, 0.20),
+                            QtCore.QPointF(0.62, 0.20),
+                            QtCore.QPointF(0.60, 0.50),
+                            QtCore.QPointF(0.40, 0.50)])
+    collar = QtGui.QPainterPath()
+    collar.addRoundedRect(QtCore.QRectF(0.22, 0.50, 0.56, 0.10), 0.04, 0.04)
+    painter.drawPath(head)
+    painter.drawPolygon(body)
+    painter.drawPath(collar)
+    painter.drawLine(QtCore.QPointF(0.5, 0.60), QtCore.QPointF(0.5, 0.94))
+    painter.end()
+    return QtGui.QIcon(pixmap)
+
+
 PROPERTY_VIEW_CLASS = "Gui::PropertyView"
 PROPERTY_DOCK_NAME = "Property view"
 
@@ -212,8 +259,10 @@ class PropertyInspector(QtWidgets.QFrame):
         self._pin = self._tool_button(
             translate("Nxt", "Keep open and follow the selection"), "⊙",
             checkable=True)
+        self._pin.setText("")
         self._pin.setChecked(settings.get("InspectorPinned"))
         self._pin.toggled.connect(self._on_pin_toggled)
+        self._draw_pin()
         self._grab: QtCore.QPoint | None = None
         self._grab_origin = QtCore.QPoint()
         self._close = self._tool_button(translate("Nxt", "Close"), "✕")
@@ -272,6 +321,11 @@ class PropertyInspector(QtWidgets.QFrame):
         button.setAccessibleName(tip)
         button.setCheckable(checkable)
         button.setAutoRaise(True)
+        # One square size for every header button, whatever it shows - a
+        # glyph or a drawn icon - so their hover and checked backgrounds
+        # line up. Sized from the text, so it follows the font.
+        side = button.fontMetrics().height() + 8
+        button.setFixedSize(side, side)
         return button
 
     # -- borrowing -------------------------------------------------------- #
@@ -462,7 +516,26 @@ class PropertyInspector(QtWidgets.QFrame):
         if self.isVisible():
             self._save_timer.start()
 
+    def _draw_pin(self) -> None:
+        colour = self._pin.palette().color(
+            QtGui.QPalette.ColorRole.ButtonText)
+        # Sized to the neighbouring "✕", which is about as tall as a
+        # capital letter - not to the full line height, which made the pin
+        # half as big again as the X beside it.
+        metrics = self._pin.fontMetrics()
+        side = max(10, round(metrics.capHeight() * 1.35))
+        self._pin.setIcon(pin_icon(side, self._pin.isChecked(), colour,
+                                   self.devicePixelRatioF()))
+        self._pin.setIconSize(QtCore.QSize(side, side))
+
+    def changeEvent(self, event: QtCore.QEvent) -> None:  # noqa: N802
+        super().changeEvent(event)
+        if (event.type() == QtCore.QEvent.Type.PaletteChange
+                and hasattr(self, "_pin")):
+            self._draw_pin()
+
     def _on_pin_toggled(self, pinned: bool) -> None:
+        self._draw_pin()
         settings.put("InspectorPinned", pinned)
         self._save_geometry()
 
