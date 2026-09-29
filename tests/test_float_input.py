@@ -178,6 +178,27 @@ class FocusClaimTests(unittest.TestCase):
         self.assertTrue(claim.wanted(5.1, False))
 
 
+class DeletedWidgetTests(unittest.TestCase):
+    """The box's widget can be deleted under it, with its 3D view.
+
+    Its view closed or switched: the timer must shrug that off, not
+    raise every tick.
+    """
+
+    def test_a_deleted_box_is_forgotten_quietly(self) -> None:
+        import shiboken6
+        floating = float_input.FloatingInput()
+        floating._widget = QtWidgets.QWidget()
+        floating._viewport = QtWidgets.QWidget()
+        shiboken6.delete(floating._widget)
+        floating._update = lambda: False    # no edit going on
+        floating._tick()
+        self.assertIsNone(floating._widget)
+        floating._tick()                    # and again: still quiet
+        floating._take_keyboard(True)
+        floating.remove()
+
+
 class ShortcutTests(unittest.TestCase):
 
     def test_freecads_shortcuts_wait_while_the_box_is_typed_in(self) -> None:

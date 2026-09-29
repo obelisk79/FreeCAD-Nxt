@@ -189,17 +189,36 @@ def _task_ok_button() -> Any:
     return None
 
 
+def _alive(obj: Any) -> bool:
+    """Whether a Qt object still exists on the C++ side."""
+    if obj is None:
+        return False
+    try:
+        import shiboken6
+        return bool(shiboken6.isValid(obj))
+    except ImportError:
+        return True
+
+
 def _viewport(view: Any) -> Any:
-    """The widget the 3D view draws into, for placing the field over it."""
+    """The widget the active document's 3D view draws into, or None.
+
+    The active one only: the MDI area's active window. The first visible
+    3D view was used before, and with two documents open that could be
+    the other document's - the box then lived in the wrong view, and
+    giving it the keyboard activated that view, switching the document
+    under the edit and back again on every claim.
+    """
     main = Gui.getMainWindow()
-    for widget in main.findChildren(QtWidgets.QWidget):
-        if widget.metaObject().className() != "Gui::View3DInventor":
-            continue
-        if not widget.isVisible():
-            continue
-        for child in widget.findChildren(QtWidgets.QWidget):
-            if "GL" in child.metaObject().className() and child.isVisible():
-                return child
+    area = main.findChild(QtWidgets.QMdiArea)
+    sub = area.activeSubWindow() if area is not None else None
+    holder = sub.widget() if sub is not None else None
+    if holder is None \
+            or holder.metaObject().className() != "Gui::View3DInventor":
+        return None
+    for child in holder.findChildren(QtWidgets.QWidget):
+        if "GL" in child.metaObject().className() and child.isVisible():
+            return child
     return None
 
 
@@ -373,20 +392,27 @@ class FloatingInput(QtCore.QObject):
     def remove(self) -> None:
         self._timer.stop()
         self._hide()
-        if self._widget is not None:
+        if _alive(self._widget):
             self._widget.deleteLater()
-            self._widget = None
+        self._widget = self._viewport = None
 
     # ------------------------------------------------------------------
 
     def _tick(self) -> None:
+        # Nothing here may raise out of the timer: an error each tick is
+        # an error four to thirty times a second in the Report view.
         try:
+            if not _alive(self._widget):
+                self._widget = self._viewport = None
             shown = self._update()
         except Exception as exc:
             App.Console.PrintLog("Nxt floating value: %s\n" % exc)
             shown = False
-        if not shown:
-            self._hide()
+        try:
+            if not shown:
+                self._hide()
+        except Exception:
+            self._widget = self._viewport = None
         self._timer.setInterval(ACTIVE_MS if shown else IDLE_MS)
 
     def _update(self) -> bool:
@@ -459,11 +485,12 @@ class FloatingInput(QtCore.QObject):
                                        ratio)
 
     def _ensure_widget(self, viewport: Any) -> Any:
-        if self._widget is not None and self._viewport is viewport:
+        if (_alive(self._widget) and _alive(self._viewport)
+                and self._viewport is viewport):
             return self._widget
-        if self._widget is not None:
+        if _alive(self._widget):
             self._widget.deleteLater()
-            self._widget = None
+        self._widget = self._viewport = None
         qtquick.use_shared_graphics_api()
         _QtQml, _QtQuick, QtQuickWidgets = qtquick.modules()  # noqa: N806
         widget = QtQuickWidgets.QQuickWidget(viewport)
@@ -531,7 +558,7 @@ class FloatingInput(QtCore.QObject):
                 pass
 
     def _take_keyboard(self, *_select: Any) -> None:
-        if self._widget is not None:
+        if _alive(self._widget) and self._widget.isVisible():
             self._widget.activateWindow()
             self._widget.setFocus(QtCore.Qt.FocusReason.MouseFocusReason)
 
@@ -548,5 +575,5 @@ class FloatingInput(QtCore.QObject):
         return False
 
     def _hide(self) -> None:
-        if self._widget is not None and self._widget.isVisible():
+        if _alive(self._widget) and self._widget.isVisible():
             self._widget.hide()

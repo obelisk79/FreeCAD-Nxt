@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <package format="1" xmlns="https://wiki.freecad.org/Package_Metadata">
   <name>Nxt</name>
-  <description>A QtQuick model panel for FreeCAD: document history as a timeline with a draggable rollback bar, Part workbench models as expression rows with history scrubbing, and sketch health at a glance.</description>
+  <description>A modern variation of the FreeCAD user-interface with usability and versatility in-mind.</description>
   <version>0.3.0</version>
   <date>2026-09-23</date>
   <maintainer email="obelisk79@gmail.com">Joe</maintainer>
