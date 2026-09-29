@@ -56,6 +56,8 @@ DEFAULTS: dict[str, bool | int | float | str] = {
     "GizmoDefaultsApplied": False,
     # A value field floats beside a feature's drag arrow (float_input.py).
     "FloatingValues": True,
+    # Arrows in the tree's gutter for the selection's dependencies.
+    "DependencyArrows": False,
     # The header and detail strips are capped at this percentage
     # of the screen's width, but never below HeaderMinWidth pixels.
     "HeaderMaxPercent": 25,

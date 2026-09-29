@@ -257,6 +257,7 @@ class PickTests(unittest.TestCase):
         self.bridge._picked = []
         self.bridge._origins = []
         self.bridge._reveal_timer = types.SimpleNamespace(start=lambda: None)
+        self.bridge._arrows_timer = types.SimpleNamespace(start=lambda: None)
         self.bridge.sync_selection = types.MethodType(
             bridge_mod.TreeBridge.sync_selection, self.bridge)
         self.scrolled: list[int] = []

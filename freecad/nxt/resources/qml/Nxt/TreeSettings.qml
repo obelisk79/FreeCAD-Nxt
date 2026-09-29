@@ -106,6 +106,10 @@ Popup {
             key: "EditOnDoubleClick"
             text: qsTr("Double-click a face to edit its feature")
         }
+        Setting {
+            key: "DependencyArrows"
+            text: qsTr("Show dependency arrows")
+        }
 
         Rectangle {
             width: parent.width

@@ -22,7 +22,16 @@ import FreeCAD as App
 import FreeCADGui as Gui
 
 from ..qt import QtCore
-from . import icons, models, picking, properties, reorder, scene, settings
+from . import (
+    icons,
+    links,
+    models,
+    picking,
+    properties,
+    reorder,
+    scene,
+    settings,
+)
 
 
 def open_edit_transaction(obj: Any) -> bool:
@@ -71,6 +80,7 @@ class TreeBridge(QtCore.QObject):
     #: Briefly light up these rows: objects just picked outside the panel.
     flashRows = QtCore.Signal(list)
     pickOriginsChanged = QtCore.Signal()
+    linkArrowsChanged = QtCore.Signal()
 
     def __init__(self, parent: QtCore.QObject | None = None,
                  widen: bool = False) -> None:
@@ -125,6 +135,10 @@ class TreeBridge(QtCore.QObject):
         # SolidWorks marks the feature a picked face belongs to, until the
         # selection next changes.
         self._origins: list[str] = []
+        # The dependency arrows now drawn (links.py), and a deferral so a
+        # burst of selection and layout changes recomputes them once.
+        self._arrows: dict[str, Any] = {"source": -1, "links": []}
+        self._arrows_timer = self._deferral(self._update_arrows)
         self._reveal_timer = self._deferral(self._reveal_picked)
         self._pending_edit: tuple[str, str] | None = None
         # model -> (tip, steps it was set against)
@@ -222,6 +236,7 @@ class TreeBridge(QtCore.QObject):
         # until the drag finishes.
         if self._tip_drag is None:
             self._publish_tip_bars()
+        self._arrows_timer.start()
 
     def _publish_tip_bars(self) -> None:
         """Announce new marker positions on the next event-loop turn.
@@ -371,6 +386,7 @@ class TreeBridge(QtCore.QObject):
         if self._origins:
             self._origins = []
             self.pickOriginsChanged.emit()
+            self._arrows_timer.start()
         names: list[str] = []
         try:
             # Resolved (the default): a face picked on a Body's solid
@@ -382,6 +398,7 @@ class TreeBridge(QtCore.QObject):
             pass
         before = set(self._tree.selection())
         self._tree.set_selection(names)
+        self._arrows_timer.start()
         if picked:
             added = [n for n in names
                      if n not in before and n in self._snapshot.nodes]
@@ -418,6 +435,34 @@ class TreeBridge(QtCore.QObject):
     def pickOrigins(self) -> list[str]:  # noqa: N802 - QML API
         return list(self._origins)
 
+    @QtCore.Property("QVariantMap", notify=linkArrowsChanged)
+    def linkArrows(self) -> dict[str, Any]:  # noqa: N802 - QML API
+        return dict(self._arrows)
+
+    def _arrow_subject(self) -> str | None:
+        """Whose links to draw, if anyone's.
+
+        The feature a 3D pick traced to, else the one selected object;
+        nothing when several are selected.
+        """
+        if len(self._origins) == 1:
+            return self._origins[0]
+        selected = list(self._tree.selection())
+        return selected[0] if len(selected) == 1 else None
+
+    def _update_arrows(self) -> None:
+        arrows: dict[str, Any] = {"source": -1, "links": []}
+        name = self._arrow_subject()
+        if name is not None and settings.get("DependencyArrows"):
+            try:
+                arrows = links.arrows(self._snapshot, name,
+                                      self._tree.row_of)
+            except Exception:
+                _err("could not work out the links of %s" % name)
+        if arrows != self._arrows:
+            self._arrows = arrows
+            self.linkArrowsChanged.emit()
+
     def _reveal_picked(self) -> None:
         """Mark what made the pick; open its path, scroll to it, flash it.
 
@@ -436,6 +481,7 @@ class TreeBridge(QtCore.QObject):
         if origins != self._origins:
             self._origins = origins
             self.pickOriginsChanged.emit()
+            self._arrows_timer.start()
         if not settings.get("FollowSelection"):
             return
         for name in picked:

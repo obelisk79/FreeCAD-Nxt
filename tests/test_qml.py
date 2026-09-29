@@ -268,6 +268,13 @@ def make_bridge():
         # One row marked as the origin of a 3D pick, so its binding runs.
         "pickOrigins": QtCore.Property(list, lambda self: ["Pad"],
                                        constant=True),
+        # Arrows from the Pad, so the overlay paints every kind.
+        "linkArrows": QtCore.Property("QVariantMap", lambda self: {
+            "source": 2, "links": [
+                {"row": 1, "dir": "in", "kind": "geometry", "count": 1},
+                {"row": 3, "dir": "out", "kind": "attachment", "count": 2},
+                {"row": 40, "dir": "out", "kind": "link", "count": 1}]},
+            constant=True),
     }
     for name, types in bridge_slots().items():
         if name in ns:

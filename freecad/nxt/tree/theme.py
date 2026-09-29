@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import Any
 
 from ..qt import QtCore, QtGui, QtWidgets
-from . import settings
+from . import qss_colours, settings
 
 #: How far each derived colour travels from the palette it is mixed from.
 SURFACE_MIX = 0.55
@@ -22,6 +22,11 @@ SEVERITY_MIX = 0.85
 DARK_LIGHTNESS = 128
 WARNING_HUE = QtGui.QColor(226, 140, 40)
 DANGER_HUE = QtGui.QColor(214, 74, 68)
+#: Dependency arrows, SolidWorks' convention: parents (what the selection
+#: reads) blue, children (what reads it) purple.
+PARENT_HUE = QtGui.QColor(66, 139, 230)
+CHILD_HUE = QtGui.QColor(168, 92, 214)
+ARROW_MIX = 0.85
 
 #: A severity mark cuts its interior glyph out in whichever of these
 #: contrasts with the fills, decided once against their mean lightness.
@@ -70,6 +75,88 @@ def _with_alpha(colour: QtGui.QColor, alpha: float) -> QtGui.QColor:
     return out
 
 
+#: Least lightness gap between text and background that still reads. Below
+#: it the palette is not describing what is on screen - a stylesheet theme
+#: such as FreeCAD Light paints the stock tree itself and can leave the
+#: widget palette black on black.
+MIN_CONTRAST = 90
+
+
+def _readable(base: QtGui.QColor, text: QtGui.QColor) -> bool:
+    return abs(base.lightness() - text.lightness()) >= MIN_CONTRAST
+
+
+def _legible(candidates: list[tuple[QtGui.QColor, QtGui.QColor]]
+             ) -> tuple[QtGui.QColor, QtGui.QColor]:
+    """The first (base, text) pair that reads, else plain dark on light."""
+    for base, text in candidates:
+        if _readable(base, text):
+            return base, text
+    return QtGui.QColor(250, 250, 250), QtGui.QColor(30, 30, 30)
+
+
+#: Where FreeCAD keeps the colour tokens a stylesheet names as `@Name`.
+TOKEN_GROUP = "User parameter:BaseApp/Preferences/View"
+
+
+def _token(name: str) -> str | int | None:
+    """A FreeCAD colour token's stored value, whatever type it was saved as."""
+    try:
+        import FreeCAD as App
+        for _kind, key, value in App.ParamGet(TOKEN_GROUP).GetContents() or ():
+            if key == name:
+                return value
+    except Exception:  # noqa: BLE001 - no FreeCAD, or no such group
+        return None
+    return None
+
+
+def _stylesheet_colours() -> tuple[QtGui.QColor | None,
+                                   QtGui.QColor | None]:
+    """(background, text) the applied stylesheet gives a tree."""
+    app = QtWidgets.QApplication.instance()
+    qss = app.styleSheet() if isinstance(app, QtWidgets.QApplication) else ""
+    if not qss:
+        return None, None
+    return qss_colours.tree_colours(qss, _token)
+
+
+def _sample(window: QtWidgets.QWidget,
+            viewport: QtWidgets.QWidget) -> QtGui.QColor | None:
+    """The colour at `viewport`'s empty bottom corner, drawn by `window`.
+
+    Grabbed through the window rather than the viewport: the viewport is
+    transparent and a stylesheet can paint its background on an ancestor,
+    so a grab of the viewport alone comes back black.
+    """
+    size = viewport.size()
+    if size.width() < 4 or size.height() < 4:
+        return None
+    corner = viewport.mapTo(window, QtCore.QPoint(size.width() - 3,
+                                                  size.height() - 3))
+    image = window.grab(QtCore.QRect(corner, QtCore.QSize(2, 2))).toImage()
+    if image.isNull():
+        return None
+    colour = QtGui.QColor(image.pixel(0, 0))
+    colour.setAlpha(255)
+    return colour
+
+
+def _painted_base(widget: Any) -> QtGui.QColor | None:
+    """The background the stock tree is actually drawn with, or None.
+
+    Only while it is on screen: the fallback when the stylesheet does not
+    say, or says it in a way `qss_colours` cannot read.
+    """
+    try:
+        viewport = widget.viewport() if widget is not None else None
+        if viewport is None or not viewport.isVisible():
+            return None
+        return _sample(viewport.window(), viewport)
+    except (RuntimeError, AttributeError):
+        return None
+
+
 def _mix(a: QtGui.QColor, b: QtGui.QColor, t: float) -> QtGui.QColor:
     return QtGui.QColor(
         int(a.red() + (b.red() - a.red()) * t),
@@ -114,6 +201,9 @@ class Theme(QtCore.QObject):
         super().__init__(parent)
         self._reference: QtWidgets.QWidget | None = reference
         self._widget_palette = QtGui.QPalette()
+        self._painted: QtGui.QColor | None = None
+        self._qss_base: QtGui.QColor | None = None
+        self._qss_text: QtGui.QColor | None = None
         self._viewport_palette = QtGui.QPalette()
         self._rebuild()                 # every colour exists before a read
         self.refresh()
@@ -159,6 +249,8 @@ class Theme(QtCore.QObject):
         if widget_palette is None:
             widget_palette = QtWidgets.QApplication.palette()
 
+        self._qss_base, self._qss_text = _stylesheet_colours()
+        self._painted = self._qss_base or _painted_base(widget)
         self._widget_palette = widget_palette
         self._viewport_palette = viewport_palette or widget_palette
         self._header_max_percent: Any = settings.get("HeaderMaxPercent")
@@ -185,6 +277,31 @@ class Theme(QtCore.QObject):
                                             QtGui.QPalette.ColorRole.Base)
         text = self._widget_palette.color(QtGui.QPalette.ColorGroup.Active,
                                           QtGui.QPalette.ColorRole.Text)
+        if self._painted is not None:
+            # What the stylesheet says (or the stock tree shows) beats what
+            # the palette says: a stylesheet theme paints over the palette
+            # without changing it. Text from the stylesheet if it sets one,
+            # else the palette's if it reads, else the far end of the
+            # lightness range.
+            base = self._painted
+            if self._qss_text is not None:
+                text = self._qss_text
+            if not _readable(base, text):
+                text = (QtGui.QColor(235, 235, 235)
+                        if base.lightness() < DARK_LIGHTNESS
+                        else QtGui.QColor(30, 30, 30))
+            widget = base
+        app = QtWidgets.QApplication.palette()
+        group = QtGui.QPalette.ColorGroup.Active
+        role = QtGui.QPalette.ColorRole
+        base, text = _legible([
+            (base, text),
+            (widget, self._widget_palette.color(group, role.WindowText)),
+            (app.color(group, role.Base), app.color(group, role.Text)),
+            (app.color(group, role.Window), app.color(group, role.WindowText)),
+        ])
+        if not _readable(widget, text):
+            widget = base
         accent = self._widget_palette.color(QtGui.QPalette.ColorGroup.Active,
                                             QtGui.QPalette.ColorRole.Highlight)
         accent_text = self._widget_palette.color(
@@ -208,6 +325,8 @@ class Theme(QtCore.QObject):
         self._chip = _mix(base, text, CHIP_MIX)
         self._warning = _mix(base, WARNING_HUE, SEVERITY_MIX)
         self._danger = _mix(base, DANGER_HUE, SEVERITY_MIX)
+        self._arrowIn = _mix(base, PARENT_HUE, ARROW_MIX)
+        self._arrowOut = _mix(base, CHILD_HUE, ARROW_MIX)
         # What a severity mark cuts its interior glyph out in. It has to
         # contrast with the warning and danger fills rather than with the
         # panel, because in overlay mode the panel has no colour at all -
@@ -314,6 +433,16 @@ class Theme(QtCore.QObject):
     @QtCore.Property(QtGui.QColor, notify=changed)
     def link(self) -> QtGui.QColor:
         return self._link
+
+    @QtCore.Property(QtGui.QColor, notify=changed)
+    def arrowIn(self) -> QtGui.QColor:  # noqa: N802 - QML API
+        """Dependency arrows from what the selection reads."""
+        return self._arrowIn
+
+    @QtCore.Property(QtGui.QColor, notify=changed)
+    def arrowOut(self) -> QtGui.QColor:  # noqa: N802 - QML API
+        """Dependency arrows to what reads the selection."""
+        return self._arrowOut
 
     @QtCore.Property(QtGui.QColor, notify=changed)
     def hover(self) -> QtGui.QColor:

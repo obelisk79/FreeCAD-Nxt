@@ -285,6 +285,13 @@ Rectangle {
             }
         }
 
+        // The selection's dependencies, over the list's right edge.
+        DependencyArrows {
+            anchors.fill: treeList
+            list: treeList
+            z: 4
+        }
+
         ScrollHint { target: treeList }
 
         Text {

@@ -27,13 +27,14 @@ GROUP = "FreeCAD-Nxt"
 
 #: What the quick panel offers. The page offers these and more.
 QUICK = ("PartLayout", "RowDensity", "ReferenceChips",
-         "UnderConstrainedMarks", "FollowSelection", "EditOnDoubleClick")
+         "UnderConstrainedMarks", "FollowSelection", "EditOnDoubleClick",
+         "DependencyArrows")
 
 #: Settings the theme reads: changing one restyles the panel.
 _VIEW = frozenset({"RowDensity", "ReferenceChips", "UnderConstrainedMarks",
                    "HeaderMaxPercent", "HeaderMinWidth"})
 #: Settings the snapshot reads: changing one rebuilds it.
-_SNAPSHOT = frozenset({"PartLayout"})
+_SNAPSHOT = frozenset({"PartLayout", "DependencyArrows"})
 
 #: Every value a choice setting may take, in the order it is offered.
 CHOICES: dict[str, tuple[str, ...]] = {
@@ -158,6 +159,9 @@ class PreferencesPage:
             "Nxt", "Double-click a face to edit the feature that made it"),
             tree)
         layout.addRow(self._dbl)
+        self._arrows = QtWidgets.QCheckBox(translate(
+            "Nxt", "Show the selection's dependencies as arrows"), tree)
+        layout.addRow(self._arrows)
         outer.addWidget(tree)
 
         panel = QtWidgets.QGroupBox(translate("Nxt", "Panel"), self.form)
@@ -245,6 +249,7 @@ class PreferencesPage:
         self._marks.setChecked(bool(settings.get("UnderConstrainedMarks")))
         self._follow.setChecked(bool(settings.get("FollowSelection")))
         self._dbl.setChecked(bool(settings.get("EditOnDoubleClick")))
+        self._arrows.setChecked(bool(settings.get("DependencyArrows")))
         self._visible.setChecked(bool(settings.get("Visible")))
         self._percent.setValue(int(settings.get("HeaderMaxPercent")))
         self._min_width.setValue(int(settings.get("HeaderMinWidth")))
@@ -258,6 +263,7 @@ class PreferencesPage:
         settings.put("UnderConstrainedMarks", self._marks.isChecked())
         settings.put("FollowSelection", self._follow.isChecked())
         settings.put("EditOnDoubleClick", self._dbl.isChecked())
+        settings.put("DependencyArrows", self._arrows.isChecked())
         settings.put("Visible", self._visible.isChecked())
         settings.put("HeaderMaxPercent", self._percent.value())
         settings.put("HeaderMinWidth", self._min_width.value())
@@ -285,6 +291,7 @@ class PreferencesPage:
             bool(settings.DEFAULTS["UnderConstrainedMarks"]))
         self._follow.setChecked(bool(settings.DEFAULTS["FollowSelection"]))
         self._dbl.setChecked(bool(settings.DEFAULTS["EditOnDoubleClick"]))
+        self._arrows.setChecked(bool(settings.DEFAULTS["DependencyArrows"]))
         self._visible.setChecked(bool(settings.DEFAULTS["Visible"]))
         self._percent.setValue(int(settings.DEFAULTS["HeaderMaxPercent"]))
         self._min_width.setValue(int(settings.DEFAULTS["HeaderMinWidth"]))
