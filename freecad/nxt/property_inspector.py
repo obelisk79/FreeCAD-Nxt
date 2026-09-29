@@ -616,8 +616,8 @@ class PropertyInspector(QtWidgets.QFrame):
 
 def _make_inspector(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
     """The QML page: Inspector.qml on its own QQuickWidget."""
-    from . import qtquick, resources
-    from .tree import inspector_bridge, panel
+    from . import qtquick, resources, services
+    from .tree import inspector_bridge
     from .tree.theme import Theme
 
     qtquick.use_shared_graphics_api()
@@ -626,7 +626,7 @@ def _make_inspector(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
     view.setResizeMode(
         quick_widgets.QQuickWidget.ResizeMode.SizeRootObjectToView)
     bridge = inspector_bridge.InspectorBridge(view)
-    theme = panel.theme() or Theme(view)
+    theme = services.theme() or Theme(view)
     view.engine().addImportPath(str(resources.QML))
     context = view.rootContext()
     context.setContextProperty("inspector", bridge)

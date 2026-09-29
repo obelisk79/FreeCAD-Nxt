@@ -515,8 +515,8 @@ class FloatingInput(QtCore.QObject):
         return widget
 
     def _theme(self) -> Any:
-        from . import panel
-        theme = panel.theme()
+        from .. import services
+        theme = services.theme()
         if theme is None:
             from .theme import Theme
             theme = Theme(self)

@@ -27,6 +27,7 @@ _RELOAD_ORDER = (
     "freecad.nxt.tree.inspector_bridge",
     "freecad.nxt.tree.reorder",
     "freecad.nxt.tree.picking",
+    "freecad.nxt.tree.editing",
     "freecad.nxt.tree.face_edit",
     "freecad.nxt.tree.gizmos",
     "freecad.nxt.tree.float_input",
@@ -45,6 +46,7 @@ _RELOAD_ORDER = (
     "freecad.nxt.tree.prefs",
     "freecad.nxt.tree.panel",
     "freecad.nxt.property_inspector",
+    "freecad.nxt.services",
 )
 
 
@@ -68,6 +70,15 @@ def reload_all() -> bool:
             App.Console.PrintError("Nxt: Property Inspector teardown failed\n")
             App.Console.PrintError(traceback.format_exc())
 
+    services = sys.modules.get("freecad.nxt.services")
+    services_were_up = services is not None and services.instance() is not None
+    if services is not None:
+        try:
+            services.stop()
+        except Exception:
+            App.Console.PrintError("Nxt: services teardown failed\n")
+            App.Console.PrintError(traceback.format_exc())
+
     panel_was_open = False
     try:
         if "freecad.nxt.tree.panel" in sys.modules:
@@ -89,6 +100,13 @@ def reload_all() -> bool:
             App.Console.PrintError(traceback.format_exc())
             failed = name
             break
+
+    if services_were_up:
+        try:
+            sys.modules["freecad.nxt.services"].start()
+        except Exception:
+            App.Console.PrintError("Nxt: services did not come back\n")
+            App.Console.PrintError(traceback.format_exc())
 
     # Put the panel back either way. A failed reload used to return here, so
     # the panel stayed closed with nothing on screen saying how to get it

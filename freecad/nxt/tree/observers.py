@@ -123,8 +123,7 @@ class Observers(object):
         self._app: _AppObserver | None = None
         self._gui: _GuiObserver | None = None
         self._sel: _SelectionObserver | None = None
-        self._dbl: Any = None
-        self._float: Any = None
+        self._services: Any = None
 
     def install(self) -> None:
         if self._app is not None:
@@ -147,20 +146,16 @@ class Observers(object):
         except Exception:
             _err("could not install selection observer")
             self._sel = None
+        # The services (services.py) do the 3D double-click edit whether
+        # or not the panel is open; the panel only adds the row reveal.
         try:
-            from .face_edit import DoubleClickEditor
-            self._dbl = DoubleClickEditor(self._bridge)
-            self._dbl.install()
+            from .. import services
+            live = services.start()
+            if live is not None:
+                live.featurePicked.connect(self._bridge.edit_feature)
+                self._services = live
         except Exception:
-            _err("could not install the 3D double-click editor")
-            self._dbl = None
-        try:
-            from .float_input import FloatingInput
-            self._float = FloatingInput(self._bridge)
-            self._float.install()
-        except Exception:
-            _err("could not install the floating value field")
-            self._float = None
+            _err("could not connect to the Nxt services")
 
     def remove(self) -> None:
         if self._app is not None:
@@ -181,15 +176,10 @@ class Observers(object):
             except Exception:
                 _err("could not remove selection observer")
             self._sel = None
-        if self._dbl is not None:
+        if self._services is not None:
             try:
-                self._dbl.remove()
-            except Exception:
-                _err("could not remove the 3D double-click editor")
-            self._dbl = None
-        if self._float is not None:
-            try:
-                self._float.remove()
-            except Exception:
-                _err("could not remove the floating value field")
-            self._float = None
+                self._services.featurePicked.disconnect(
+                    self._bridge.edit_feature)
+            except (RuntimeError, TypeError):
+                pass
+            self._services = None

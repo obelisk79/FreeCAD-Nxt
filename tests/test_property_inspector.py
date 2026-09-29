@@ -70,6 +70,16 @@ class FakeView(QtWidgets.QWidget):
 property_inspector.PROPERTY_VIEW_CLASS = "FakeView"
 
 
+def _no_qml_page(_parent: object) -> object:
+    raise RuntimeError("the QML page is tested in test_inspector_qml")
+
+
+# These tests are about borrowing FreeCAD's own editor, so the QML page is
+# kept out of the way. (It used to be kept out by accident: building it
+# asked the panel for a theme, which the panel stub above does not have.)
+property_inspector._make_inspector = _no_qml_page  # type: ignore[assignment]
+
+
 def settle() -> None:
     APP.processEvents()
 

@@ -26,7 +26,17 @@ class Manipulator:
 
 
 def _restore_panel() -> None:
-    """Reopen the panel once the main window exists."""
+    """Start the services, then reopen the panel, once the window exists.
+
+    The services first: they are what works with the panel closed, and the
+    panel connects to them as it opens.
+    """
+    try:
+        from . import services
+        services.start()
+    except Exception:
+        App.Console.PrintError("Nxt: services failed to start\n")
+        App.Console.PrintError(traceback.format_exc())
     try:
         from .tree import panel
         panel.restore()

@@ -23,6 +23,7 @@ import FreeCADGui as Gui
 
 from ..qt import QtCore
 from . import (
+    editing,
     icons,
     links,
     models,
@@ -33,20 +34,8 @@ from . import (
     settings,
 )
 
-
-def open_edit_transaction(obj: Any) -> bool:
-    """Open the undo step an edit of `obj` runs in. True if one was opened.
-
-    None is opened when one is already active: whatever opened it owns it.
-    """
-    try:
-        if App.getActiveTransaction():
-            return False
-        # Kept open past this event (persist): the task closes it.
-        App.setActiveTransaction("Edit %s" % obj.Label, True)
-        return True
-    except Exception:
-        return False
+#: Kept importable from here: tests and older callers use this name.
+open_edit_transaction = editing.open_edit_transaction
 
 
 def _err(message: str) -> None:
@@ -1329,19 +1318,18 @@ class TreeBridge(QtCore.QObject):
         self._edit_timer.start()
 
     def edit_feature(self, doc_name: str, name: str) -> None:
-        """Open a feature for editing from outside the panel.
+        """Mark and reveal a feature opened for editing outside the panel.
 
-        For a double-clicked face (face_edit.py): mark and reveal the row
-        as a pick does, then edit - deferred, as a row's double-click is,
-        because it is reached from inside an input event. If the feature
-        has no edit mode, the reveal is what is left.
+        Connected to `services.featurePicked` (a face double-clicked in the
+        3D view). The edit itself is the services' job, so it happens with
+        the panel closed too; this is only what the panel adds when open.
         """
+        if doc_name != getattr(App.ActiveDocument, "Name", None):
+            return
         if name in self._snapshot.nodes:
             if name not in self._picked:
                 self._picked.append(name)
             self._reveal_timer.start()
-        self._pending_edit = (doc_name, name)
-        self._edit_timer.start()
 
     def _enter_pending_edit(self) -> None:
         pending, self._pending_edit = self._pending_edit, None
@@ -1358,30 +1346,8 @@ class TreeBridge(QtCore.QObject):
             _err("could not recompute after a drop")
 
     def _enter_edit(self, doc_name: str, name: str) -> None:
-        """Edit an object, inside an undo step of its own.
-
-        FreeCAD's tree opens a transaction before it edits; Part Design's
-        task commits it on OK and aborts it on Cancel, which is what puts
-        the model back as it was and what Ctrl+Z undoes afterwards.
-        setEdit alone opens none, so an edit begun from Nxt - a row or a
-        face double-clicked - could be neither cancelled nor undone.
-        """
-        opened = False
-        try:
-            gui_doc = Gui.getDocument(doc_name)
-            obj = gui_doc.Document.getObject(name)
-            if obj is None:
-                return
-            if gui_doc.getInEdit() is not None:
-                gui_doc.resetEdit()
-            opened = open_edit_transaction(obj)
-            gui_doc.setEdit(obj)
-            if gui_doc.getInEdit() is None and opened:
-                App.closeActiveTransaction(True)    # nothing was edited
-        except Exception:
-            if opened:
-                App.closeActiveTransaction(True)
-            _err("could not open %s for editing" % name)
+        """Edit an object inside an undo step of its own (editing.py)."""
+        editing.enter_edit(doc_name, name)
 
     # ------------------------------------------------------------------ #
     # drag and drop

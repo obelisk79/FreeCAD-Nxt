@@ -1,0 +1,60 @@
+"""Opening a feature for editing, the way FreeCAD's own tree does.
+
+Shared by everything that starts an edit - a row double-clicked in the
+panel, a face double-clicked in the 3D view - so the undo behaviour is the
+same whichever started it and whether or not the panel is open.
+"""
+
+from __future__ import annotations
+
+import traceback
+from typing import Any
+
+import FreeCAD as App
+import FreeCADGui as Gui
+
+
+def open_edit_transaction(obj: Any) -> bool:
+    """Open the undo step an edit of `obj` runs in. True if one was opened.
+
+    None is opened when one is already active: whatever opened it owns it.
+    """
+    try:
+        if App.getActiveTransaction():
+            return False
+        # Kept open past this event (persist): the task closes it.
+        App.setActiveTransaction("Edit %s" % obj.Label, True)
+        return True
+    except Exception:
+        return False
+
+
+def enter_edit(doc_name: str, name: str) -> None:
+    """Edit an object, inside an undo step of its own.
+
+    FreeCAD's tree opens a transaction before it edits; Part Design's task
+    commits it on OK and aborts it on Cancel, which is what puts the model
+    back as it was and what Ctrl+Z undoes afterwards. setEdit alone opens
+    none, so an edit begun from Nxt could be neither cancelled nor undone.
+
+    Call it deferred, never from inside an input event: setEdit opens a
+    task dialog, which nests an event loop and can tear down whatever
+    widget the event was delivered to.
+    """
+    opened = False
+    try:
+        gui_doc = Gui.getDocument(doc_name)
+        obj = gui_doc.Document.getObject(name)
+        if obj is None:
+            return
+        if gui_doc.getInEdit() is not None:
+            gui_doc.resetEdit()
+        opened = open_edit_transaction(obj)
+        gui_doc.setEdit(obj)
+        if gui_doc.getInEdit() is None and opened:
+            App.closeActiveTransaction(True)    # nothing was edited
+    except Exception:
+        if opened:
+            App.closeActiveTransaction(True)
+        App.Console.PrintError("Nxt: could not open %s for editing\n" % name)
+        App.Console.PrintError(traceback.format_exc())

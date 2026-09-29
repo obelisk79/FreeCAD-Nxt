@@ -34,7 +34,10 @@ from ..qt import QtCore, QtWidgets
 from . import picking, settings
 
 if TYPE_CHECKING:
-    from .bridge import TreeBridge
+    from typing import Protocol
+
+    class Editor(Protocol):
+        def edit_feature(self, doc_name: str, name: str) -> None: ...
 
 #: Qt class of the MDI view that holds a 3D view.
 _VIEW_CLASS = "Gui::View3DInventor"
@@ -78,9 +81,12 @@ def picked_feature() -> tuple[str, str] | None:
 class DoubleClickEditor(QtCore.QObject):
     """An application event filter that sees double-clicks in 3D views."""
 
-    def __init__(self, bridge: TreeBridge) -> None:
-        super().__init__(bridge)
-        self._bridge = bridge
+    def __init__(self, editor: Editor) -> None:
+        # Owned by the services (services.py), not the panel: this works
+        # with the panel closed. `editor` opens the feature.
+        super().__init__(editor if isinstance(editor, QtCore.QObject)
+                         else None)
+        self._editor = editor
 
     def install(self) -> None:
         app = QtWidgets.QApplication.instance()
@@ -125,5 +131,5 @@ class DoubleClickEditor(QtCore.QObject):
         if found is None:
             return False
         App.Console.PrintLog("Nxt double-click: edit %s\n" % found[1])
-        self._bridge.edit_feature(*found)
+        self._editor.edit_feature(*found)
         return True                     # FreeCAD's double-click is replaced
