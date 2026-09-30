@@ -28,10 +28,11 @@ GROUP = "FreeCAD-Nxt"
 #: What the quick panel offers. The page offers these and more.
 QUICK = ("PartLayout", "RowDensity", "ReferenceChips",
          "UnderConstrainedMarks", "FollowSelection", "EditOnDoubleClick",
-         "DependencyArrows")
+         "DependencyArrows", "RowToolTips")
 
 #: Settings the theme reads: changing one restyles the panel.
 _VIEW = frozenset({"RowDensity", "ReferenceChips", "UnderConstrainedMarks",
+                   "RowToolTips",
                    "HeaderMaxPercent", "HeaderMinWidth"})
 #: Settings the snapshot reads: changing one rebuilds it.
 _SNAPSHOT = frozenset({"PartLayout", "DependencyArrows"})
@@ -152,6 +153,9 @@ class PreferencesPage:
         self._marks = QtWidgets.QCheckBox(
             translate("Nxt", "Mark under-constrained sketches"), tree)
         layout.addRow(self._marks)
+        self._tips = QtWidgets.QCheckBox(
+            translate("Nxt", "Show tooltips on the tree's rows"), tree)
+        layout.addRow(self._tips)
         self._follow = QtWidgets.QCheckBox(
             translate("Nxt", "Show objects picked in the 3D view"), tree)
         layout.addRow(self._follow)
@@ -247,6 +251,7 @@ class PreferencesPage:
             index = box.findData(settings.get(key))
             box.setCurrentIndex(max(0, index))
         self._marks.setChecked(bool(settings.get("UnderConstrainedMarks")))
+        self._tips.setChecked(bool(settings.get("RowToolTips")))
         self._follow.setChecked(bool(settings.get("FollowSelection")))
         self._dbl.setChecked(bool(settings.get("EditOnDoubleClick")))
         self._arrows.setChecked(bool(settings.get("DependencyArrows")))
@@ -261,6 +266,7 @@ class PreferencesPage:
         for key, box in self._choices.items():
             settings.put(key, str(box.currentData()))
         settings.put("UnderConstrainedMarks", self._marks.isChecked())
+        settings.put("RowToolTips", self._tips.isChecked())
         settings.put("FollowSelection", self._follow.isChecked())
         settings.put("EditOnDoubleClick", self._dbl.isChecked())
         settings.put("DependencyArrows", self._arrows.isChecked())
@@ -289,6 +295,7 @@ class PreferencesPage:
             box.setCurrentIndex(max(0, box.findData(settings.DEFAULTS[key])))
         self._marks.setChecked(
             bool(settings.DEFAULTS["UnderConstrainedMarks"]))
+        self._tips.setChecked(bool(settings.DEFAULTS["RowToolTips"]))
         self._follow.setChecked(bool(settings.DEFAULTS["FollowSelection"]))
         self._dbl.setChecked(bool(settings.DEFAULTS["EditOnDoubleClick"]))
         self._arrows.setChecked(bool(settings.DEFAULTS["DependencyArrows"]))

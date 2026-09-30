@@ -48,6 +48,8 @@ DEFAULTS: dict[str, bool | int | float | str] = {
     "RowDensity": "normal",
     "ReferenceChips": "problems",
     "UnderConstrainedMarks": True,
+    # Hovering a row's controls explains them (NxtToolTip.qml).
+    "RowToolTips": True,
     # Picking an object in the 3D view scrolls the tree to its row.
     "FollowSelection": True,
     # Double-clicking a face in the 3D view edits the feature that made it.

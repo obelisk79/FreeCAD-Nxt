@@ -216,6 +216,51 @@ Item {
         return out;
     }
 
+    // -- tooltips (NxtToolTip): what each control on the row says ---------
+
+    function refTip(ref) {
+        var lines = [ref.label + (ref.label !== ref.name
+                                  ? "  (" + ref.name + ")" : "")];
+        if (ref.sub.length > 0)
+            lines.push(qsTr("Uses %1").arg(ref.sub));
+        if (ref.severity >= 2)
+            lines.push(qsTr("Has an error"));
+        else if (ref.severity >= 1)
+            lines.push(qsTr("Has a warning"));
+        lines.push(qsTr("Click to show it, double-click to edit it"));
+        return lines.join("\n");
+    }
+
+    function moreRefsTip() {
+        var names = [];
+        for (var i = row.chipLimit; i < row.shownRefs.length; ++i)
+            names.push(row.shownRefs[i].label);
+        return names.join("\n");
+    }
+
+    readonly property string nameTip: {
+        var differs = row.name !== row.label;
+        if (!title.truncated && !differs)
+            return "";
+        return row.label + (differs ? "\n" + qsTr("Internal name: %1")
+                                                .arg(row.name) : "");
+    }
+
+    readonly property string markTip: {
+        var note = row.notes && row.notes.length > 0 ? row.notes[0] : "";
+        var more = row.hasDetail ? "\n" + qsTr("Click for details") : "";
+        if (row.markLevel >= 3)
+            return (note || qsTr("Error")) + more;
+        if (row.markLevel === 2)
+            return (note || qsTr("Warning")) + more;
+        if (row.markLevel === 1)
+            return (row.dof > 0
+                    ? qsTr("Under-constrained: %1 degrees of freedom")
+                          .arg(row.dof)
+                    : qsTr("Not fully constrained")) + more;
+        return row.hasDetail ? qsTr("Show details") : "";
+    }
+
     function chipText(ref) {
         return ref.sub.length > 0 ? ref.label + ":" + ref.sub : ref.label;
     }
@@ -427,6 +472,12 @@ Item {
             shown: row.hasChildren
             expanded: row.expanded
             onToggled: nxt.toggleExpanded(row.name)
+
+            HoverHandler { id: expanderHover }
+            NxtToolTip {
+                shown: expanderHover.hovered && row.hasChildren
+                text: row.expanded ? qsTr("Collapse") : qsTr("Expand")
+            }
         }
 
         Image {
@@ -447,6 +498,14 @@ Item {
                    : row.isFeature ? 1.0
                    : row.objectVisible ? 1.0 : 0.38
             Behavior on opacity { NumberAnimation { duration: 110 } }
+
+            HoverHandler { id: iconHover }
+            NxtToolTip {
+                shown: iconHover.hovered
+                text: row.label + (row.name !== row.label
+                                   ? "\n" + qsTr("Internal name: %1")
+                                                .arg(row.name) : "")
+            }
         }
 
         TextMetrics {
@@ -478,6 +537,14 @@ Item {
                  : row.isFeature ? theme.text
                  : row.objectVisible ? theme.text
                  : theme.textDim
+
+            // Only when there is more to say than the row already shows:
+            // a name cut short, or an internal name unlike the label.
+            HoverHandler { id: titleHover }
+            NxtToolTip {
+                shown: titleHover.hovered
+                text: row.nameTip
+            }
         }
 
         Rectangle {
@@ -552,6 +619,7 @@ Item {
                         onClicked: nxt.revealObjectRow(modelData.name)
                         // Straight into the referenced object's editor.
                         onDoubleClicked: nxt.activate(modelData.name)
+                        tip: row.refTip(modelData)
                         onHoveredChanged: function (h) {
                             if (h) nxt.highlightRelated(modelData.name);
                             else nxt.highlightRelated(row.name);
@@ -563,6 +631,7 @@ Item {
                     visible: row.shownRefs.length > row.chipLimit
                     interactive: false
                     text: "+" + (row.shownRefs.length - row.chipLimit)
+                    tip: row.moreRefsTip()
                 }
             }
 
@@ -597,6 +666,13 @@ Item {
                         onToggled: nxt.toggleVisibility(row.name)
 
                         Behavior on opacity { NumberAnimation { duration: 90 } }
+
+                        HoverHandler { id: eyeHover }
+                        NxtToolTip {
+                            shown: eyeHover.hovered
+                            text: row.objectVisible ? qsTr("Hide")
+                                                    : qsTr("Show")
+                        }
                     }
 
                     // A feature's place where the eye would be: a faint
@@ -614,7 +690,7 @@ Item {
                         HoverHandler { id: stepHover }
 
                         NxtToolTip {
-                            visible: stepHover.hovered
+                            shown: stepHover.hovered
                             text: qsTr("Features are steps, not objects.\n"
                                        + "Drag the tip bar here to see the "
                                        + "model at this step.")
@@ -641,6 +717,13 @@ Item {
                         opacity: row.markLevel > 0 ? 1.0 : 0.45
                         active: row.detailOpen
                         onClicked: nxt.toggleDetail(row.name)
+
+                        HoverHandler { id: markHover }
+                        NxtToolTip {
+                            shown: markHover.hovered
+                            text: row.detailOpen && row.markLevel === 0
+                                  ? qsTr("Hide details") : row.markTip
+                        }
                     }
                 }
             }

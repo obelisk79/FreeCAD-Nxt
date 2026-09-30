@@ -258,6 +258,7 @@ class Theme(QtCore.QObject):
         self._density = str(settings.get("RowDensity"))
         self._chip_mode = str(settings.get("ReferenceChips"))
         self._under_constrained = bool(settings.get("UnderConstrainedMarks"))
+        self._tool_tips = bool(settings.get("RowToolTips"))
         self._rebuild()
         self.changed.emit()
 
@@ -396,6 +397,11 @@ class Theme(QtCore.QObject):
     def showUnderConstrained(self) -> bool:  # noqa: N802 - QML API
         """Whether a merely under-constrained sketch gets its ring."""
         return getattr(self, "_under_constrained", True)
+
+    @QtCore.Property(bool, notify=changed)
+    def showToolTips(self) -> bool:  # noqa: N802 - QML API
+        """Whether hovering a row's controls shows what they do."""
+        return getattr(self, "_tool_tips", True)
 
     @QtCore.Property(bool, notify=changed)
     def dark(self) -> bool:

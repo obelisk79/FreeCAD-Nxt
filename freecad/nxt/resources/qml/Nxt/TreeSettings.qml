@@ -99,6 +99,10 @@ Popup {
             text: qsTr("Mark under-constrained sketches")
         }
         Setting {
+            key: "RowToolTips"
+            text: qsTr("Show tooltips on rows")
+        }
+        Setting {
             key: "FollowSelection"
             text: qsTr("Show objects picked in the 3D view")
         }

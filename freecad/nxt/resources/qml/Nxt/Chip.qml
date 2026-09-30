@@ -23,6 +23,10 @@ Rectangle {
     // label, so the blame lands on the thing that is actually wrong.
     property int severity: 0
 
+    //: What hovering the chip says (NxtToolTip); names the object even
+    //: when the chip only shows its icon.
+    property string tip: ""
+
     readonly property color ink: chip.active ? theme.accentText
                                : chip.severity >= 2 ? theme.danger
                                : chip.severity >= 1 ? theme.warning
@@ -102,9 +106,18 @@ Rectangle {
 
     HoverHandler {
         id: hover
-        enabled: chip.interactive
-        cursorShape: Qt.PointingHandCursor
-        onHoveredChanged: chip.hoveredChanged(hovered)
+        // A chip that does nothing on click still explains itself: the
+        // "+3" overflow lists what it stands for.
+        enabled: chip.interactive || chip.tip.length > 0
+        cursorShape: chip.interactive ? Qt.PointingHandCursor
+                                      : Qt.ArrowCursor
+        onHoveredChanged: if (chip.interactive)
+                              chip.hoveredChanged(hovered)
+    }
+
+    NxtToolTip {
+        shown: hover.hovered
+        text: chip.tip
     }
 
     TapHandler {

@@ -424,7 +424,8 @@ class TreeBridge(QtCore.QObject):
     def pickOrigins(self) -> list[str]:  # noqa: N802 - QML API
         return list(self._origins)
 
-    @QtCore.Property("QVariantMap", notify=linkArrowsChanged)
+    @QtCore.Property("QVariantMap",  # type: ignore[arg-type]
+                     notify=linkArrowsChanged)
     def linkArrows(self) -> dict[str, Any]:  # noqa: N802 - QML API
         return dict(self._arrows)
 
