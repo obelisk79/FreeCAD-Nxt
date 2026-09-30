@@ -600,7 +600,7 @@ Rectangle {
         } else if (event.key === Qt.Key_Escape) {
             // Only taken when it closed something, so Escape still
             // reaches FreeCAD (clearing the selection) otherwise.
-            event.accepted = nxt.closeDetail();
+            event.accepted = nxt.closeDetail() || isolation.leave();
         } else if (event.key === Qt.Key_Space) {
             nxt.toggleSelectedVisibility();
             event.accepted = true;

@@ -122,9 +122,20 @@ def _entry(item: Item, subject: Subject,
             "enabled": enabled, "icon": icon}
 
 
+def _isolating() -> bool:
+    try:
+        from .. import services
+        isolation = services.isolation()
+        return isolation is not None and isolation.active()
+    except Exception:
+        return False
+
+
 def _bar_label(command: str, subject: Subject) -> str:
     if command == "Std_ToggleVisibility":
         text = labels.BAR["hide" if subject.any_shown else "show"]
+    elif command == "nxt:isolate" and _isolating():
+        text = labels.BAR["nxt:isolate_exit"]
     else:
         text = labels.BAR.get(command, "")
     return translate(CONTEXT, text)

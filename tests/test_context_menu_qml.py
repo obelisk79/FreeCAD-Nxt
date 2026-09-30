@@ -210,9 +210,9 @@ check("placed where it was asked, relative to the panel",
       abs(corner.x() - 20) <= 8 and abs(corner.y() - 20) <= 8)
 shown = window_texts(window)
 check("the header names the object", "Pocket" in shown)
-check("five bar buttons with short labels",
-      all(t in shown for t in ("Hide", "Isolate", "Fit", "Appearance",
-                               "Inspect")))
+check("four bar buttons with short labels, no Hide",
+      all(t in shown for t in ("Isolate", "Fit", "Appearance", "Inspect"))
+      and "Hide" not in shown)
 check("the lead action is bold",
       text_in(window, "Edit Pocket").property("font").bold())
 check("the failure leads the state rows",
@@ -278,11 +278,10 @@ window = popup_windows()[0]
 key(window, "Down")
 key(window, "Return")
 check("Down stops on the bar; Enter runs its first button",
-      ran()[-1] == "Std_ToggleVisibility")
+      ran()[-1] == "nxt:isolate")
 open_menu()
 window = popup_windows()[0]
 key(window, "Down")
-key(window, "Right")
 key(window, "Right")
 key(window, "Return")
 check("Right moves along the bar", ran()[-1] == "Std_ViewFitSelection")

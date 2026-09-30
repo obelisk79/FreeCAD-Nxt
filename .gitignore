@@ -5,3 +5,6 @@ __pycache__/
 .pytest_cache/
 *.egg-info
 *.log
+
+# Scratch copies made while testing in the cloud; never committed.
+.nxt_sync/

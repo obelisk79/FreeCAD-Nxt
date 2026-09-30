@@ -28,6 +28,32 @@ Item {
     // Set once the pointer has rested; cleared the moment it leaves.
     property bool open: false
 
+    // Where the pointer rested, in this item: the tip opens just below and
+    // to the right of it, as a native tooltip does, rather than centred
+    // on the control - which on a small control inside a scaled or
+    // overlaid panel landed well away from the pointer.
+    property point anchor: Qt.point(0, 0)
+
+    HoverHandler { id: pointer }
+
+    // What the tip opens from: a one-pixel item at the spot, not the
+    // control. Under Wayland a popup in a window of its own is placed
+    // against the rectangle of the item it opens from, taken in that
+    // item's window - and the panel's window is an offscreen one at the
+    // corner of FreeCAD's - so the tip landed a panel's offset away from
+    // the pointer. The context menu opens the same way; see
+    // host.menuAnchorOffset(), zero everywhere but Wayland.
+    Item {
+        id: spot
+        width: 1
+        height: 1
+    }
+
+    function offset() {
+        return (typeof host !== "undefined" && host)
+               ? host.menuAnchorOffset() : Qt.point(0, 0);
+    }
+
     onWantedChanged: {
         if (wanted) {
             settle.restart();
@@ -41,6 +67,10 @@ Item {
         id: settle
         interval: root.delay
         onTriggered: {
+            root.anchor = pointer.point.position;
+            var shift = root.offset();
+            spot.x = root.anchor.x + 12 + shift.x;
+            spot.y = root.anchor.y + 20 + shift.y;
             root.open = root.wanted;
             loader.active = loader.active || root.open;
         }
@@ -57,6 +87,11 @@ Item {
             id: tip
             popupType: Popup.Window
             visible: root.open
+            parent: spot
+            x: 0
+            y: 0
+            // Kept this far inside the screen near an edge.
+            margins: 4
             enter: null
             exit: null
             timeout: -1

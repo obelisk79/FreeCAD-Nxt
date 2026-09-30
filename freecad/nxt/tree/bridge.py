@@ -546,31 +546,6 @@ class TreeBridge(QtCore.QObject):
             _err("visibility toggle failed for %s" % name)
         self.invalidate()
 
-    @QtCore.Slot(str)
-    def isolate(self, name: str) -> None:
-        """Show only this object among its siblings. Cheap but much-wanted."""
-        doc = App.ActiveDocument
-        if doc is None:
-            return
-        node = self._snapshot.nodes.get(name)
-        if node is None:
-            return
-        siblings = self._snapshot.roots
-        if node.parent and node.parent in self._snapshot.nodes:
-            siblings = self._snapshot.nodes[node.parent].children
-        try:
-            doc.openTransaction("Isolate")
-            for sibling in siblings:
-                obj = doc.getObject(sibling)
-                vo = getattr(obj, "ViewObject", None)
-                if vo is not None:
-                    vo.Visibility = (sibling == name)
-            doc.commitTransaction()
-        except Exception:
-            doc.abortTransaction()
-            _err("isolate failed for %s" % name)
-        self.invalidate()
-
     # ------------------------------------------------------------------ #
     # tip
     # ------------------------------------------------------------------ #

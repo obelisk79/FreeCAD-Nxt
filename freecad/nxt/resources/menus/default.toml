@@ -54,8 +54,9 @@
 version = 1
 
 [bar]
+# Visibility is the row's eye (and Space), not a bar button: two controls
+# for one state only ever disagree.
 items = [
-    "Std_ToggleVisibility",
     { command = "nxt:isolate", flags = ["has_shape"] },
     { command = "Std_ViewFitSelection", flags = ["has_shape"] },
     { command = "Std_SetAppearance", flags = ["has_shape"] },
@@ -71,8 +72,8 @@ state = [
     { command = "nxt:recompute_object", flags = ["failed"] },
 ]
 delete = "Std_Delete"
-# Show and Hide Selection give way to the bar's toggle; Properties to the
-# Property Inspector.
+# Show and Hide Selection give way to the row's eye and Space; Properties
+# to the Property Inspector.
 # Std_Expressions crashes FreeCAD when run from here (menus/runner.py);
 # the Expressions submenu above does the same with Nxt's own actions.
 drop = ["Std_ShowSelection", "Std_HideSelection", "Std_Properties",

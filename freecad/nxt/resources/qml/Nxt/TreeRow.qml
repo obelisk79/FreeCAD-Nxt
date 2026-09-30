@@ -190,6 +190,9 @@ Item {
         return false;
     }
 
+    readonly property bool isolatedOut:
+        isolation.isActive && !isolation.keptNames[row.name]
+
     readonly property int leftPad: theme.rowPad + depth * theme.indent
     // The detail strip lines up with the row's pill, so it reads as part of
     // it. Past two levels deep it stops following the indent - a narrow
@@ -288,7 +291,10 @@ Item {
         id: head
         width: parent.width
         height: theme.rowHeight
-        opacity: row.dragSource ? 0.3 : 1.0
+        // Dimmed while isolating (isolate.py) if out of view: still there
+        // to read and pick, clearly not what the 3D view is showing.
+        opacity: (row.dragSource ? 0.3 : 1.0)
+                 * (row.isolatedOut ? 0.45 : 1.0)
 
         // Never animate a colour to or from "transparent". That value is
         // transparent *black*, so ColorAnimation interpolates through
@@ -488,7 +494,12 @@ Item {
             height: width
             sourceSize.width: width * 2
             sourceSize.height: width * 2
+            // Hidden: gray as well as faded, so the state survives a
+            // theme where the fade is hard to tell apart. Served gray by
+            // the icon provider (icons.py); features follow the tip bar,
+            // not their own visibility, and are never grayed for it.
             source: row.iconUrl
+                    + (!row.objectVisible && !row.isFeature ? "/gray" : "")
             // Inside a Body, every feature but the tip is hidden by
             // definition, so Visibility says nothing useful - what matters
             // is which side of the rollback bar it is on. A sketch drawn

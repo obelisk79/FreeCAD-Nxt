@@ -48,6 +48,10 @@ class Services(QtCore.QObject):
         self._theme: Any = None
         self._double_click: Any = None
         self._floating: Any = None
+        self._isolation: Any = None
+        self._isolation_observer: Any = None
+        self._notice: Any = None
+        self._escape: Any = None
         self._pending_edit: tuple[str, str] | None = None
         self._edit_timer = self._deferral(self._enter_pending_edit)
         self._restyle_timer = self._deferral(self._restyle)
@@ -79,6 +83,7 @@ class Services(QtCore.QObject):
             self._floating = None
 
     def remove(self) -> None:
+        self._remove_isolation()
         self._edit_timer.stop()
         self._restyle_timer.stop()
         for part in (self._double_click, self._floating):
@@ -92,6 +97,58 @@ class Services(QtCore.QObject):
             self._main_window.removeEventFilter(self)
         except RuntimeError:
             pass
+
+    # -- isolate ------------------------------------------------------------ #
+
+    def isolation(self) -> Any:
+        """The isolate mode (isolate.py), with its 3D view notice."""
+        if self._isolation is None:
+            from . import isolate, isolate_notice
+            self._isolation = isolate.Isolation(self)
+            self._isolation_observer = isolate.Observer(self._isolation)
+            try:
+                App.addDocumentObserver(self._isolation_observer)
+            except Exception:
+                _err("could not follow documents for isolate")
+            try:
+                self._notice = isolate_notice.ViewNotice(
+                    self._isolation, self.theme(), self)
+                self._notice.install()
+            except Exception:
+                _err("could not set up the isolate notice")
+                self._notice = None
+            try:
+                self._escape = isolate_notice.EscapeToExit(
+                    self._isolation, self)
+                self._escape.install()
+            except Exception:
+                _err("could not set up Escape for isolate")
+                self._escape = None
+        return self._isolation
+
+    def _remove_isolation(self) -> None:
+        if self._isolation is None:
+            return
+        try:
+            self._isolation.exit()
+        except Exception:
+            _err("could not leave isolate")
+        if self._notice is not None:
+            try:
+                self._notice.remove()
+            except Exception:
+                _err("could not remove the isolate notice")
+        if self._escape is not None:
+            try:
+                self._escape.remove()
+            except Exception:
+                _err("could not remove Escape for isolate")
+            self._escape = None
+        try:
+            App.removeDocumentObserver(self._isolation_observer)
+        except Exception:
+            pass
+        self._isolation = self._isolation_observer = self._notice = None
 
     # -- theme -------------------------------------------------------------- #
 
@@ -173,6 +230,11 @@ def stop() -> None:
 
 def instance() -> Services | None:
     return _services
+
+
+def isolation() -> Any:
+    """The isolate mode, or None while the services are not running."""
+    return None if _services is None else _services.isolation()
 
 
 def theme() -> Any:

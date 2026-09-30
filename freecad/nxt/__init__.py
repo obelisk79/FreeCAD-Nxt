@@ -46,6 +46,8 @@ _RELOAD_ORDER = (
     "freecad.nxt.tree.prefs",
     "freecad.nxt.tree.panel",
     "freecad.nxt.property_inspector",
+    "freecad.nxt.isolate",
+    "freecad.nxt.isolate_notice",
     "freecad.nxt.services",
 )
 

@@ -327,6 +327,31 @@ KEEP = []      # nothing is torn down: dropping a context property while the
 # against null, which is noise, not a finding.
 
 
+class Isolation(QtCore.QObject):
+    """Stands in for isolate.Isolation.
+
+    On, so the row dimming's bindings run.
+    """
+
+    changed = QtCore.Signal()
+
+    @QtCore.Property(bool, notify=changed)
+    def isActive(self):  # noqa: N802
+        return True
+
+    @QtCore.Property(str, notify=changed)
+    def notice(self):
+        return "Isolated: Pad"
+
+    @QtCore.Property("QVariantMap", notify=changed)
+    def keptNames(self):  # noqa: N802
+        return {"Body": True, "Pad": True}
+
+    @QtCore.Slot(result=bool)
+    def leave(self):
+        return True
+
+
 def run(overlay):
     # A QQuickView, not a bare QQmlComponent: items outside a window are
     # never polished, so a ListView in one realises no delegates at all and
@@ -338,6 +363,9 @@ def run(overlay):
     ctx.setContextProperty("theme", theme)
     ctx.setContextProperty("nxt", bridge)
     ctx.setContextProperty("host", host)
+    isolation = Isolation()
+    ctx.setContextProperty("isolation", isolation)
+    view.isolation = isolation      # kept alive as long as the view
     view.setResizeMode(QtQuick.QQuickView.ResizeMode.SizeRootObjectToView)
     view.resize(320, 480)
     view.setSource(QtCore.QUrl.fromLocalFile(str(QML / "NxtTree.qml")))

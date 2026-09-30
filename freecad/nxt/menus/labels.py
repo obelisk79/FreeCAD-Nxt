@@ -53,6 +53,7 @@ BAR: dict[str, str] = {
     "hide": QT_TRANSLATE_NOOP("NxtMenu", "Hide"),
     "show": QT_TRANSLATE_NOOP("NxtMenu", "Show"),
     "nxt:isolate": QT_TRANSLATE_NOOP("NxtMenu", "Isolate"),
+    "nxt:isolate_exit": QT_TRANSLATE_NOOP("NxtMenu", "Exit isolate"),
     "Std_ViewFitSelection": QT_TRANSLATE_NOOP("NxtMenu", "Fit"),
     "Std_SetAppearance": QT_TRANSLATE_NOOP("NxtMenu", "Appearance"),
     "nxt:inspector": QT_TRANSLATE_NOOP("NxtMenu", "Inspect"),

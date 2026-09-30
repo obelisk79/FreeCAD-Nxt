@@ -25,8 +25,8 @@ sys.modules.setdefault("FreeCADGui", types.ModuleType("FreeCADGui"))
 from freecad.nxt.menus import definitions as d  # noqa: E402
 
 DEFAULT = ROOT / "freecad" / "nxt" / "resources" / "menus" / "default.toml"
-BAR = ["Std_ToggleVisibility", "nxt:isolate", "Std_ViewFitSelection",
-       "Std_SetAppearance", "nxt:inspector"]
+BAR = ["nxt:isolate", "Std_ViewFitSelection", "Std_SetAppearance",
+       "nxt:inspector"]
 
 
 def obj(*types: str, flags: tuple[str, ...] = (), in_body: bool = False,
@@ -214,11 +214,21 @@ class PresentTests(unittest.TestCase):
             resolved, present.Subject(title="Sketch", any_shown=shown),
             self.lookup)
 
-    def test_the_bar_says_hide_or_show(self) -> None:
+    def test_visibility_is_the_eye_not_the_bar(self) -> None:
+        bar = self.show(obj(*SKETCH, flags=SHAPED))["bar"]
+        self.assertNotIn("Std_ToggleVisibility", [b["command"] for b in bar])
+
+    def test_isolate_says_exit_while_isolating(self) -> None:
+        from freecad.nxt.menus import present
         sketch = obj(*SKETCH, flags=SHAPED)
-        self.assertEqual(self.show(sketch)["bar"][0]["short"], "Hide")
-        self.assertEqual(self.show(sketch, shown=False)["bar"][0]["short"],
-                         "Show")
+        self.assertEqual(self.show(sketch)["bar"][0]["short"], "Isolate")
+        saved = present._isolating
+        present._isolating = lambda: True  # type: ignore[assignment]
+        try:
+            self.assertEqual(self.show(sketch)["bar"][0]["short"],
+                             "Exit isolate")
+        finally:
+            present._isolating = saved  # type: ignore[assignment]
 
     def test_edit_is_named_for_the_object(self) -> None:
         menu = self.show(obj(*SKETCH, flags=SHAPED))

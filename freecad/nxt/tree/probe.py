@@ -749,6 +749,50 @@ def pick() -> list[dict[str, Any]]:
     return out
 
 
+class _VisibilityWatch:
+    """Prints every visibility change FreeCAD reports, and from where."""
+
+    def slotChangedObject(self, obj: Any, prop: str) -> None:  # noqa: N802
+        if prop == "Visibility":
+            owner = getattr(obj, "Object", obj)
+            side = "Gui" if owner is not obj else "App"
+            view = getattr(owner, "ViewObject", None)
+            App.Console.PrintMessage(
+                "visibility [%s] %s -> %s (view says %s)\n"
+                % (side, owner.Name, getattr(obj, "Visibility", "?"),
+                   getattr(view, "Visibility", "?")))
+
+
+_watch: _VisibilityWatch | None = None
+
+
+def watch_visibility(on: bool = True) -> None:
+    """Report visibility changes as FreeCAD announces them.
+
+        probe.watch_visibility()        # then hide something any way
+        probe.watch_visibility(False)   # stop
+
+    For the eye getting out of step: shows whether a change made outside
+    the panel (Space in the 3D view, the console) reaches the observers
+    the panel listens on, which side it arrives on, and what the view
+    object reports at that moment.
+    """
+    global _watch
+    if _watch is not None:
+        for remove in (App.removeDocumentObserver,
+                       Gui.removeDocumentObserver):
+            try:
+                remove(_watch)
+            except Exception:
+                pass
+        _watch = None
+    if on:
+        _watch = _VisibilityWatch()
+        App.addDocumentObserver(_watch)
+        Gui.addDocumentObserver(_watch)
+        App.Console.PrintMessage("Nxt: watching visibility changes\n")
+
+
 def run(doc: Any = None, widen: bool = False) -> scene.Snapshot | None:
     App.Console.PrintMessage("\n=== Nxt panel probe ===\n")
 

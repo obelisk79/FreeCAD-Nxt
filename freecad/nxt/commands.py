@@ -77,6 +77,29 @@ class PropertyInspector(_Command):
         property_inspector.toggle()
 
 
+class Isolate(_Command):
+    """Show only the selection in the 3D view, until told otherwise."""
+
+    menu_text = QT_TRANSLATE_NOOP("Nxt_Isolate", "Isolate")
+    tool_tip = QT_TRANSLATE_NOOP(
+        "Nxt_Isolate",
+        "Show only the selected objects in the 3D view; again to exit")
+    pixmap = "Std_ShowSelection"
+
+    def Activated(self) -> None:  # noqa: N802 - FreeCAD command API
+        from . import services
+        isolation = services.isolation()
+        if isolation is not None:
+            isolation.toggle_selection()
+
+    def IsActive(self) -> bool:  # noqa: N802 - FreeCAD command API
+        from . import services
+        isolation = services.isolation()
+        if isolation is None:
+            return False
+        return isolation.active() or bool(Gui.Selection.getSelection())
+
+
 class Reload(_Command):
     """Hot-reload the addon's Python modules during development."""
 
@@ -117,13 +140,14 @@ COMMANDS: dict[str, type[_Command]] = {
     "Nxt_ModelPanel": ModelPanel,
     "Nxt_ModelPanelOverlay": ModelPanelOverlay,
     "Nxt_PropertyInspector": PropertyInspector,
+    "Nxt_Isolate": Isolate,
     "Nxt_Reload": Reload,
 }
 
 #: The FreeCAD-Nxt submenu of the View menu. Reload is listed for now,
 #: while the addon is being developed; it is not a feature.
 MENU = ("Nxt_ModelPanel", "Nxt_ModelPanelOverlay", "Nxt_PropertyInspector",
-        "Nxt_Reload")
+        "Nxt_Isolate", "Nxt_Reload")
 
 #: What goes in the View menu itself: the submenu.
 GROUP = "Nxt_Menu"

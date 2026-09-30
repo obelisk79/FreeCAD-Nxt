@@ -309,6 +309,7 @@ class ModelPanel(QtWidgets.QDockWidget):
         context.setContextProperty("theme", self._theme)
         context.setContextProperty("host", self)
         context.setContextProperty("prefs", self._prefs)
+        context.setContextProperty("isolation", self._isolation())
 
         source = str(resources.qml("NxtTree.qml"))
         view.setSource(QtCore.QUrl.fromLocalFile(source))
@@ -321,6 +322,16 @@ class ModelPanel(QtWidgets.QDockWidget):
 
         self._view = view
         return view
+
+    def _isolation(self) -> Any:
+        """The isolate mode the rows dim for.
+
+        The services' own; with the services not running, an idle one, so
+        the QML binds cleanly.
+        """
+        from .. import isolate, services
+        live = services.isolation()
+        return live if live is not None else isolate.Isolation(self)
 
     def _failure(self, detail: str) -> QtWidgets.QWidget:
         holder = QtWidgets.QWidget(self)

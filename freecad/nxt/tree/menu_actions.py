@@ -84,26 +84,14 @@ Action = Callable[["TreeBridge", list[Any]], None]
 
 
 def _isolate(bridge: TreeBridge, objects: list[Any]) -> None:
-    if len(objects) == 1:
-        bridge.isolate(objects[0].Name)
+    """Enter or leave the isolate mode (isolate.py) for these objects."""
+    from .. import services
+    isolation = services.isolation()
+    if isolation is None:
         return
-    # Several: show these, hide everything else beside the first of them.
-    keep = {o.Name for o in objects}
-    node = bridge._snapshot.nodes.get(objects[0].Name)
-    siblings = bridge._snapshot.roots
-    if node is not None and node.parent in bridge._snapshot.nodes:
-        siblings = bridge._snapshot.nodes[node.parent].children
     doc = App.ActiveDocument
-    doc.openTransaction("Isolate")
-    try:
-        for name in set(siblings) | keep:
-            view = getattr(doc.getObject(name), "ViewObject", None)
-            if view is not None:
-                view.Visibility = name in keep
-        doc.commitTransaction()
-    except Exception:
-        doc.abortTransaction()
-        raise
+    isolation.toggle([o.Name for o in objects],
+                     doc.Name if doc is not None else None)
 
 
 def _inspector(bridge: TreeBridge, objects: list[Any]) -> None:
