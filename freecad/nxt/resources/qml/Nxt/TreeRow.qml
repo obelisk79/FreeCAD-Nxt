@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls.Basic
 
 // One row of the panel.
 //
@@ -582,15 +583,43 @@ Item {
                 // removed, so the gutter mark to its right sits at the
                 // same x on every row and a glance down the edge of the
                 // panel finds the marks in a column.
-                EyeToggle {
+                Item {
                     anchors.verticalCenter: parent.verticalCenter
-                    open: row.objectVisible
-                    enabled: !row.isFeature
-                    ink: row.selected ? theme.accentText : theme.textDim
-                    opacity: (row.isFeature || !hover.hovered) ? 0.0 : 1.0
-                    onToggled: nxt.toggleVisibility(row.name)
+                    width: theme.iconSize
+                    height: theme.iconSize
 
-                    Behavior on opacity { NumberAnimation { duration: 90 } }
+                    EyeToggle {
+                        anchors.fill: parent
+                        visible: !row.isFeature
+                        open: row.objectVisible
+                        ink: row.selected ? theme.accentText : theme.textDim
+                        opacity: hover.hovered ? 1.0 : 0.0
+                        onToggled: nxt.toggleVisibility(row.name)
+
+                        Behavior on opacity { NumberAnimation { duration: 90 } }
+                    }
+
+                    // A feature's place where the eye would be: a faint
+                    // step mark on hover, and a tooltip saying why there
+                    // is no eye - so the gap reads as meant, not missing.
+                    StepMark {
+                        anchors.fill: parent
+                        visible: row.isFeature
+                        ink: row.selected ? theme.accentText : theme.textDim
+                        opacity: stepHover.hovered ? 0.9
+                                 : hover.hovered ? 0.45 : 0.0
+
+                        Behavior on opacity { NumberAnimation { duration: 90 } }
+
+                        HoverHandler { id: stepHover }
+
+                        NxtToolTip {
+                            visible: stepHover.hovered
+                            text: qsTr("Features are steps, not objects.\n"
+                                       + "Drag the tip bar here to see the "
+                                       + "model at this step.")
+                        }
+                    }
                 }
 
                 // The gutter. Always the last thing in the row, so it is
