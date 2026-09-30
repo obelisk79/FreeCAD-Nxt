@@ -54,6 +54,8 @@ DEFAULTS: dict[str, bool | int | float | str] = {
     # drawn inside the 3D view with clicks passing through ("nxt").
     # Experimental.
     "OverlayMode": "freecad",
+    # The panel was in the 3D view (Nxt's overlay) when FreeCAD closed.
+    "ViewOverlay": False,
     # Picking an object in the 3D view scrolls the tree to its row.
     "FollowSelection": True,
     # Double-clicking a face in the 3D view edits the feature that made it.
