@@ -221,6 +221,11 @@ Rectangle {
             // Up and Down are the panel's, not the list's: they move the
             // selection, which the list's own key navigation does not.
             keyNavigationEnabled: false
+            // Inside the 3D view (Nxt's own overlay) the list does not
+            // take presses or drags on its empty space - they belong to
+            // the model behind, and reach it by propagation
+            // (view_overlay.py).
+            interactive: !host.viewOverlay
 
             // Which row, if any, has opened a space under it for something
             // being dragged. Two sources that cannot both be active - you

@@ -285,6 +285,12 @@ def make_bridge():
 
 
 class Host(QtCore.QObject):
+    viewOverlayChanged = QtCore.Signal()
+
+    @QtCore.Property(bool, notify=viewOverlayChanged)
+    def viewOverlay(self):  # noqa: N802
+        return False
+
     @QtCore.Slot()
     def repaintBehind(self):
         pass

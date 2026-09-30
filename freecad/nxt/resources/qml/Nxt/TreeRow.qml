@@ -790,7 +790,13 @@ Item {
         // not accept mouse events, so pushing this underneath costs nothing
         // and revives the controls.
         MouseArea {
-            anchors.fill: parent
+            // Inside the 3D view (Nxt's own overlay) only the pill takes
+            // the mouse: a press beside it is left unaccepted, and so
+            // reaches the model behind (view_overlay.py).
+            x: host.viewOverlay ? row.pillLeft : 0
+            width: host.viewOverlay ? row.pillRight - row.pillLeft
+                                    : parent.width
+            height: parent.height
             z: -1
             acceptedButtons: Qt.LeftButton | Qt.RightButton
             property point origin

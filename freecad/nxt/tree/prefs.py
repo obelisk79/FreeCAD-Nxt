@@ -28,7 +28,7 @@ GROUP = "FreeCAD-Nxt"
 #: What the quick panel offers. The page offers these and more.
 QUICK = ("PartLayout", "RowDensity", "ReferenceChips",
          "UnderConstrainedMarks", "FollowSelection", "EditOnDoubleClick",
-         "DependencyArrows", "RowToolTips")
+         "DependencyArrows", "RowToolTips", "OverlayMode")
 
 #: Settings the theme reads: changing one restyles the panel.
 _VIEW = frozenset({"RowDensity", "ReferenceChips", "UnderConstrainedMarks",
@@ -42,6 +42,7 @@ CHOICES: dict[str, tuple[str, ...]] = {
     "PartLayout": ("expression", "nested"),
     "RowDensity": ("compact", "normal", "roomy"),
     "ReferenceChips": ("problems", "all", "none"),
+    "OverlayMode": ("freecad", "nxt"),
 }
 
 _live: weakref.WeakSet[Preferences] = weakref.WeakSet()
@@ -54,6 +55,8 @@ def apply(keys: set[str] | frozenset[str]) -> None:
     if dock is not None:
         if keys & _VIEW:
             dock.refresh_theme()
+        if "OverlayMode" in keys:
+            dock.apply_overlay_mode()
         if keys & _SNAPSHOT:
             bridge = panel.bridge()
             if bridge is not None:

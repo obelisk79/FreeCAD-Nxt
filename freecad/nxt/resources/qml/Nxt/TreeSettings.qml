@@ -66,6 +66,17 @@ Popup {
             onPicked: function (v) { prefs.set("RowDensity", v); }
         }
 
+        Caption { text: qsTr("Overlay") }
+        Segmented {
+            width: parent.width
+            value: settingsPopup.values.OverlayMode
+            options: [
+                {value: "freecad", label: qsTr("FreeCAD")},
+                {value: "nxt", label: qsTr("Nxt (experimental)")}
+            ]
+            onPicked: function (v) { prefs.set("OverlayMode", v); }
+        }
+
         Caption { text: qsTr("Reference chips") }
         Segmented {
             width: parent.width
