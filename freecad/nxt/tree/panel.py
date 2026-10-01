@@ -431,6 +431,15 @@ class ModelPanel(QtWidgets.QDockWidget):
         self.viewOverlayChanged.emit()
         self.save_state()
 
+    @QtCore.Slot()
+    def leaveViewOverlay(self) -> None:  # noqa: N802 - QML API
+        """The header's dock button: back into the dock.
+
+        Deferred a turn: the press that asked is still being handled by the
+        panel's own widget, which leaving reparents.
+        """
+        QtCore.QTimer.singleShot(0, lambda: self.set_view_overlay(False))
+
     def apply_overlay_mode(self) -> None:
         """The OverlayMode setting changed: leave ours if it is off."""
         if self.in_view_overlay() \

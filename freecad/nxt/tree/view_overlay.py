@@ -9,9 +9,10 @@ Clicks reach the model without a mask. Every press on the panel is
 first put to the QML - does it draw anything there (NxtTree.qml
 `wantsPoint`)? If so the panel gets it, and it goes no further; if not,
 the press is handed to the 3D view, with the moves and release that
-follow it. Wheel events and hover still pass by plain propagation: the
-panel's scene leaves them unaccepted where it draws nothing (see
-`host.viewOverlay` in NxtTree.qml and TreeRow.qml).
+follow it. The wheel is decided the same way: over the panel it scrolls
+the list, elsewhere it is handed to the model, which zooms. Hover passes
+by plain propagation (see `host.viewOverlay` in NxtTree.qml and
+TreeRow.qml).
 
 Whether the scene accepted a press was the first test, and it is not a
 safe one: a tap handler - the chips', the eye's - takes part in a press
@@ -35,9 +36,6 @@ import FreeCADGui as Gui
 
 from ..qt import QtCore, QtGui, QtWidgets
 from ..qtquick import modules as _quick_modules
-
-#: The panel's width in the view when the dock had none worth keeping.
-DEFAULT_WIDTH = 300
 
 _PRESSES = (QtCore.QEvent.Type.MouseButtonPress,
             QtCore.QEvent.Type.MouseButtonDblClick)
@@ -84,11 +82,13 @@ class ViewOverlay(QtCore.QObject):
         super().__init__(dock)
         self._dock = dock
         self._host: Any = None
-        self._width = DEFAULT_WIDTH
         self._attached = False
         #: A press the panel passed on is in progress: its moves and its
         #: release go to the 3D view too.
         self._passing = False
+        #: The panel is transparent to the mouse: the pointer is out over
+        #: the model (see _set_through).
+        self._through = False
         #: A press the panel kept is in progress: its moves and release
         #: stay with the panel, whether or not anything accepts them.
         self._owning = False
@@ -111,8 +111,6 @@ class ViewOverlay(QtCore.QObject):
         view = self._dock._view
         if not _alive(view):
             return False
-        if self._dock.width() > 80:
-            self._width = self._dock.width()
         self._attached = True
         self._dock.setWidget(QtWidgets.QWidget())   # the view leaves it
         host = active_viewport()
@@ -148,6 +146,7 @@ class ViewOverlay(QtCore.QObject):
         self._parked = False
         view = self._dock._view
         if _alive(view):
+            self._set_through(False)
             view.removeEventFilter(self)
             view.setParent(None)
             self._dock.setWidget(view)
@@ -197,6 +196,7 @@ class ViewOverlay(QtCore.QObject):
         self._parked = True
         self._passing = False
         self._owning = False
+        self._set_through(False)
         view.hide()
         view.setParent(self._shelf)
 
@@ -212,6 +212,10 @@ class ViewOverlay(QtCore.QObject):
         if self._holder is not None:
             self._holder.installEventFilter(self)
         self._parked = False
+        self._set_through(False)
+        # Its own mouse moves are how the panel learns the pointer is back
+        # over a pill while it lets the mouse fall through (_set_through).
+        host.setMouseTracking(True)
         view.setParent(host)
         view.setAttribute(QtCore.Qt.WidgetAttribute.WA_AlwaysStackOnTop,
                           True)
@@ -240,8 +244,10 @@ class ViewOverlay(QtCore.QObject):
         view = self._dock._view
         if not _alive(view) or not _alive(self._host) or self._parked:
             return
-        width = min(self._width, max(120, self._host.width() - 40))
-        view.setGeometry(0, 0, width, self._host.height())
+        # The whole view: what the panel does not draw passes clicks
+        # through, so width costs nothing, and pills get their own width
+        # rather than the dock's (TreeRow caps a name at half the view).
+        view.setGeometry(0, 0, self._host.width(), self._host.height())
 
     def eventFilter(self, watched: Any, event: Any) -> bool:  # noqa: N802
         kind = event.type()
@@ -269,9 +275,37 @@ class ViewOverlay(QtCore.QObject):
                     self._move_to(self._host)
                 elif kind == QtCore.QEvent.Type.Resize:
                     self._place()
-                elif kind in _PRESSES and self._from_panel(event):
+                elif kind in _PRESSES and not self._through \
+                        and self._from_panel(event):
                     self._passing = True
+                elif kind == QtCore.QEvent.Type.MouseMove \
+                        and self._through and not event.buttons() \
+                        and self._wants_at(self._in_view(event)):
+                    # Back over something the panel draws: it takes the
+                    # mouse again.
+                    self._set_through(False)
                 return False
+            if watched is self._dock._view \
+                    and kind == QtCore.QEvent.Type.MouseMove \
+                    and not event.buttons() and not self._passing \
+                    and not self._owning \
+                    and not self._wants_at(event.position()):
+                # Off everything the panel draws: let the mouse fall
+                # through to the 3D view natively until it comes back.
+                self._set_through(True)
+                return True
+            if watched is self._dock._view \
+                    and kind == QtCore.QEvent.Type.Wheel:
+                # Over something the panel draws, the wheel scrolls the
+                # list; anywhere else it is handed to the 3D view, which
+                # zooms. Handed, not left to propagate: the panel's scene
+                # can accept a wheel nothing in it used.
+                if self._wants(event):
+                    self._scroll(event)
+                else:
+                    self._pass_wheel(event)
+                event.accept()
+                return True
             if watched is self._dock._view and kind in _PRESSES:
                 # Decided before delivery, by asking the panel whether it
                 # draws anything at the point (NxtTree.qml wantsPoint).
@@ -313,19 +347,73 @@ class ViewOverlay(QtCore.QObject):
             self._owning = False
         return False
 
+    def _scroll(self, event: Any) -> None:
+        root = self._dock._view.rootObject()
+        if root is None:
+            return
+        QtCore.QMetaObject.invokeMethod(
+            root, "scrollWheel", QtCore.Qt.ConnectionType.DirectConnection,
+            QtCore.Q_ARG("QVariant", float(event.angleDelta().y())),
+            QtCore.Q_ARG("QVariant", float(event.pixelDelta().y())))
+
+    def _pass_wheel(self, event: Any) -> None:
+        """Send the panel's wheel event to the 3D view, in its coordinates."""
+        view, host = self._dock._view, self._host
+        if not _alive(host):
+            return
+        local = QtCore.QPointF(view.mapTo(host, event.position().toPoint()))
+        forwarded = QtGui.QWheelEvent(
+            local, event.globalPosition(), event.pixelDelta(),
+            event.angleDelta(), event.buttons(), event.modifiers(),
+            event.phase(), event.inverted(), event.source())
+        QtWidgets.QApplication.sendEvent(host, forwarded)
+
     def _deliver(self, event: Any) -> None:
         """Give a mouse event to the panel only, never past it."""
         quick_widget = _quick_modules()[2].QQuickWidget
         quick_widget.event(self._dock._view, event)
         event.accept()
 
+    def _set_through(self, on: bool) -> None:
+        """Let the mouse fall through the panel to the 3D view, or not.
+
+        Hit-testing each event covers clicks, but not what Qt routes on
+        its own - hover, and the wheel, which the 3D view would not take
+        from us second-hand. So while the pointer is over nothing the
+        panel draws, the panel is made transparent to the mouse outright:
+        the 3D view gets everything natively, preselection and zoom
+        included, and the panel's rows stop showing hover controls for a
+        pointer that is out over the model. The 3D view's own mouse moves
+        say when the pointer is back over a pill.
+        """
+        view = self._dock._view
+        if on == self._through or not _alive(view):
+            return
+        self._through = on
+        view.setAttribute(
+            QtCore.Qt.WidgetAttribute.WA_TransparentForMouseEvents, on)
+        if on:
+            # The panel will hear nothing more: tell it the pointer left,
+            # so rows drop their hover state.
+            QtWidgets.QApplication.sendEvent(
+                view, QtCore.QEvent(QtCore.QEvent.Type.Leave))
+
+    def _in_view(self, event: Any) -> QtCore.QPointF:
+        """A 3D view event's position in the panel's coordinates."""
+        view = self._dock._view
+        return QtCore.QPointF(view.mapFrom(self._host,
+                                           event.position().toPoint()))
+
     def _wants(self, event: Any) -> bool:
         """Does the panel draw anything where this press is?"""
+        return self._wants_at(event.position())
+
+    def _wants_at(self, point: Any) -> bool:
+        """Does the panel draw anything at this point, in its coordinates?"""
         view = self._dock._view
         root = view.rootObject() if _alive(view) else None
         if root is None:
             return True
-        point = event.position()
         try:
             return bool(QtCore.QMetaObject.invokeMethod(
                 root, "wantsPoint",

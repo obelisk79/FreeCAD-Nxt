@@ -203,6 +203,13 @@ Item {
                && px <= detail.width - 8;
     }
 
+    // The row's hover controls - the eye, the status mark's ring - show
+    // for the pointer, and for the keyboard: on the row the keyboard is
+    // on, while the list has the keyboard.
+    readonly property bool showControls: hover.hovered
+        || (row.ListView.isCurrentItem && row.ListView.view !== null
+            && row.ListView.view.activeFocus)
+
     readonly property bool isolatedOut:
         isolation.isActive && !isolation.keptNames[row.name]
 
@@ -548,7 +555,11 @@ Item {
             // re-emits on every width change). Both loop on a mode switch.
             width: theme.overlay
                  ? Math.min(labelMetrics.advanceWidth,
-                            Math.max(40, head.width - x - 110))
+                            Math.max(40, head.width - x - 110),
+                            // Inside the 3D view the panel spans the view:
+                            // a name gets its own width, up to half of it.
+                            host.viewOverlay ? Math.max(40, head.width / 2)
+                                             : Infinity)
                  : Math.max(0, head.width - x - tail.width - 16)
             text: row.label
             elide: Text.ElideMiddle
@@ -686,7 +697,7 @@ Item {
                         visible: !row.isFeature
                         open: row.objectVisible
                         ink: row.selected ? theme.accentText : theme.textDim
-                        opacity: hover.hovered ? 1.0 : 0.0
+                        opacity: row.showControls ? 1.0 : 0.0
                         onToggled: nxt.toggleVisibility(row.name)
 
                         Behavior on opacity { NumberAnimation { duration: 90 } }
@@ -707,7 +718,7 @@ Item {
                         visible: row.isFeature
                         ink: row.selected ? theme.accentText : theme.textDim
                         opacity: stepHover.hovered ? 0.9
-                                 : hover.hovered ? 0.45 : 0.0
+                                 : row.showControls ? 0.45 : 0.0
 
                         Behavior on opacity { NumberAnimation { duration: 90 } }
 
@@ -734,7 +745,7 @@ Item {
                         anchors.centerIn: parent
                         size: parent.width
                         level: row.markLevel > 0 ? row.markLevel
-                             : (row.hasDetail && hover.hovered) ? 1 : 0
+                             : (row.hasDetail && row.showControls) ? 1 : 0
                         // A ring that only appeared because the pointer is
                         // here must not read the same as one that is
                         // telling you something.
