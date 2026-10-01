@@ -1409,6 +1409,120 @@ class TreeBridge(QtCore.QObject):
         self.invalidate(icons=True)
         return moved
 
+    # -- the document root: the header's name, empty space when docked ---- #
+
+    @staticmethod
+    def _container_of(source: Any) -> Any:
+        """The group-like object that really holds `source`, or None.
+
+        Asked of the document, not the snapshot: the panel lifts sketches
+        out of the features that claim them, so a row's parent in the tree
+        is not always the object that owns it.
+        """
+        for parent in getattr(source, "InList", None) or ():
+            group = getattr(parent, "Group", None) or ()
+            if any(getattr(g, "Name", None) == source.Name for g in group):
+                return parent
+        return None
+
+    @staticmethod
+    def _can_leave_body(source: Any, body: Any) -> bool:
+        """May `source` leave its Body, though Part Design refuses the drag?
+
+        Part Design refuses every drag out of a Body. That is right for its
+        solid features, which are the Body's history, and for a sketch
+        attached to the Body's planes or faces, which would lose them - but
+        it also holds back a VarSet or a free-standing sketch, which depend
+        on nothing in the Body and are often better kept outside it. So:
+        never a solid feature, nothing that still links to anything in the
+        Body, and nothing the Body's features are built on - except values
+        they read through expressions.
+        """
+        if not getattr(body, "TypeId", "").startswith("PartDesign::Body"):
+            return False
+        try:
+            if source.isDerivedFrom("PartDesign::Feature"):
+                return False
+        except Exception:
+            return False
+        inside = {o.Name for o in getattr(body, "Group", None) or ()}
+        origin = getattr(body, "Origin", None)
+        if origin is not None:
+            inside.add(origin.Name)
+            inside |= {o.Name for o in
+                       getattr(origin, "OriginFeatures", None) or ()}
+        inside.add(body.Name)
+        try:
+            needs = getattr(source, "OutListRecursive", None)
+            needs = needs if needs is not None else source.OutList
+        except Exception:
+            return False
+        if any(getattr(o, "Name", None) in inside for o in needs):
+            return False
+        # Used from inside the Body: a sketch a Pad is built on cannot move
+        # out from under it. Values read through expressions - a VarSet, a
+        # spreadsheet - are fine to read from outside the Body.
+        used = any(getattr(o, "Name", None) in inside - {body.Name}
+                   for o in getattr(source, "InList", None) or ())
+        if used:
+            kind = getattr(source, "TypeId", "")
+            return kind in ("App::VarSet", "Spreadsheet::Sheet")
+        return True
+
+    @QtCore.Slot("QVariantList", result=bool)
+    def canDropOnRoot(self, sources: list[Any]) -> bool:  # noqa: N802
+        """Can these all leave their containers for the document's top?"""
+        doc = App.ActiveDocument
+        if doc is None or not sources:
+            return False
+        for name in sources:
+            source = doc.getObject(str(name))
+            parent = self._container_of(source) if source else None
+            if parent is None:
+                return False            # missing, or already at the top
+            pvo = getattr(parent, "ViewObject", None)
+            try:
+                can = getattr(pvo, "canDragObject", None)
+                if callable(can) and not can(source) \
+                        and not self._can_leave_body(source, parent):
+                    return False
+            except Exception:
+                return False
+        return True
+
+    @QtCore.Slot("QVariantList", result=bool)
+    def dropOnRoot(self, sources: list[Any]) -> bool:  # noqa: N802
+        """Move objects out of their containers to the document's top."""
+        if not self.canDropOnRoot(sources):
+            return False
+        doc = App.ActiveDocument
+        moved = False
+        try:
+            doc.openTransaction("Move to top level")
+            for name in sources:
+                source = doc.getObject(str(name))
+                parent = self._container_of(source)
+                pvo = getattr(parent, "ViewObject", None)
+                can = getattr(pvo, "canDragObject", None)
+                drag = getattr(pvo, "dragObject", None)
+                if callable(drag) and (not callable(can) or can(source)):
+                    drag(source)
+                    moved = True
+                elif self._can_leave_body(source, parent):
+                    # Out of a Body its view provider will not release it
+                    # from - see _can_leave_body.
+                    parent.removeObject(source)
+                    moved = True
+            doc.commitTransaction()
+        except Exception:
+            doc.abortTransaction()
+            _err("could not move to the top level")
+            moved = False
+        # Deferred, as dropOn's: see there.
+        self._recompute_timer.start()
+        self.invalidate(icons=True)
+        return moved
+
     def _body_reorder(self, sources: list[Any],
                       target_name: str) -> tuple[Any, reorder.Plan]:
         """The Body and plan when this drop reorders a Body, else None."""

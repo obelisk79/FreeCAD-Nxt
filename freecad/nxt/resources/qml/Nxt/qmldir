@@ -5,6 +5,7 @@ SearchBox 1.0 SearchBox.qml
 Disclosure 1.0 Disclosure.qml
 EyeToggle 1.0 EyeToggle.qml
 IsolationNotice 1.0 IsolationNotice.qml
+RootDropArea 1.0 RootDropArea.qml
 StepMark 1.0 StepMark.qml
 NxtToolTip 1.0 NxtToolTip.qml
 TimelineBar 1.0 TimelineBar.qml

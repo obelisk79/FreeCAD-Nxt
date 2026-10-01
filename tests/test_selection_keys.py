@@ -372,5 +372,103 @@ class EditTransactionTests(unittest.TestCase):
         self.assertEqual(self.log[-1], ("close", True))
 
 
+class RootDropTests(unittest.TestCase):
+    """Dropping a row on the document's name: out of its container."""
+
+    def setUp(self) -> None:
+        self.bridge = make_bridge()
+        self.bridge._recompute_timer = types.SimpleNamespace(
+            start=lambda: None)
+        self.dragged: list[str] = []
+        self.allow = True
+        group = DOC.objects["A"]
+        member = DOC.objects["B"]
+        group.Group = [member]
+        group.ViewObject.canDragObject = lambda _o: self.allow
+        group.ViewObject.dragObject = lambda o: self.dragged.append(o.Name)
+        member.InList = [group]
+        DOC.objects["C"].InList = []
+        DOC.log = []
+
+    def tearDown(self) -> None:
+        del DOC.objects["A"].Group
+        for name in "BC":
+            del DOC.objects[name].InList
+
+    def test_a_member_leaves_its_container_in_one_step(self) -> None:
+        self.assertTrue(self.bridge.canDropOnRoot(["B"]))
+        self.assertTrue(self.bridge.dropOnRoot(["B"]))
+        self.assertEqual(self.dragged, ["B"])
+        self.assertEqual(DOC.log, ["open Move to top level", "commit"])
+
+    def test_already_at_the_top(self) -> None:
+        self.assertFalse(self.bridge.canDropOnRoot(["C"]))
+
+    def test_a_container_that_refuses_keeps_it(self) -> None:
+        self.allow = False
+        self.assertFalse(self.bridge.canDropOnRoot(["B"]))
+        self.assertFalse(self.bridge.dropOnRoot(["B"]))
+        self.assertEqual(self.dragged, [])
+
+
+class BodyDropTests(unittest.TestCase):
+    """Out of a Body, whose view provider releases nothing."""
+
+    def setUp(self) -> None:
+        self.bridge = make_bridge()
+        self.bridge._recompute_timer = types.SimpleNamespace(
+            start=lambda: None)
+        self.removed: list[str] = []
+        body = types.SimpleNamespace(Name="Body", TypeId="PartDesign::Body")
+        plane = types.SimpleNamespace(Name="XY_Plane")
+        body.Origin = types.SimpleNamespace(Name="Origin",
+                                            OriginFeatures=[plane])
+        body.ViewObject = types.SimpleNamespace(
+            canDragObject=lambda _o: False, dragObject=lambda _o: None)
+        body.removeObject = lambda o: self.removed.append(o.Name)
+
+        def member(name: str, solid: bool, needs: list[Any]) -> Any:
+            obj = types.SimpleNamespace(
+                Name=name, InList=[body], OutList=needs,
+                OutListRecursive=needs,
+                isDerivedFrom=lambda t: solid and t == "PartDesign::Feature")
+            return obj
+        pad = member("Pad", True, [])
+        self.objects = {
+            "VarSet": member("VarSet", False, []),
+            "Attached": member("Attached", False, [plane]),
+            "Free": member("Free", False, []),
+            "Profile": member("Profile", False, []),
+            "Pad": pad,
+        }
+        # Pad reads the VarSet through an expression and is built on Profile.
+        self.objects["VarSet"].TypeId = "App::VarSet"
+        self.objects["VarSet"].InList = [body, pad]
+        self.objects["Profile"].InList = [body, pad]
+        body.Group = list(self.objects.values())
+        self.saved = DOC.objects
+        DOC.objects = dict(self.saved, **self.objects)
+        DOC.log = []
+
+    def tearDown(self) -> None:
+        DOC.objects = self.saved
+
+    def test_a_varset_or_free_sketch_may_leave(self) -> None:
+        self.assertTrue(self.bridge.canDropOnRoot(["VarSet", "Free"]))
+        self.assertTrue(self.bridge.dropOnRoot(["VarSet"]))
+        self.assertEqual(self.removed, ["VarSet"])
+
+    def test_a_sketch_on_the_bodys_planes_stays(self) -> None:
+        self.assertFalse(self.bridge.canDropOnRoot(["Attached"]))
+
+    def test_a_sketch_a_feature_is_built_on_stays(self) -> None:
+        self.assertFalse(self.bridge.canDropOnRoot(["Profile"]))
+
+    def test_a_solid_feature_stays(self) -> None:
+        self.assertFalse(self.bridge.canDropOnRoot(["Pad"]))
+        self.assertFalse(self.bridge.dropOnRoot(["Pad"]))
+        self.assertEqual(self.removed, [])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
