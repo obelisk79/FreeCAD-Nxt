@@ -104,6 +104,25 @@ Rectangle {
             border.color: theme.pillBorder
         }
 
+        // The document's name is the top level of its tree: drop a row on
+        // it to move the object out of its container, as onto the stock
+        // tree's document row.
+        Rectangle {
+            anchors.fill: docLabel
+            anchors.margins: -3
+            radius: 4
+            color: theme.hover
+            border.width: 1
+            border.color: theme.accent
+            visible: docDrop.accepting
+        }
+        RootDropArea {
+            id: docDrop
+            anchors.fill: docLabel
+            anchors.margins: -3
+            ghost: ghost
+        }
+
         Text {
             id: docLabel
             anchors.verticalCenter: parent.verticalCenter
@@ -303,6 +322,22 @@ Rectangle {
         anchors.bottom: parent.bottom
         width: parent.width
 
+        // Docked, empty space below the rows is the document's top level:
+        // a row dropped there leaves its container. Beneath the list, so a
+        // row under the pointer is always the target first. Not in Nxt's
+        // overlay, where empty space is the model's - the header's name is
+        // the way there.
+        RootDropArea {
+            anchors.fill: parent
+            z: -1
+            enabled: !host.viewOverlay
+            ghost: ghost
+            allowAt: function (x, y) {
+                return treeList.indexAt(x, y - treeList.y
+                                           + treeList.contentY) < 0;
+            }
+        }
+
         ListView {
             id: treeList
             anchors.fill: parent
@@ -335,6 +370,14 @@ Rectangle {
             property bool reorderDrag: false
 
             delegate: TreeRow { dragGhost: ghost; detailCap: root.contentCap }
+
+            // One empty row after the last: scrolled to the end, the last
+            // row - and a rollback bar under it - is never jammed against
+            // the bottom edge.
+            footer: Item {
+                width: treeList.width
+                height: theme.rowHeight
+            }
 
             // A translucent QQuickWidget composites over what is behind it,
             // but changing content does not ask that surface to redraw - so
@@ -432,7 +475,7 @@ Rectangle {
             label.text = text;
             ghostIcon.source = icon;
             sliding = grabbedAt !== null && grabbedAt !== undefined;
-            shot.source = "";
+            shot.sourceItem = null;
             slideTarget = "";
             verdicts = ({});
             // The drop target is the row under the pointer, so the hot spot
@@ -445,14 +488,21 @@ Rectangle {
             Drag.active = true;
         }
 
-        // The row's picture, once grabToImage has it; until then (a frame
-        // or so) the label stands in.
-        function picture(url, w, h) {
+        // The row's picture: the part of `item` from `left`, `w` wide.
+        // Drawn by the scene graph in the next frame, not grabbed to an
+        // image: grabToImage answers asynchronously, and in a panel that
+        // was not repainting it could fail to answer at all - the label
+        // stood in until something (switching windows) made the panel
+        // redraw. Cropped, so in an overlay the picture is the pill, not
+        // a bar the width of the 3D view.
+        function picture(item, left, w, h) {
             if (!Drag.active)
                 return;
             shot.width = w;
             shot.height = h;
-            shot.source = url;
+            shot.sourceRect = Qt.rect(left, 0, w, h);
+            shot.sourceItem = item;
+            shot.scheduleUpdate();
         }
 
         function finish() {
@@ -467,7 +517,7 @@ Rectangle {
             }
             names = [];
             sliding = false;
-            shot.source = "";
+            shot.sourceItem = null;
             treeList.dragSource = "";
             treeList.reorderDrag = false;
         }
@@ -524,9 +574,15 @@ Rectangle {
             treeList.dropGap = ok ? best : -1;
         }
 
-        Image {
+        ShaderEffectSource {
             id: shot
-            visible: ghost.sliding && status === Image.Ready
+            // Once taken, not redrawn: the row it shows is dimmed while it
+            // is being dragged, and the copy keeps it as it was. (A copy
+            // leaves out its source's own opacity, so the dimming would
+            // not show in it anyway.)
+            live: false
+            hideSource: false
+            visible: ghost.sliding && sourceItem !== null
 
             // Lifted: a shadow line under it and a little transparency, so
             // it reads as held above the list rather than part of it.

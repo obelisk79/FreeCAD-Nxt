@@ -599,7 +599,12 @@ Item {
             visible: row.renaming
             anchors.verticalCenter: parent.verticalCenter
             x: title.x
-            width: Math.max(60, head.width - x - 10)
+            // In an overlay the line runs across the 3D view: the field
+            // takes the name's room and a little more, not all of it.
+            width: theme.overlay
+                 ? Math.min(head.width - x - 10,
+                            Math.max(160, labelMetrics.advanceWidth + 48))
+                 : Math.max(60, head.width - x - 10)
             font: title.font
             color: theme.text
             selectionColor: theme.accent
@@ -873,15 +878,22 @@ Item {
                     // Anything else can go anywhere, so a label follows the
                     // pointer instead.
                     var sliding = row.bodyName !== "";
-                    row.dragGhost.begin([row.name], row.label, row.iconUrl,
-                                        sliding ? origin : null);
+                    // In an overlay the row is its pill: the picture is
+                    // that much of the line, not the whole of it.
+                    var cropLeft = theme.overlay ? Math.max(0, row.pillLeft - 2)
+                                                 : 0;
+                    var cropWidth = theme.overlay
+                                  ? row.pillRight + 2 - cropLeft
+                                  : head.width;
+                    row.dragGhost.begin(
+                        [row.name], row.label, row.iconUrl,
+                        sliding ? Qt.point(origin.x - cropLeft, origin.y)
+                                : null);
                     if (sliding) {
-                        head.grabToImage(function (result) {
-                            row.dragGhost.picture(result.url, head.width,
-                                                  head.height);
-                        });
+                        row.dragGhost.picture(head, cropLeft, cropWidth,
+                                              head.height);
                         var corner = row.mapToItem(row.dragGhost.parent, 0, 0);
-                        row.dragGhost.x = corner.x;
+                        row.dragGhost.x = corner.x + cropLeft;
                     }
                 }
                 if (row.dragGhost.sliding) {

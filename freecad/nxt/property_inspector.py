@@ -34,6 +34,34 @@ from .qt import QtCore, QtGui, QtWidgets
 from .tree import settings
 
 
+def table_icon(size: int, colour: QtGui.QColor,
+               ratio: float = 1.0) -> QtGui.QIcon:
+    """A small two-column table: FreeCAD's own Property editor.
+
+    Drawn, like the pin, so it stays sharp and takes the text colour.
+    """
+    ratio = ratio or 1.0
+    pixmap = QtGui.QPixmap(round(size * ratio), round(size * ratio))
+    pixmap.setDevicePixelRatio(ratio)
+    pixmap.fill(QtCore.Qt.GlobalColor.transparent)
+    painter = QtGui.QPainter(pixmap)
+    painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing, True)
+    painter.scale(size, size)
+    pen = QtGui.QPen(colour)
+    pen.setWidthF(0.08)
+    pen.setJoinStyle(QtCore.Qt.PenJoinStyle.RoundJoin)
+    painter.setPen(pen)
+    painter.setBrush(QtCore.Qt.BrushStyle.NoBrush)
+    painter.drawRoundedRect(QtCore.QRectF(0.08, 0.14, 0.84, 0.72),
+                            0.06, 0.06)
+    # Header rule, a row rule, and the column divider.
+    for y in (0.38, 0.62):
+        painter.drawLine(QtCore.QPointF(0.08, y), QtCore.QPointF(0.92, y))
+    painter.drawLine(QtCore.QPointF(0.42, 0.14), QtCore.QPointF(0.42, 0.86))
+    painter.end()
+    return QtGui.QIcon(pixmap)
+
+
 def pin_icon(size: int, pinned: bool, colour: QtGui.QColor,
              ratio: float = 1.0) -> QtGui.QIcon:
     """A pushpin: upright and filled when pinned, tilted and hollow when not.
@@ -267,10 +295,18 @@ class PropertyInspector(QtWidgets.QFrame):
         self._grab_origin = QtCore.QPoint()
         self._close = self._tool_button(translate("Nxt", "Close"), "✕")
         self._close.clicked.connect(self.close_inspector)
+        # FreeCAD's own Property editor, every property in its table; again
+        # for the inspector.
+        self._table = self._tool_button(
+            translate("Nxt", "Show FreeCAD's property table"), "",
+            checkable=True)
+        self._table.toggled.connect(self._on_table_toggled)
+        self._draw_pin()
 
         header = QtWidgets.QHBoxLayout()
         header.setSpacing(HEADER_SPACING)
         header.addWidget(self._title, 1)
+        header.addWidget(self._table)
         header.addWidget(self._pin)
         header.addWidget(self._close)
 
@@ -417,7 +453,22 @@ class PropertyInspector(QtWidgets.QFrame):
         self._pages.insertWidget(0, self._inspector)
         return True
 
+    def _on_table_toggled(self, on: bool) -> None:
+        if on:
+            self.show_native()
+        elif self._inspector is None:
+            self._mark_table(True)      # no QML page: the table is all
+        else:
+            self.show_inspector()
+
+    def _mark_table(self, on: bool) -> None:
+        """Show which page is up on the table button, without acting."""
+        self._table.blockSignals(True)
+        self._table.setChecked(on)
+        self._table.blockSignals(False)
+
     def show_inspector(self) -> None:
+        self._mark_table(False)
         self._give_back()
         self._back.hide()
         if self._inspector is None:
@@ -428,7 +479,9 @@ class PropertyInspector(QtWidgets.QFrame):
     def show_native(self, prop: str = "") -> None:
         """FreeCAD's own editor, for a property the QML cannot edit."""
         if self._home is None and not self._borrow():
+            self._mark_table(False)
             return
+        self._mark_table(True)
         if self._inspector_bridge is not None:
             self._inspector_bridge.stop()
         self._back.setVisible(self._inspector is not None)
@@ -517,6 +570,7 @@ class PropertyInspector(QtWidgets.QFrame):
             self._save_timer.start()
 
     def _draw_pin(self) -> None:
+        """The header's drawn icons: the pin and, once made, the table."""
         colour = self._pin.palette().color(
             QtGui.QPalette.ColorRole.ButtonText)
         # Sized to the neighbouring "✕", which is about as tall as a
@@ -527,6 +581,11 @@ class PropertyInspector(QtWidgets.QFrame):
         self._pin.setIcon(pin_icon(side, self._pin.isChecked(), colour,
                                    self.devicePixelRatioF()))
         self._pin.setIconSize(QtCore.QSize(side, side))
+        table = getattr(self, "_table", None)
+        if table is not None:
+            table.setIcon(table_icon(side, colour,
+                                     self.devicePixelRatioF()))
+            table.setIconSize(QtCore.QSize(side, side))
 
     def changeEvent(self, event: QtCore.QEvent) -> None:  # noqa: N802
         super().changeEvent(event)
