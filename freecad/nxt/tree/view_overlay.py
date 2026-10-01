@@ -5,21 +5,22 @@ setting chooses). The panel's QQuickWidget is taken out of its dock and
 made a child of the active 3D view's GL widget, see-through and stacked
 on top, down the view's left edge.
 
-Clicks reach the model by propagation, not by a mask: a QQuickWidget
-marks a mouse or wheel event accepted only if something in the scene
-accepted it, and Qt passes an ignored event on to the parent widget -
-here, the 3D view. So a press on a row goes to the row, and a press on
-the transparent space between and below the rows goes to the model,
-with no geometry kept in sync. For that the QML stands aside wherever it
-draws nothing (see `host.viewOverlay` in NxtTree.qml and TreeRow.qml).
+Clicks reach the model without a mask. Every press on the panel is
+first put to the QML - does it draw anything there (NxtTree.qml
+`wantsPoint`)? If so the panel gets it, and it goes no further; if not,
+the press is handed to the 3D view, with the moves and release that
+follow it. Wheel events and hover still pass by plain propagation: the
+panel's scene leaves them unaccepted where it draws nothing (see
+`host.viewOverlay` in NxtTree.qml and TreeRow.qml).
 
-Propagation covers the press, not what follows it. Qt sends a button's
-moves and its release to the widget that first received the press - the
-panel's - whoever accepted it in the end, and the panel's scene takes
-them, so the 3D view saw a press and never its release. The press is
-therefore watched arriving at the 3D view from the panel; from then until
-the button comes up, the panel's moves and release are handed straight
-on to the 3D view.
+Whether the scene accepted a press was the first test, and it is not a
+safe one: a tap handler - the chips', the eye's - takes part in a press
+without accepting it, so the press went on to the model and the tap was
+lost.
+
+A handed-on press needs its moves and release handed on too: Qt sends
+them to the widget that first received the press - the panel's - so
+until the button comes up they are passed straight on to the 3D view.
 
 The dock is hidden while the panel is in the view and gets its widget
 back when it leaves.
@@ -33,6 +34,7 @@ import FreeCAD as App
 import FreeCADGui as Gui
 
 from ..qt import QtCore, QtGui, QtWidgets
+from ..qtquick import modules as _quick_modules
 
 #: The panel's width in the view when the dock had none worth keeping.
 DEFAULT_WIDTH = 300
@@ -87,6 +89,9 @@ class ViewOverlay(QtCore.QObject):
         #: A press the panel passed on is in progress: its moves and its
         #: release go to the 3D view too.
         self._passing = False
+        #: A press the panel kept is in progress: its moves and release
+        #: stay with the panel, whether or not anything accepts them.
+        self._owning = False
         #: The 3D view window (View3DInventor) around `_host`, watched for
         #: closing; and whether the panel is parked out of every view.
         self._holder: Any = None
@@ -139,6 +144,7 @@ class ViewOverlay(QtCore.QObject):
                 old.removeEventFilter(self)
         self._host = self._holder = None
         self._passing = False
+        self._owning = False
         self._parked = False
         view = self._dock._view
         if _alive(view):
@@ -190,6 +196,7 @@ class ViewOverlay(QtCore.QObject):
             return
         self._parked = True
         self._passing = False
+        self._owning = False
         view.hide()
         view.setParent(self._shelf)
 
@@ -211,6 +218,7 @@ class ViewOverlay(QtCore.QObject):
         host.installEventFilter(self)
         view.installEventFilter(self)
         self._passing = False
+        self._owning = False
         self._place()
         view.show()
         view.raise_()
@@ -249,6 +257,11 @@ class ViewOverlay(QtCore.QObject):
                 self._park()
                 return False
             if watched is self._host:
+                if kind == QtCore.QEvent.Type.MouseButtonRelease:
+                    # The 3D view got a release itself: whatever press was
+                    # being passed on is over, however it ended.
+                    self._passing = False
+                    self._owning = False
                 if kind == QtCore.QEvent.Type.Hide:
                     self._park()
                 elif kind == QtCore.QEvent.Type.Show and self._parked \
@@ -259,17 +272,69 @@ class ViewOverlay(QtCore.QObject):
                 elif kind in _PRESSES and self._from_panel(event):
                     self._passing = True
                 return False
+            if watched is self._dock._view and kind in _PRESSES:
+                # Decided before delivery, by asking the panel whether it
+                # draws anything at the point (NxtTree.qml wantsPoint).
+                # Its own: delivered to the panel and kept from the 3D
+                # view, accepted or not. Not its own: handed to the 3D view,
+                # and with it every move and the release that follow.
+                if self._wants(event):
+                    self._passing = False
+                    self._owning = True
+                    self._deliver(event)
+                    return True
+                self._owning = False
+                self._passing = True
+                self._pass_on(event)
+                return True
+            if watched is self._dock._view and self._owning \
+                    and kind in _FOLLOWERS:
+                # The panel's own press: its moves and release stay with
+                # it too. Left to Qt, a release nothing in the scene
+                # accepted - a chip's tap, the eye's - went on to the 3D
+                # view, which took it for a click on the model and changed
+                # the selection the chip had just made.
+                self._deliver(event)
+                if kind == QtCore.QEvent.Type.MouseButtonRelease \
+                        and not event.buttons():
+                    self._owning = False
+                return True
             if watched is self._dock._view and self._passing \
                     and kind in _FOLLOWERS:
                 self._pass_on(event)
                 if kind == QtCore.QEvent.Type.MouseButtonRelease \
                         and not event.buttons():
                     self._passing = False
+                    self._owning = False
                 return True
         except Exception as exc:
             App.Console.PrintLog("Nxt view overlay: %s\n" % exc)
             self._passing = False
+            self._owning = False
         return False
+
+    def _deliver(self, event: Any) -> None:
+        """Give a mouse event to the panel only, never past it."""
+        quick_widget = _quick_modules()[2].QQuickWidget
+        quick_widget.event(self._dock._view, event)
+        event.accept()
+
+    def _wants(self, event: Any) -> bool:
+        """Does the panel draw anything where this press is?"""
+        view = self._dock._view
+        root = view.rootObject() if _alive(view) else None
+        if root is None:
+            return True
+        point = event.position()
+        try:
+            return bool(QtCore.QMetaObject.invokeMethod(
+                root, "wantsPoint",
+                QtCore.Qt.ConnectionType.DirectConnection,
+                QtCore.Q_RETURN_ARG("QVariant"),
+                QtCore.Q_ARG("QVariant", point.x()),
+                QtCore.Q_ARG("QVariant", point.y())))
+        except Exception:
+            return True             # when unsure, the panel keeps it
 
     def _from_panel(self, event: Any) -> bool:
         """Did this press reach the 3D view by passing through the panel?"""

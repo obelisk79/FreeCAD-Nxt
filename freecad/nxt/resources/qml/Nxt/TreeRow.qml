@@ -190,6 +190,19 @@ Item {
         return false;
     }
 
+    // Nxt's overlay (view_overlay.py): does this point, in the row, land on
+    // something the row draws - its expand arrow, its pill, or its open
+    // detail strip? If not, a press there belongs to the 3D view behind.
+    function wantsPoint(px, py) {
+        if (py < head.height) {
+            // The arrow sits outside the pill, to its left.
+            var left = row.hasChildren ? expander.x : row.pillLeft;
+            return px >= left - 2 && px <= row.pillRight + 2;
+        }
+        return detail.visible && px >= row.detailLeft
+               && px <= detail.width - 8;
+    }
+
     readonly property bool isolatedOut:
         isolation.isActive && !isolation.keptNames[row.name]
 
@@ -799,6 +812,10 @@ Item {
             height: parent.height
             z: -1
             acceptedButtons: Qt.LeftButton | Qt.RightButton
+            // In the row line's (head's) coordinates, not this area's:
+            // in Nxt's overlay the area starts at the pill, not at the
+            // row's left edge, and the rename and drag code both measure
+            // against the row.
             property point origin
             property bool armed: false
 
@@ -812,7 +829,7 @@ Item {
                     nxt.requestContextMenu(row.name, at.x, at.y);
                     return;
                 }
-                origin = Qt.point(mouse.x, mouse.y);
+                origin = mapToItem(head, mouse.x, mouse.y);
                 armed = true;
                 var wasSelected = row.selected;
                 if (row.ListView.view) {
@@ -826,7 +843,7 @@ Item {
                 else
                     nxt.select(row.name, additive);
                 if (wasSelected && !additive && !row.renaming
-                        && row.overGlyphs(mouse.x, mouse.y))
+                        && row.overGlyphs(origin.x, origin.y))
                     row.armRename();
             }
 
@@ -834,8 +851,9 @@ Item {
                 if (!armed || !row.dragGhost) return;
                 var here = mapToItem(row.dragGhost.parent, mouse.x, mouse.y);
                 if (!row.dragGhost.Drag.active) {
-                    if (Math.abs(mouse.x - origin.x)
-                            + Math.abs(mouse.y - origin.y) < 8)
+                    var at = mapToItem(head, mouse.x, mouse.y);
+                    if (Math.abs(at.x - origin.x)
+                            + Math.abs(at.y - origin.y) < 8)
                         return;
                     // Moving the object is not asking to rename it.
                     row.disarmRename();

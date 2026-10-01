@@ -42,6 +42,31 @@ Rectangle {
                    Screen.width * theme.headerMaxPercent / 100)
         : width
 
+    // Nxt's overlay (view_overlay.py): does a press at (x, y) land on
+    // something the panel draws? Asked for every press before it is
+    // delivered: a point on a pill, the header, a strip or a rollback bar
+    // is the panel's; anything else goes straight to the 3D view. Asked,
+    // not inferred from whether the scene accepted the press - a tap
+    // handler on a chip takes a press without accepting it, and the chip's
+    // click was lost to the model.
+    function wantsPoint(x, y) {
+        if (header.contains(header.mapFromItem(root, x, y)))
+            return true;
+        var bar = tipLayer.childAt(x - tipLayer.x, y - treePane.y);
+        if (bar !== null)
+            return true;
+        var p = treeList.mapFromItem(root, x, y);
+        var index = treeList.indexAt(p.x + treeList.contentX,
+                                     p.y + treeList.contentY);
+        if (index < 0)
+            return false;
+        var row = treeList.itemAtIndex(index);
+        if (!row)
+            return false;
+        var r = row.mapFromItem(root, x, y);
+        return row.wantsPoint(r.x, r.y);
+    }
+
     // ================================================================ header
 
     Item {
