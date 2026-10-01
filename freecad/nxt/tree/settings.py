@@ -50,6 +50,11 @@ DEFAULTS: dict[str, bool | int | float | str] = {
     "UnderConstrainedMarks": True,
     # Hovering a row's controls explains them (NxtToolTip.qml).
     "RowToolTips": True,
+    # Whose overlay the panel uses: Nxt's own, drawn inside the 3D view
+    # with clicks passing through ("nxt"), or FreeCAD's ("freecad").
+    "OverlayMode": "nxt",
+    # The panel was in the 3D view (Nxt's overlay) when FreeCAD closed.
+    "ViewOverlay": False,
     # Picking an object in the 3D view scrolls the tree to its row.
     "FollowSelection": True,
     # Double-clicking a face in the 3D view edits the feature that made it.
@@ -62,7 +67,7 @@ DEFAULTS: dict[str, bool | int | float | str] = {
     "DependencyArrows": False,
     # The header and detail strips are capped at this percentage
     # of the screen's width, but never below HeaderMinWidth pixels.
-    "HeaderMaxPercent": 25,
+    "HeaderMaxPercent": 18,
     "HeaderMinWidth": 220,
     # The Property Inspector: whether it stays open, and where it was left
     # while pinned. A width or height of 0 means "never placed yet".

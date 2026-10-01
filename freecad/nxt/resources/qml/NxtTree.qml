@@ -42,6 +42,45 @@ Rectangle {
                    Screen.width * theme.headerMaxPercent / 100)
         : width
 
+    // Nxt's overlay (view_overlay.py): does a press at (x, y) land on
+    // something the panel draws? Asked for every press before it is
+    // delivered: a point on a pill, the header, a strip or a rollback bar
+    // is the panel's; anything else goes straight to the 3D view. Asked,
+    // not inferred from whether the scene accepted the press - a tap
+    // handler on a chip takes a press without accepting it, and the chip's
+    // click was lost to the model.
+    function wantsPoint(x, y) {
+        if (header.contains(header.mapFromItem(root, x, y)))
+            return true;
+        var bar = tipLayer.childAt(x - tipLayer.x, y - treePane.y);
+        if (bar !== null)
+            return true;
+        var p = treeList.mapFromItem(root, x, y);
+        var index = treeList.indexAt(p.x + treeList.contentX,
+                                     p.y + treeList.contentY);
+        if (index < 0)
+            return false;
+        var row = treeList.itemAtIndex(index);
+        if (!row)
+            return false;
+        var r = row.mapFromItem(root, x, y);
+        return row.wantsPoint(r.x, r.y);
+    }
+
+    // Nxt's overlay: the wheel over the panel scrolls the list (see
+    // view_overlay.py; the list itself takes no input there, so that the
+    // wheel elsewhere zooms the model). `angle` is in eighths of a degree,
+    // as Qt reports a wheel; `pixel` is a touchpad's own distance, if any.
+    function scrollWheel(angle, pixel) {
+        var step = pixel !== 0 ? pixel
+                               : angle / 120 * theme.rowHeight * 3;
+        var top = treeList.originY;
+        var bottom = Math.max(top, top + treeList.contentHeight
+                                   - treeList.height);
+        treeList.contentY = Math.max(top, Math.min(bottom,
+                                                   treeList.contentY - step));
+    }
+
     // ================================================================ header
 
     Item {
@@ -119,12 +158,68 @@ Rectangle {
             anchors.verticalCenter: parent.verticalCenter
             anchors.left: problems.visible ? problems.right : docLabel.right
             anchors.leftMargin: 10
-            anchors.right: gear.left
+            anchors.right: dockButton.visible ? dockButton.left : gear.left
             anchors.rightMargin: 4
             placeholder: qsTr("search")
             results: nxt.searchResults
             onQueryChanged: function (value) { nxt.setSearch(value); }
             onChosen: function (name) { nxt.revealObject(name); }
+        }
+
+        // Inside the 3D view (Nxt's overlay) the dock and its title bar are
+        // hidden, so the way back is here: put the panel back in its dock.
+        Item {
+            id: dockButton
+            objectName: "dockButton"
+            visible: host.viewOverlay
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.right: gear.left
+            anchors.rightMargin: 2
+            width: gear.width
+            height: width
+
+            Rectangle {
+                anchors.fill: parent
+                radius: 4
+                color: theme.hover
+                visible: dockHover.hovered
+            }
+
+            // A window with its left side filled: the panel, docked.
+            Canvas {
+                anchors.centerIn: parent
+                width: Math.round(parent.width * 0.66)
+                height: Math.round(width * 0.8)
+                antialiasing: true
+                property color ink: dockHover.hovered ? theme.text
+                                                      : theme.textDim
+                onInkChanged: requestPaint()
+                onWidthChanged: requestPaint()
+                onPaint: {
+                    var ctx = getContext("2d");
+                    ctx.reset();
+                    var line = Math.max(1, Math.round(width / 12));
+                    ctx.strokeStyle = ink;
+                    ctx.fillStyle = ink;
+                    ctx.lineWidth = line;
+                    ctx.strokeRect(line / 2, line / 2,
+                                   width - line, height - line);
+                    ctx.fillRect(0, 0, Math.round(width * 0.36), height);
+                }
+            }
+
+            HoverHandler {
+                id: dockHover
+                cursorShape: Qt.PointingHandCursor
+            }
+            TapHandler { onTapped: host.leaveViewOverlay() }
+            NxtToolTip {
+                shown: dockHover.hovered
+                text: qsTr("Back to the dock")
+            }
+
+            Accessible.role: Accessible.Button
+            Accessible.name: qsTr("Back to the dock")
         }
 
         // The tree's quick settings. In the header rather than the title
@@ -221,6 +316,11 @@ Rectangle {
             // Up and Down are the panel's, not the list's: they move the
             // selection, which the list's own key navigation does not.
             keyNavigationEnabled: false
+            // Inside the 3D view (Nxt's own overlay) the list does not
+            // take presses or drags on its empty space - they belong to
+            // the model behind, and reach it by propagation
+            // (view_overlay.py).
+            interactive: !host.viewOverlay
 
             // Which row, if any, has opened a space under it for something
             // being dragged. Two sources that cannot both be active - you
@@ -608,13 +708,17 @@ Rectangle {
             var target = nxt.stepSelection(
                 event.key === Qt.Key_Up ? -1 : 1,
                 (event.modifiers & Qt.ShiftModifier) !== 0);
-            if (target >= 0)
+            if (target >= 0) {
+                treeList.currentIndex = target;
                 treeList.positionViewAtIndex(target, ListView.Contain);
+            }
             event.accepted = true;
         } else if (event.key === Qt.Key_Left || event.key === Qt.Key_Right) {
             var row = nxt.stepBranch(event.key === Qt.Key_Right ? 1 : -1);
-            if (row >= 0)
+            if (row >= 0) {
+                treeList.currentIndex = row;
                 treeList.positionViewAtIndex(row, ListView.Contain);
+            }
             event.accepted = true;
         }
     }

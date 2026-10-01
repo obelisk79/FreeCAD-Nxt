@@ -190,6 +190,26 @@ Item {
         return false;
     }
 
+    // Nxt's overlay (view_overlay.py): does this point, in the row, land on
+    // something the row draws - its expand arrow, its pill, or its open
+    // detail strip? If not, a press there belongs to the 3D view behind.
+    function wantsPoint(px, py) {
+        if (py < head.height) {
+            // The arrow sits outside the pill, to its left.
+            var left = row.hasChildren ? expander.x : row.pillLeft;
+            return px >= left - 2 && px <= row.pillRight + 2;
+        }
+        return detail.visible && px >= row.detailLeft
+               && px <= detail.width - 8;
+    }
+
+    // The row's hover controls - the eye, the status mark's ring - show
+    // for the pointer, and for the keyboard: on the row the keyboard is
+    // on, while the list has the keyboard.
+    readonly property bool showControls: hover.hovered
+        || (row.ListView.isCurrentItem && row.ListView.view !== null
+            && row.ListView.view.activeFocus)
+
     readonly property bool isolatedOut:
         isolation.isActive && !isolation.keptNames[row.name]
 
@@ -535,7 +555,11 @@ Item {
             // re-emits on every width change). Both loop on a mode switch.
             width: theme.overlay
                  ? Math.min(labelMetrics.advanceWidth,
-                            Math.max(40, head.width - x - 110))
+                            Math.max(40, head.width - x - 110),
+                            // Inside the 3D view the panel spans the view:
+                            // a name gets its own width, up to half of it.
+                            host.viewOverlay ? Math.max(40, head.width / 2)
+                                             : Infinity)
                  : Math.max(0, head.width - x - tail.width - 16)
             text: row.label
             elide: Text.ElideMiddle
@@ -673,7 +697,7 @@ Item {
                         visible: !row.isFeature
                         open: row.objectVisible
                         ink: row.selected ? theme.accentText : theme.textDim
-                        opacity: hover.hovered ? 1.0 : 0.0
+                        opacity: row.showControls ? 1.0 : 0.0
                         onToggled: nxt.toggleVisibility(row.name)
 
                         Behavior on opacity { NumberAnimation { duration: 90 } }
@@ -694,7 +718,7 @@ Item {
                         visible: row.isFeature
                         ink: row.selected ? theme.accentText : theme.textDim
                         opacity: stepHover.hovered ? 0.9
-                                 : hover.hovered ? 0.45 : 0.0
+                                 : row.showControls ? 0.45 : 0.0
 
                         Behavior on opacity { NumberAnimation { duration: 90 } }
 
@@ -721,7 +745,7 @@ Item {
                         anchors.centerIn: parent
                         size: parent.width
                         level: row.markLevel > 0 ? row.markLevel
-                             : (row.hasDetail && hover.hovered) ? 1 : 0
+                             : (row.hasDetail && row.showControls) ? 1 : 0
                         // A ring that only appeared because the pointer is
                         // here must not read the same as one that is
                         // telling you something.
@@ -790,9 +814,19 @@ Item {
         // not accept mouse events, so pushing this underneath costs nothing
         // and revives the controls.
         MouseArea {
-            anchors.fill: parent
+            // Inside the 3D view (Nxt's own overlay) only the pill takes
+            // the mouse: a press beside it is left unaccepted, and so
+            // reaches the model behind (view_overlay.py).
+            x: host.viewOverlay ? row.pillLeft : 0
+            width: host.viewOverlay ? row.pillRight - row.pillLeft
+                                    : parent.width
+            height: parent.height
             z: -1
             acceptedButtons: Qt.LeftButton | Qt.RightButton
+            // In the row line's (head's) coordinates, not this area's:
+            // in Nxt's overlay the area starts at the pill, not at the
+            // row's left edge, and the rename and drag code both measure
+            // against the row.
             property point origin
             property bool armed: false
 
@@ -806,7 +840,7 @@ Item {
                     nxt.requestContextMenu(row.name, at.x, at.y);
                     return;
                 }
-                origin = Qt.point(mouse.x, mouse.y);
+                origin = mapToItem(head, mouse.x, mouse.y);
                 armed = true;
                 var wasSelected = row.selected;
                 if (row.ListView.view) {
@@ -820,7 +854,7 @@ Item {
                 else
                     nxt.select(row.name, additive);
                 if (wasSelected && !additive && !row.renaming
-                        && row.overGlyphs(mouse.x, mouse.y))
+                        && row.overGlyphs(origin.x, origin.y))
                     row.armRename();
             }
 
@@ -828,8 +862,9 @@ Item {
                 if (!armed || !row.dragGhost) return;
                 var here = mapToItem(row.dragGhost.parent, mouse.x, mouse.y);
                 if (!row.dragGhost.Drag.active) {
-                    if (Math.abs(mouse.x - origin.x)
-                            + Math.abs(mouse.y - origin.y) < 8)
+                    var at = mapToItem(head, mouse.x, mouse.y);
+                    if (Math.abs(at.x - origin.x)
+                            + Math.abs(at.y - origin.y) < 8)
                         return;
                     // Moving the object is not asking to rename it.
                     row.disarmRename();

@@ -53,6 +53,11 @@ Tick items off as they land; add notes under an item as decisions are made.
 - [ ] **M** Expression editing with autocomplete: `=` opens an inline editor with suggestions and a live result
 - [ ] **M** Compare mode for multi-select: "— mixed" lists each object's value; pick one to apply to all
 
+## Possible future: structured Report view
+
+- [ ] **L** A Qt Quick Report view: severity filters with counts, repeated messages collapsed (×40), tracebacks folded to one line, object names as chips that select or reveal the row, search, timestamps. Probed in FreeCAD 26.3: Python cannot register a console observer (`App.Console.GetObservers()` only lists them) and console messages do not pass through `sys.stdout`, so the only source is the stock Report view's text document - which does carry everything, C++ messages included. Severity would be read back from the configured Report view colours; only what the stock view is set to show can be captured (log lines are off by default); the stock view must exist, though its dock can stay hidden. Workable, but a mirror of the stock view and somewhat fragile. Not planned; revisit after the overlay work.
+- Python console: not worth replacing (editor parity, command echo and macro recording are tied into the stock console).
+
 ## Housekeeping
 
 - [x] Preferences: gear quick panel in the tree header (Part layout, row density, reference chips, under-constrained marks) and Edit › Preferences › FreeCAD-Nxt page; `NxtSwitch` and `Segmented` controls

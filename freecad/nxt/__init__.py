@@ -34,6 +34,7 @@ _RELOAD_ORDER = (
     "freecad.nxt.tree.models",
     "freecad.nxt.tree.links",
     "freecad.nxt.tree.bridge",
+    "freecad.nxt.tree.view_overlay",
     "freecad.nxt.tree.observers",
     "freecad.nxt.tree.probe",
     "freecad.nxt.menus.definitions",

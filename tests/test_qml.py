@@ -285,6 +285,12 @@ def make_bridge():
 
 
 class Host(QtCore.QObject):
+    viewOverlayChanged = QtCore.Signal()
+
+    @QtCore.Property(bool, notify=viewOverlayChanged)
+    def viewOverlay(self):  # noqa: N802
+        return False
+
     @QtCore.Slot()
     def repaintBehind(self):
         pass
@@ -394,6 +400,32 @@ def run(overlay):
             time.sleep(0.005)
 
     root = view.rootObject()
+
+    # Nxt's overlay asks the panel, per press, whether it draws anything
+    # there (view_overlay.py). The header is the panel's; far below the
+    # last row is the model's.
+    def wants(x, y):
+        return QtCore.QMetaObject.invokeMethod(
+            root, "wantsPoint", QtCore.Qt.ConnectionType.DirectConnection,
+            QtCore.Q_RETURN_ARG("QVariant"),
+            QtCore.Q_ARG("QVariant", float(x)),
+            QtCore.Q_ARG("QVariant", float(y)))
+    # And a container's expand arrow, which sits outside its pill.
+    arrows = [c for c in visual_tree(root)
+              if c.metaObject().className().startswith("Disclosure")
+              and c.property("shown")]
+    if arrows:
+        spot = arrows[0].mapToItem(root, QtCore.QPointF(
+            arrows[0].width() / 2, arrows[0].height() / 2))
+        if wants(spot.x(), spot.y()) is not True:
+            problems.append("overlay=%s: the expand arrow passes clicks "
+                            "through" % overlay)
+    else:
+        problems.append("overlay=%s: no expand arrow found" % overlay)
+    if wants(10, 10) is not True or wants(300, 470) is not False:
+        problems.append("overlay=%s: wantsPoint header %r, empty %r"
+                        % (overlay, wants(10, 10), wants(300, 470)))
+
     # More than one ListView in the tree: the search results are a list too,
     # and an empty one sorts first in findChildren. Take the populated one.
     lists = [c for c in visual_tree(root)

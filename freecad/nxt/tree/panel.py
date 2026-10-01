@@ -186,7 +186,9 @@ class PanelTitleBar(QtWidgets.QWidget):
         looking overlaid while still sitting in the dock area, which is a
         worse lie than doing nothing.
         """
-        if not self._dock.request_host_overlay():
+        if settings_mod.get("OverlayMode") == "nxt":
+            self._dock.set_view_overlay(True)
+        elif not self._dock.request_host_overlay():
             self._dock.toggle_overlay()
         self.refresh()
 
@@ -230,6 +232,8 @@ class ModelPanel(QtWidgets.QDockWidget):
         self._wants_host_overlay = False
         self._host_overlay_attempts = 0
         self._restoring = True   # suppress writes while applying saved state
+        self._view_overlay: Any = None   # Nxt's own overlay, when used
+        self._wants_view_overlay = False
 
         # Owned timers, not QTimer.singleShot. A static single-shot outlives
         # the object it was scheduled for, so on reload it fires into a
@@ -384,7 +388,63 @@ class ModelPanel(QtWidgets.QDockWidget):
         return bool(self._theme.overlay)
 
     def toggle_overlay(self) -> None:
-        self.set_overlay(not self.overlay())
+        if self.in_view_overlay():
+            self.set_view_overlay(False)
+        elif settings_mod.get("OverlayMode") == "nxt":
+            self.set_view_overlay(not self.overlay())
+        else:
+            self.set_overlay(not self.overlay())
+
+    # -- Nxt's own overlay (view_overlay.py) ------------------------------ #
+
+    viewOverlayChanged = QtCore.Signal()
+
+    @QtCore.Property(bool, notify=viewOverlayChanged)
+    def viewOverlay(self) -> bool:  # noqa: N802 - QML API
+        """Whether the panel is inside the 3D view, passing clicks on."""
+        return self.in_view_overlay()
+
+    def in_view_overlay(self) -> bool:
+        return self._view_overlay is not None \
+            and self._view_overlay.attached()
+
+    def set_view_overlay(self, on: bool) -> None:
+        """Into the 3D view as Nxt's own overlay, or back into the dock."""
+        if on == self.in_view_overlay():
+            return
+        from . import view_overlay
+        if on:
+            if self._view_overlay is None:
+                self._view_overlay = view_overlay.ViewOverlay(self)
+            self._theme.set_overlay(True)
+            self._apply_clear_colour()
+            if not self._view_overlay.attach():
+                self._theme.set_overlay(False)
+                self._apply_clear_colour()
+                return
+        else:
+            if self._view_overlay is not None:
+                self._view_overlay.detach()
+            self._theme.set_overlay(False)
+            self._apply_clear_colour()
+        self._sync_title_bar()
+        self.viewOverlayChanged.emit()
+        self.save_state()
+
+    @QtCore.Slot()
+    def leaveViewOverlay(self) -> None:  # noqa: N802 - QML API
+        """The header's dock button: back into the dock.
+
+        Deferred a turn: the press that asked is still being handled by the
+        panel's own widget, which leaving reparents.
+        """
+        QtCore.QTimer.singleShot(0, lambda: self.set_view_overlay(False))
+
+    def apply_overlay_mode(self) -> None:
+        """The OverlayMode setting changed: leave ours if it is off."""
+        if self.in_view_overlay() \
+                and settings_mod.get("OverlayMode") != "nxt":
+            self.set_view_overlay(False)
 
     # ------------------------------------------------------------------ #
     # overlay detection
@@ -489,10 +549,26 @@ class ModelPanel(QtWidgets.QDockWidget):
             # nor focused cannot work, which is what the first attempt got
             # wrong.
             self._wants_host_overlay = bool(settings_mod.get("HostOverlay"))
-            if not self._wants_host_overlay and settings_mod.get("Overlay"):
+            self._wants_view_overlay = bool(
+                settings_mod.get("ViewOverlay")
+                and settings_mod.get("OverlayMode") == "nxt")
+            if self._wants_view_overlay:
+                self._wants_host_overlay = False
+            elif not self._wants_host_overlay and settings_mod.get("Overlay"):
                 self.set_overlay(True)
         finally:
             self._restoring = False
+
+    def restore_view_overlay(self) -> None:
+        """Back into the 3D view, if that is where FreeCAD closed with it.
+
+        Deferred a turn, after the dock is shown: with no 3D view open yet
+        the panel waits out of sight, and goes into the first one.
+        """
+        if self._wants_view_overlay:
+            self._wants_view_overlay = False
+            QtCore.QTimer.singleShot(
+                0, lambda: self.set_view_overlay(True))
 
     def schedule_host_overlay(self) -> None:
         if self._wants_host_overlay:
@@ -546,7 +622,10 @@ class ModelPanel(QtWidgets.QDockWidget):
 
     def _flush_save(self) -> None:
         try:
-            settings_mod.put("Visible", self.isVisible())
+            # In Nxt's overlay the dock is hidden but the panel is showing.
+            settings_mod.put("Visible", self.isVisible()
+                             or self.in_view_overlay())
+            settings_mod.put("ViewOverlay", self.in_view_overlay())
             settings_mod.put("Floating", self.isFloating())
             settings_mod.put("Overlay", self.overlay())
             settings_mod.put("HostOverlay", self._detected_overlay)
@@ -668,6 +747,9 @@ class ModelPanel(QtWidgets.QDockWidget):
     def shutdown(self) -> None:
         """Take the panel down without the QML engine narrating it.
 
+        Out of the 3D view first, if Nxt's own overlay has it there: the
+        view goes back to the dock so it is torn down with it.
+
         Emphatically *not* by nulling the context properties. Doing that
         re-evaluates every binding that reads `nxt` or `theme` against null,
         and since the delegates outlive `setSource(QUrl())` the console fills
@@ -681,6 +763,11 @@ class ModelPanel(QtWidgets.QDockWidget):
         theme are children of this dock and die with it immediately
         afterwards, so nothing is left pointing at them in between.
         """
+        if self.in_view_overlay():
+            try:
+                self._view_overlay.detach()
+            except Exception:
+                App.Console.PrintError("Nxt: view overlay detach failed\n")
         for timer in (self._save_timer, self._repaint_timer,
                       self._repaint_late_timer, self._detect_timer,
                       self._detect_late_timer, self._restyle_timer,
@@ -713,7 +800,10 @@ class ModelPanel(QtWidgets.QDockWidget):
         # Recorded straight away rather than through the debounce: there may
         # not be another event loop turn if this is the application quitting.
         self._save_timer.stop()
-        settings_mod.put("Visible", False)
+        # In Nxt's overlay the dock is hidden and cannot be closed by hand:
+        # a close then is FreeCAD quitting, and the panel is still open.
+        if not self.in_view_overlay():
+            settings_mod.put("Visible", False)
         super().closeEvent(event)
 
 
@@ -775,6 +865,7 @@ def show() -> ModelPanel | None:
     _panel.raise_()
     _panel.refresh_theme()
     _panel.schedule_host_overlay()
+    _panel.restore_view_overlay()
     settings_mod.put("Visible", True)
 
     # The stock tree may not exist yet at startup, and it is where the
