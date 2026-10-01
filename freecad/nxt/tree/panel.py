@@ -395,7 +395,7 @@ class ModelPanel(QtWidgets.QDockWidget):
         else:
             self.set_overlay(not self.overlay())
 
-    # -- Nxt's own overlay (EXPERIMENTAL, view_overlay.py) ------------------ #
+    # -- Nxt's own overlay (view_overlay.py) ------------------------------ #
 
     viewOverlayChanged = QtCore.Signal()
 

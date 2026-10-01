@@ -72,7 +72,7 @@ Popup {
             value: settingsPopup.values.OverlayMode
             options: [
                 {value: "freecad", label: qsTr("FreeCAD")},
-                {value: "nxt", label: qsTr("Nxt (experimental)")}
+                {value: "nxt", label: qsTr("Nxt")}
             ]
             onPicked: function (v) { prefs.set("OverlayMode", v); }
         }

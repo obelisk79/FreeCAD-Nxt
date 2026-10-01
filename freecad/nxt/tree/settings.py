@@ -50,10 +50,9 @@ DEFAULTS: dict[str, bool | int | float | str] = {
     "UnderConstrainedMarks": True,
     # Hovering a row's controls explains them (NxtToolTip.qml).
     "RowToolTips": True,
-    # Whose overlay the panel uses: FreeCAD's ("freecad") or Nxt's own,
-    # drawn inside the 3D view with clicks passing through ("nxt").
-    # Experimental.
-    "OverlayMode": "freecad",
+    # Whose overlay the panel uses: Nxt's own, drawn inside the 3D view
+    # with clicks passing through ("nxt"), or FreeCAD's ("freecad").
+    "OverlayMode": "nxt",
     # The panel was in the 3D view (Nxt's overlay) when FreeCAD closed.
     "ViewOverlay": False,
     # Picking an object in the 3D view scrolls the tree to its row.

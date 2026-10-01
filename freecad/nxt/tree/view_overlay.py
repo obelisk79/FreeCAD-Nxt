@@ -1,4 +1,4 @@
-"""EXPERIMENTAL: the panel drawn inside the 3D view, clicks passing through.
+"""The panel drawn inside the 3D view, clicks passing through.
 
 Nxt's own overlay, as an alternative to FreeCAD's (the "OverlayMode"
 setting chooses). The panel's QQuickWidget is taken out of its dock and
