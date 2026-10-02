@@ -38,10 +38,17 @@ PILL_ALPHA = 0.88
 PILL_HOVER_ALPHA = 0.94
 PILL_BORDER_ALPHA = 0.14
 
-#: The stylesheet's own branch colour, shared by every glyph the panel
-#: draws itself. Fixed rather than palette-derived: set it to the text
-#: colour to make the drawn furniture follow a dark stylesheet.
-BRANCH_INK = QtGui.QColor("#495057")
+#: The glyphs the panel draws itself - expand arrows, the tip bar - are
+#: the text colour taken this far towards whatever is behind them, so they
+#: read on a light theme and a dark one without shouting over the labels.
+BRANCH_MIX = 0.3
+BRANCH_ON_DARK = QtGui.QColor(235, 235, 235)
+BRANCH_ON_LIGHT = QtGui.QColor(30, 30, 30)
+#: FreeCAD's own defaults for the 3D view's background, for a profile that
+#: has never saved them.
+VIEW_SIMPLE = 3940932863
+VIEW_TOP = 859006463
+VIEW_BOTTOM = 2880154879
 
 #: Metrics, as a fraction of the row height unless named otherwise.
 MIN_ROW_HEIGHT = 20
@@ -109,6 +116,28 @@ def _token(name: str) -> str | int | None:
     except Exception:  # noqa: BLE001 - no FreeCAD, or no such group
         return None
     return None
+
+
+def _view_background() -> QtGui.QColor | None:
+    """The 3D view's background, averaged down its gradient.
+
+    What the drawn glyphs sit on in overlay mode, where the panel paints
+    nothing behind them.
+    """
+    try:
+        import FreeCAD as App
+        view = App.ParamGet(TOKEN_GROUP)
+        if view.GetBool("Simple", False):
+            packed = [int(view.GetUnsigned("BackgroundColor", VIEW_SIMPLE))]
+        else:
+            packed = [int(view.GetUnsigned("BackgroundColor2", VIEW_TOP)),
+                      int(view.GetUnsigned("BackgroundColor3", VIEW_BOTTOM))]
+    except Exception:  # noqa: BLE001 - no FreeCAD, or a stand-in for it
+        return None
+    count = len(packed)
+    return QtGui.QColor(sum(c >> 24 & 255 for c in packed) // count,
+                        sum(c >> 16 & 255 for c in packed) // count,
+                        sum(c >> 8 & 255 for c in packed) // count)
 
 
 def _stylesheet_colours() -> tuple[QtGui.QColor | None,
@@ -205,6 +234,7 @@ class Theme(QtCore.QObject):
         self._qss_base: QtGui.QColor | None = None
         self._qss_text: QtGui.QColor | None = None
         self._viewport_palette = QtGui.QPalette()
+        self._view_background: QtGui.QColor | None = None
         self._rebuild()                 # every colour exists before a read
         self.refresh()
 
@@ -251,6 +281,7 @@ class Theme(QtCore.QObject):
 
         self._qss_base, self._qss_text = _stylesheet_colours()
         self._painted = self._qss_base or _painted_base(widget)
+        self._view_background = _view_background()
         self._widget_palette = widget_palette
         self._viewport_palette = viewport_palette or widget_palette
         self._header_max_percent: Any = settings.get("HeaderMaxPercent")
@@ -340,6 +371,17 @@ class Theme(QtCore.QObject):
         self._markInk = (MARK_INK_ON_DARK
                          if severity_lightness < MARK_INK_PIVOT
                          else MARK_INK_ON_LIGHT)
+
+        # The drawn glyphs sit on the panel when docked and on the 3D view
+        # in an overlay, so that is what they have to stand out from.
+        behind = base
+        if self._overlay and self._view_background is not None:
+            behind = self._view_background
+        ink = text
+        if not _readable(behind, ink):
+            ink = (BRANCH_ON_DARK if behind.lightness() < DARK_LIGHTNESS
+                   else BRANCH_ON_LIGHT)
+        self._branchInk = _mix(ink, behind, BRANCH_MIX)
 
         # Overlay backdrops. Per-row rather than panel-wide, which is what
         # keeps text legible over a dark model and a pale background in the
@@ -508,7 +550,7 @@ class Theme(QtCore.QObject):
 
     @QtCore.Property(QtGui.QColor, notify=changed)
     def branchInk(self) -> QtGui.QColor:
-        return BRANCH_INK
+        return self._branchInk
 
     @QtCore.Property(int, notify=changed)
     def iconSize(self) -> int:

@@ -24,9 +24,8 @@ Item {
     // which is the thing this shape exists not to be.
     property real span: theme.fontAside
 
-    // The theme's own branch colour rather than the host palette. Fixed, so
-    // it will not follow a dark stylesheet the way the rest of the panel
-    // does - set this to `theme.text` to put that back.
+    // Picked by the theme to stand out from what is behind the arrow: the
+    // panel when docked, the 3D view in an overlay.
     property color ink: theme.branchInk
 
     // Repaints are driven from the owning item rather than from
