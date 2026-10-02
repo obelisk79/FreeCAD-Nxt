@@ -22,10 +22,8 @@ Item {
     // What the bar spans when it has nothing better to measure against.
     property real fullWidth: 200
 
-    // The theme's own branch colour, shared with the disclosure dart so the
-    // panel's drawn furniture reads as one set. Fixed rather than
-    // palette-derived, so like the dart it will not follow a dark
-    // stylesheet - set this to `theme.text` to put that back.
+    // Shared with the disclosure dart so the panel's drawn furniture reads
+    // as one set; the theme picks it to stand out from what is behind.
     property color ink: theme.branchInk
 
     property bool dragging: false
