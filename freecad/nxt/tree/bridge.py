@@ -1329,6 +1329,38 @@ class TreeBridge(QtCore.QObject):
     # drag and drop
     # ------------------------------------------------------------------ #
 
+    @QtCore.Slot(str, result="QVariantList")
+    def dragNames(self, name: str) -> list[str]:  # noqa: N802
+        """What a drag begun on this row carries, in tree order.
+
+        The whole selection when the row is one of several selected - the
+        gesture every file manager has - and otherwise the row alone.
+        Selected objects with no row (inside a collapsed branch) stay
+        where they are: nothing moves that was not visibly picked up.
+        """
+        selected = self._selected_names()
+        if name not in selected or len(selected) < 2:
+            return [name]
+        rows = sorted((self._tree.row_of(n), n) for n in set(selected))
+        names = [n for row, n in rows if row >= 0]
+        return names if name in names and len(names) > 1 else [name]
+
+    @QtCore.Slot("QVariantList", result=bool)
+    def inOneBody(self, names: list[Any]) -> bool:  # noqa: N802
+        """Are these all members of the same Part Design Body?
+
+        Then dragging them is a reorder, and they slide as a group.
+        """
+        doc = App.ActiveDocument
+        if doc is None or not names:
+            return False
+        try:
+            bodies = {getattr(reorder.body_of(doc.getObject(str(n))),
+                              "Name", None) for n in names}
+        except Exception:
+            return False
+        return len(bodies) == 1 and None not in bodies
+
     @QtCore.Slot("QVariantList", str, result=bool)
     def canDropOn(self, sources: list[Any], target_name: str) -> bool:
         doc = App.ActiveDocument
