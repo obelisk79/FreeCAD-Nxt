@@ -364,9 +364,9 @@ Rectangle {
             property int barGap: -1
             property int dropGap: -1
             readonly property int gapAfterRow: barGap >= 0 ? barGap : dropGap
-            // The row being dragged, and whether the drag is a reorder
+            // The rows being dragged, and whether the drag is a reorder
             // within a Body (see the drag ghost below).
-            property string dragSource: ""
+            property var dragSources: []
             property bool reorderDrag: false
 
             delegate: TreeRow { dragGhost: ghost; detailCap: root.contentCap }
@@ -482,8 +482,7 @@ Rectangle {
             // is the point that was grabbed.
             Drag.hotSpot.x = sliding ? grabbedAt.x : 12;
             Drag.hotSpot.y = sliding ? grabbedAt.y : height / 2;
-            treeList.dragSource = objectNames.length === 1
-                                  ? objectNames[0] : "";
+            treeList.dragSources = objectNames;
             treeList.reorderDrag = sliding;
             Drag.active = true;
         }
@@ -518,7 +517,7 @@ Rectangle {
             names = [];
             sliding = false;
             shot.sourceItem = null;
-            treeList.dragSource = "";
+            treeList.dragSources = [];
             treeList.reorderDrag = false;
         }
 
@@ -596,6 +595,28 @@ Rectangle {
                 // Accent where it can drop; plain where it cannot.
                 border.color: ghost.slideTarget !== "" ? theme.accent
                                                        : theme.border
+            }
+
+            // How many are in hand, when the picture shows only the one
+            // that was grabbed.
+            Rectangle {
+                visible: ghost.names.length > 1
+                anchors.right: parent.right
+                anchors.rightMargin: -6
+                anchors.verticalCenter: parent.top
+                width: Math.max(height, count.implicitWidth + 8)
+                height: theme.chipHeight
+                radius: height / 2
+                color: theme.accent
+
+                Text {
+                    id: count
+                    anchors.centerIn: parent
+                    text: ghost.names.length
+                    font.pixelSize: theme.fontSmall
+                    font.bold: true
+                    color: theme.accentText
+                }
             }
         }
 

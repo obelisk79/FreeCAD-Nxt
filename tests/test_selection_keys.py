@@ -208,6 +208,34 @@ class Branches:
         (self.expanded.add if expanded else self.expanded.discard)(name)
 
 
+class DragNamesTests(unittest.TestCase):
+    """What a drag carries: the selection, when the row is part of one."""
+
+    def setUp(self) -> None:
+        SELECTION.names = []
+        self.bridge = make_bridge()
+
+    def test_an_unselected_row_goes_alone(self) -> None:
+        SELECTION.names = ["B", "C"]
+        self.assertEqual(self.bridge.dragNames("D"), ["D"])
+
+    def test_a_single_selection_goes_alone(self) -> None:
+        SELECTION.names = ["B"]
+        self.assertEqual(self.bridge.dragNames("B"), ["B"])
+
+    def test_a_selected_row_takes_the_selection_in_tree_order(self) -> None:
+        SELECTION.names = ["D", "B", "C"]
+        self.assertEqual(self.bridge.dragNames("C"), ["B", "C", "D"])
+
+    def test_selected_objects_without_a_row_stay_behind(self) -> None:
+        DOC.objects["Hidden"] = Obj("Hidden")
+        self.addCleanup(DOC.objects.pop, "Hidden")
+        SELECTION.names = ["D", "Hidden", "B"]
+        self.assertEqual(self.bridge.dragNames("B"), ["B", "D"])
+        SELECTION.names = ["Hidden", "B"]
+        self.assertEqual(self.bridge.dragNames("B"), ["B"])
+
+
 class BranchTests(unittest.TestCase):
 
     def setUp(self) -> None:

@@ -6,10 +6,10 @@ Tick items off as they land; add notes under an item as decisions are made.
 
 ## Already queued
 
-- [ ] Multi-object drag reorder within a Body
-- [ ] Appearance label slightly clipped in the icon bar (Joe deciding)
+- [x] Multi-object drag reorder within a Body: dragging one of several selected rows carries the selection; within one Body the group slides and lands as a run (`dragNames`, `inOneBody` in tree/bridge.py)
+- [x] Appearance label clipped in the icon bar: fits since an icon was removed from the bar
 - [ ] VarSets — when Joe prompts
-- [ ] Wayland placement check for other popups (e.g. the Inspector's ChoiceList dropdowns if they become window popups)
+- [x] Wayland placement check for other popups: the Inspector's dropdowns are placed correctly
 
 ## Detail strip
 
@@ -23,6 +23,13 @@ Tick items off as they land; add notes under an item as decisions are made.
 - [x] Floating value field beside the visible arrow, typing into the task's own field (tree/float_input.py; Pad/Pocket `lengthEdit`)
 - [ ] Floating fields for a second arrow (two-length pads) and the taper/rotation handles
 - [ ] **M–L** Snap the dragged length to a nearby parallel face (Pad and Pocket first)
+
+## Overlay (tree over the 3D view)
+
+- [x] Tip bar and expand arrows take their colour from the theme and, in overlay, from the 3D view background (`branchInk` in tree/theme.py)
+- [ ] **S** Follow a change of the view background at once; today it is picked up at the next theme refresh or Reload
+- [ ] **S** Tests for view_overlay.py
+- [ ] **S** Write the overlay up in DESIGN.md
 
 ## Tree — finding and navigating
 
@@ -61,10 +68,11 @@ Tick items off as they land; add notes under an item as decisions are made.
 ## Housekeeping
 
 - [x] Preferences: gear quick panel in the tree header (Part layout, row density, reference chips, under-constrained marks) and Edit › Preferences › FreeCAD-Nxt page; `NxtSwitch` and `Segmented` controls
-- [ ] Preferences still to add as their features land: dependency arrows, detail strip auto-show, context-menu Recent, replace vs. beside the native tree
+- [ ] Preferences still to add as their features land: detail strip auto-show, context-menu Recent, replace vs. beside the native tree
+- [x] On quit the QML view is destroyed first, so its bindings do not fire against null (`_on_quit` in tree/panel.py)
 - [x] GitHub workflow (`.github/workflows/checks.yml`): ruff, pycodestyle, mypy and the offscreen tests on every push
 - [ ] **S** Type-check against `freecad-stubs` too: with them installed mypy reports 36 errors, mostly unchecked `None` from `ActiveDocument`/`ActiveView`
 
 ## Suggested first picks
 
-3D-view reveal · keyboard tip stepping · undo toast · Part Design/Sketch templates · CI workflow
+Keyboard tip stepping · undo toast · Part Design/Sketch templates · multi-select menu polish

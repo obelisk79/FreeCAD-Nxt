@@ -146,8 +146,8 @@ Item {
             ? theme.rowHeight : Math.round(theme.rowHeight * 0.55)
     // This row is the one in your hand: it stays where it was, faded, as a
     // reminder of where it came from, while its image follows the pointer.
-    readonly property bool dragSource: ListView.view
-                                       && ListView.view.dragSource === row.name
+    readonly property bool dragSource:
+        ListView.view && ListView.view.dragSources.indexOf(row.name) >= 0
     property real gap: 0
     onGapBelowChanged: gap = gapBelow ? row.dragGapHeight : 0
 
@@ -834,6 +834,10 @@ Item {
             // against the row.
             property point origin
             property bool armed: false
+            // Pressed, without a modifier, on one of several selected rows:
+            // that may be the start of dragging them all, so the selection
+            // is left alone until the button comes up without a drag.
+            property bool held: false
 
             onPressed: function (mouse) {
                 if (mouse.button === Qt.RightButton) {
@@ -854,11 +858,13 @@ Item {
                 }
                 var additive = (mouse.modifiers & Qt.ControlModifier) !== 0;
                 var range = (mouse.modifiers & Qt.ShiftModifier) !== 0;
+                held = wasSelected && !additive && !range
+                       && nxt.dragNames(row.name).length > 1;
                 if (range)
                     nxt.selectRange(row.name);
-                else
+                else if (!held)
                     nxt.select(row.name, additive);
-                if (wasSelected && !additive && !row.renaming
+                if (wasSelected && !additive && !held && !row.renaming
                         && row.overGlyphs(origin.x, origin.y))
                     row.armRename();
             }
@@ -877,7 +883,13 @@ Item {
                     // up and down its column, held where it was grabbed.
                     // Anything else can go anywhere, so a label follows the
                     // pointer instead.
-                    var sliding = row.bodyName !== "";
+                    // Several selected rows travel together; within one
+                    // Body they still slide, behind the row that was
+                    // grabbed.
+                    var names = held ? nxt.dragNames(row.name) : [row.name];
+                    var sliding = row.bodyName !== ""
+                                  && (names.length === 1
+                                      || nxt.inOneBody(names));
                     // In an overlay the row is its pill: the picture is
                     // that much of the line, not the whole of it.
                     var cropLeft = theme.overlay ? Math.max(0, row.pillLeft - 2)
@@ -886,7 +898,11 @@ Item {
                                   ? row.pillRight + 2 - cropLeft
                                   : head.width;
                     row.dragGhost.begin(
-                        [row.name], row.label, row.iconUrl,
+                        names,
+                        names.length > 1
+                            ? qsTr("%1 objects").arg(names.length)
+                            : row.label,
+                        row.iconUrl,
                         sliding ? Qt.point(origin.x - cropLeft, origin.y)
                                 : null);
                     if (sliding) {
@@ -908,6 +924,9 @@ Item {
                 armed = false;
                 if (row.dragGhost && row.dragGhost.Drag.active)
                     row.dragGhost.finish();
+                else if (held)
+                    nxt.select(row.name, false);    // a click after all
+                held = false;
             }
 
             // Anywhere on the row, including the label: opening the
