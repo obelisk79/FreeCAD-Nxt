@@ -825,6 +825,30 @@ def _teardown() -> None:
     _panel = None
 
 
+def _on_quit() -> None:
+    """Destroy the QML view while what it binds to is still alive.
+
+    Nothing takes the panel down when FreeCAD quits: Qt deletes the main
+    window's children in its own order, and the bridge, the theme and the
+    services can go before the view - which then re-evaluates every binding
+    against null and prints a TypeError for each. So the view goes first,
+    and at once: a plain deleteLater may never get its turn this late.
+    """
+    panel = _panel
+    if panel is None:
+        return
+    try:
+        view, panel._view = panel._view, None
+        if view is None:
+            return
+        view.hide()
+        view.deleteLater()
+        QtCore.QCoreApplication.sendPostedEvents(
+            view, QtCompat.enum_int(QtCore.QEvent.Type.DeferredDelete))
+    except RuntimeError:
+        pass                    # already destroyed with the main window
+
+
 def show() -> ModelPanel | None:
     """Create the dock if needed, tab it beside the stock tree, raise it."""
     global _panel
@@ -834,6 +858,11 @@ def show() -> ModelPanel | None:
 
     if _panel is None:
         _panel = ModelPanel(mw)
+        app = QtCore.QCoreApplication.instance()
+        if app is not None:
+            # A reload leaves the old module's connection behind; it
+            # finds no panel there and does nothing.
+            app.aboutToQuit.connect(_on_quit)
         first_run = not settings_mod.get("Configured")
 
         existing: QtWidgets.QDockWidget | None = None
