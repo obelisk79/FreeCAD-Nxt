@@ -287,8 +287,18 @@ class ViewOverlay(QtCore.QObject):
                 return False
             if watched is self._dock._view \
                     and kind == QtCore.QEvent.Type.MouseMove \
-                    and not event.buttons() and not self._passing \
-                    and not self._owning \
+                    and not event.buttons():
+                # No button is down, so no press is in progress, whatever
+                # the flags say. One can be left standing when its release
+                # went elsewhere - a click on the panel that opened the
+                # Property Inspector, which took the release - and while it
+                # stood, the panel never let the mouse fall through again:
+                # every row lit up for a pointer level with it, anywhere
+                # across the 3D view.
+                self._passing = self._owning = False
+            if watched is self._dock._view \
+                    and kind == QtCore.QEvent.Type.MouseMove \
+                    and not event.buttons() \
                     and not self._wants_at(event.position()):
                 # Off everything the panel draws: let the mouse fall
                 # through to the 3D view natively until it comes back.
