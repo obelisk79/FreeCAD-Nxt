@@ -72,6 +72,8 @@ DEFAULTS: dict[str, bool | int | float | str] = {
     # The Property Inspector: whether it stays open, and where it was left
     # while pinned. A width or height of 0 means "never placed yet".
     "InspectorPinned": False,
+    # The inspector opens on FreeCAD's property table, not Nxt's page.
+    "InspectorTable": False,
     "InspectorX": 0,
     "InspectorY": 0,
     "InspectorWidth": 0,

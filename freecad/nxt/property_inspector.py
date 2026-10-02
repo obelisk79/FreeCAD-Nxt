@@ -408,7 +408,11 @@ class PropertyInspector(QtWidgets.QFrame):
         Either may be None: no `left` lines the inspector up with the Nxt
         dock's edge, no `top` puts it level with the pointer.
         """
-        if self._build_inspector():
+        self._follow_theme()
+        built = self._build_inspector()
+        if built and settings.get("InspectorTable"):
+            self.show_native()          # as it was last left
+        elif built:
             self.show_inspector()
         elif self._home is None and not self._borrow():
             return
@@ -454,6 +458,10 @@ class PropertyInspector(QtWidgets.QFrame):
         return True
 
     def _on_table_toggled(self, on: bool) -> None:
+        # Remembered: the inspector reopens on whichever page was chosen.
+        # Only this button records it - a property opened in the table
+        # because the inspector cannot edit it is not a choice of page.
+        settings.put("InspectorTable", on)
         if on:
             self.show_native()
         elif self._inspector is None:
@@ -571,8 +579,7 @@ class PropertyInspector(QtWidgets.QFrame):
 
     def _draw_pin(self) -> None:
         """The header's drawn icons: the pin and, once made, the table."""
-        colour = self._pin.palette().color(
-            QtGui.QPalette.ColorRole.ButtonText)
+        colour = self._icon_colour()
         # Sized to the neighbouring "✕", which is about as tall as a
         # capital letter - not to the full line height, which made the pin
         # half as big again as the X beside it.
@@ -586,6 +593,31 @@ class PropertyInspector(QtWidgets.QFrame):
             table.setIcon(table_icon(side, colour,
                                      self.devicePixelRatioF()))
             table.setIconSize(QtCore.QSize(side, side))
+
+    def _follow_theme(self) -> None:
+        """Redraw the header's icons now, and whenever the theme changes."""
+        from . import services
+        theme = services.theme()
+        if theme is not None and not getattr(self, "_theme_hooked", False):
+            theme.changed.connect(self._draw_pin)
+            self._theme_hooked = True
+        self._draw_pin()
+
+    def _icon_colour(self) -> QtGui.QColor:
+        """The text colour of the theme the panel reads from the stylesheet.
+
+        Not the widget palette's: a stylesheet theme (FreeCAD Light) can
+        leave that saying white on a light background - the same reason the
+        panel stopped trusting the palette (theme.py, qss_colours.py).
+        """
+        from . import services
+        theme = services.theme()
+        if theme is not None:
+            try:
+                return QtGui.QColor(theme.property("text"))
+            except Exception:
+                pass
+        return self._pin.palette().color(QtGui.QPalette.ColorRole.ButtonText)
 
     def changeEvent(self, event: QtCore.QEvent) -> None:  # noqa: N802
         super().changeEvent(event)
