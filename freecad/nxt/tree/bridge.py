@@ -80,7 +80,7 @@ class TreeBridge(QtCore.QObject):
         self._dirty = False
         self._icons_dirty = False
         self._pushing_selection = False
-        self._highlight_source: str | None = None
+        self._related = False       # rows are lit up for the selection
         # Tip bars are addressed by row index, so they are invalidated by any
         # relayout - an expand/collapse moves them without the document
         # changing at all.
@@ -387,6 +387,7 @@ class TreeBridge(QtCore.QObject):
             pass
         before = set(self._tree.selection())
         self._tree.set_selection(names)
+        self._mark_related(names)
         self._arrows_timer.start()
         if picked:
             added = [n for n in names
@@ -911,45 +912,31 @@ class TreeBridge(QtCore.QObject):
         if row >= 0:
             self.revealTreeRow.emit(row)
 
-    @QtCore.Slot(str)
-    def highlightRelated(self, name: str) -> None:
-        """Point at a row, light up the rows it is related to.
+    def _mark_related(self, names: Iterable[str]) -> None:
+        """Light up the rows the selection is related to, if asked to.
 
-        Both directions, in one list now that both live in it: hovering a
-        profile marks every feature that consumes it, hovering a feature
-        marks the profiles it reads. Timeline order puts a sketch near its
-        consumer most of the time, but not when it is reused - which is
-        exactly when this is worth having.
+        Both directions at once: a selected profile marks every feature
+        that consumes it, a selected feature marks the profiles it reads.
+        Off unless the "HighlightRelated" preference is on; it used to
+        follow the pointer, which lit rows up on the way to somewhere else.
         """
-        node = self._snapshot.nodes.get(name)
-        if node is None:
-            return
-        self._highlight_source = name
-        # Both directions at once, rather than picking one by what the row
-        # is. A sketch that reads another sketch's external geometry has
-        # consumers *and* references, and choosing between them meant the
-        # panel answered a different question depending on which row was
-        # under the pointer.
-        related = [n for n, _l, _p in node.consumers]
-        related += [n for n, _l, _s, _part in node.refs]
-        self._tree.set_highlight(related)
+        related: list[str] = []
+        if settings.get("HighlightRelated"):
+            chosen = set(names)
+            for name in chosen:
+                node = self._snapshot.nodes.get(name)
+                if node is None:
+                    continue
+                related += [n for n, _l, _p in node.consumers]
+                related += [n for n, _l, _s, _part in node.refs]
+            related = [n for n in related if n not in chosen]
+        if related or self._related:
+            self._related = bool(related)
+            self._tree.set_highlight(related)
 
-    @QtCore.Slot(str)
-    def clearHighlightFor(self, name: str) -> None:
-        """Only the row that set the highlight may clear it.
-
-        Moving between adjacent rows can deliver the new row's enter before
-        the old row's exit, and an unconditional clear would then wipe the
-        highlight that had just been set.
-        """
-        if self._highlight_source != name:
-            return
-        self.clearHighlight()
-
-    @QtCore.Slot()
-    def clearHighlight(self) -> None:
-        self._highlight_source = None
-        self._tree.set_highlight([])
+    def refresh_related(self) -> None:
+        """The preference changed: mark, or stop marking, at once."""
+        self._mark_related(self._tree.selection())
 
     # ------------------------------------------------------------------ #
     # per-row detail

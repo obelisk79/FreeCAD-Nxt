@@ -125,6 +125,10 @@ Popup {
             key: "DependencyArrows"
             text: qsTr("Show dependency arrows")
         }
+        Setting {
+            key: "HighlightRelated"
+            text: qsTr("Highlight related objects")
+        }
 
         Rectangle {
             width: parent.width
