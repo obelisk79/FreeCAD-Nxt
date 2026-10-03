@@ -968,10 +968,10 @@ class TreeBridge(QtCore.QObject):
                               top: float) -> None:
         """Open the Property Inspector for `name` at a global position.
 
-        `left` is the row's own edge in overlay mode - its pill - and
-        negative when docked, where the inspector lines up with the dock
-        instead. The object is selected first: the borrowed editor always
-        shows the selection.
+        `left` is the edge of the widest pill on screen when the panel is
+        in the 3D view, and negative when docked, where the inspector lines
+        up with the dock instead. The object is selected first: the borrowed
+        editor always shows the selection.
         """
         from .. import property_inspector
         if name:

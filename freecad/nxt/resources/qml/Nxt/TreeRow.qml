@@ -56,12 +56,24 @@ Item {
     property bool dropTarget: false
     property bool renaming: false
 
-    // Opens the Property Inspector level with this row, beside the dock's
-    // border (-1 says so) in both modes. Beside the pill in overlay mode
-    // put the inspector over the panel, which draws above it there.
+    // Opens the Property Inspector level with this row. Docked, beside the
+    // dock's border (-1 says so). In the 3D view there is no dock to stand
+    // beside and the panel draws above the inspector, so it opens clear of
+    // the widest pill on screen: beside this row's own pill it could still
+    // lie under a longer neighbour.
     function openInspector() {
         var corner = row.mapToGlobal(0, 0);
-        nxt.openPropertyInspector(row.name, -1, corner.y);
+        var left = -1;
+        if (host.viewOverlay) {
+            var edge = row.pillRight;
+            var rows = ListView.view ? ListView.view.contentItem.children : [];
+            for (var i = 0; i < rows.length; ++i) {
+                if (rows[i].visible && rows[i].pillRight !== undefined)
+                    edge = Math.max(edge, rows[i].pillRight);
+            }
+            left = row.mapToGlobal(edge, 0).x;
+        }
+        nxt.openPropertyInspector(row.name, left, corner.y);
     }
     //: Widest the detail strip may grow, shared with the panel header.
     property real detailCap: width
@@ -271,7 +283,9 @@ Item {
 
     readonly property string markTip: {
         var note = row.notes && row.notes.length > 0 ? row.notes[0] : "";
-        var more = row.hasDetail ? "\n" + qsTr("Click for details") : "";
+        var more = row.hasDetail
+                   ? "\n" + qsTr("Click for details") + "\n" + row.inspectTip
+                   : "";
         if (row.markLevel >= 3)
             return (note || qsTr("Error")) + more;
         if (row.markLevel === 2)
@@ -281,8 +295,11 @@ Item {
                     ? qsTr("Under-constrained: %1 degrees of freedom")
                           .arg(row.dof)
                     : qsTr("Not fully constrained")) + more;
-        return row.hasDetail ? qsTr("Show details") : "";
+        return row.hasDetail ? qsTr("Show details") + "\n" + row.inspectTip
+                             : "";
     }
+    readonly property string inspectTip:
+        qsTr("Ctrl+click for the Property Inspector")
 
     function chipText(ref) {
         return ref.sub.length > 0 ? ref.label + ":" + ref.sub : ref.label;
@@ -757,12 +774,15 @@ Item {
                         opacity: row.markLevel > 0 ? 1.0 : 0.45
                         active: row.detailOpen
                         onClicked: nxt.toggleDetail(row.name)
+                        onCtrlClicked: row.openInspector()
 
                         HoverHandler { id: markHover }
                         NxtToolTip {
                             shown: markHover.hovered
                             text: row.detailOpen && row.markLevel === 0
-                                  ? qsTr("Hide details") : row.markTip
+                                  ? qsTr("Hide details") + "\n"
+                                    + row.inspectTip
+                                  : row.markTip
                         }
                     }
                 }

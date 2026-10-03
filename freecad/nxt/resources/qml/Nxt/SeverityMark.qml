@@ -18,6 +18,8 @@ Item {
     property int size: theme.markSize
 
     signal clicked()
+    // With Ctrl held: the row opens the Property Inspector instead.
+    signal ctrlClicked()
 
     visible: level > 0
     implicitWidth: size
@@ -108,5 +110,12 @@ Item {
     }
 
     HoverHandler { id: hover; cursorShape: Qt.PointingHandCursor }
-    TapHandler { onTapped: mark.clicked() }
+    TapHandler {
+        onTapped: {
+            if (point.modifiers & Qt.ControlModifier)
+                mark.ctrlClicked();
+            else
+                mark.clicked();
+        }
+    }
 }
