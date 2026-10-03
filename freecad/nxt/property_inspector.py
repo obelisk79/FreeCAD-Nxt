@@ -516,7 +516,7 @@ class PropertyInspector(QtWidgets.QFrame):
             left if left is not None else pointer.x(),
             top if top is not None else pointer.y()))
         if left is not None:
-            x = corner.x() + INSPECTOR_GAP       # beside the row's pill
+            x = corner.x() + INSPECTOR_GAP       # clear of the pills
         else:
             x = self._dock_edge(cast(QtWidgets.QWidget, mw))
         self.move(x, corner.y())
