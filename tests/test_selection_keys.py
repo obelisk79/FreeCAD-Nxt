@@ -112,6 +112,7 @@ def make_bridge() -> Any:
     bridge._anchor = bridge._cursor = None
     bridge._snapshot = types.SimpleNamespace(doc_name="Doc")
     bridge._pushing_selection = False
+    bridge._related = False
     bridge.sync_selection = lambda: None
     bridge.invalidate = lambda *a, **k: None
     return bridge
@@ -206,6 +207,69 @@ class Branches:
 
     def set_expanded(self, name: str, expanded: bool) -> None:
         (self.expanded.add if expanded else self.expanded.discard)(name)
+
+
+class RelatedTests(unittest.TestCase):
+    """Selecting lights up related rows, when the preference is on."""
+
+    def setUp(self) -> None:
+        SELECTION.names = []
+        self.bridge = make_bridge()
+        rows = self.bridge._tree
+        rows.selected = frozenset()
+        rows.lit = None
+        rows.selection = lambda: rows.selected
+        rows.set_selection = lambda names: setattr(
+            rows, "selected", frozenset(names))
+        rows.set_highlight = lambda names: setattr(rows, "lit", list(names))
+        node = types.SimpleNamespace
+        # B reads A; C and D read B.
+        self.bridge._snapshot.nodes = {
+            "A": node(consumers=[("B", "B", [])], refs=[]),
+            "B": node(consumers=[("C", "C", []), ("D", "D", [])],
+                      refs=[("A", "A", 0, "")]),
+            "C": node(consumers=[], refs=[("B", "B", 0, "")]),
+            "D": node(consumers=[], refs=[("B", "B", 0, "")]),
+            "E": node(consumers=[], refs=[]),
+        }
+        self.bridge._origins = []
+        self.bridge._arrows_timer = types.SimpleNamespace(start=lambda: None)
+        self.bridge.sync_selection = types.MethodType(
+            bridge_mod.TreeBridge.sync_selection, self.bridge)
+        self.on = False
+        original = bridge_mod.settings.get
+        bridge_mod.settings.get = lambda key: (
+            self.on if key == "HighlightRelated" else original(key))
+        self.addCleanup(setattr, bridge_mod.settings, "get", original)
+
+    def select(self, *names: str) -> None:
+        SELECTION.names = list(names)
+        self.bridge.sync_selection()
+
+    def test_off_by_default_nothing_is_touched(self) -> None:
+        self.assertFalse(bridge_mod.settings.DEFAULTS["HighlightRelated"])
+        self.select("B")
+        self.assertIsNone(self.bridge._tree.lit)
+
+    def test_on_both_directions_light_up(self) -> None:
+        self.on = True
+        self.select("B")
+        self.assertEqual(sorted(self.bridge._tree.lit), ["A", "C", "D"])
+
+    def test_a_selected_row_is_not_also_lit(self) -> None:
+        self.on = True
+        self.select("B", "C")
+        self.assertEqual(sorted(self.bridge._tree.lit), ["A", "D"])
+
+    def test_cleared_with_the_selection_and_with_the_preference(self) -> None:
+        self.on = True
+        self.select("B")
+        self.select("E")
+        self.assertEqual(self.bridge._tree.lit, [])
+        self.select("B")
+        self.on = False
+        self.bridge.refresh_related()
+        self.assertEqual(self.bridge._tree.lit, [])
 
 
 class DragNamesTests(unittest.TestCase):

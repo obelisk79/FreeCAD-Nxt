@@ -654,6 +654,29 @@ Item {
                 anchors.left: parent.left
                 spacing: 3
 
+                // Says the container is the active one, in a word: the
+                // bar at the row's edge is easy to miss, most of all on a
+                // pill in the 3D view. Inverted on a selected row, whose
+                // fill is the accent already.
+                Rectangle {
+                    objectName: "activeChip"
+                    visible: row.isActive
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: activeLabel.implicitWidth + 12
+                    height: theme.chipHeight
+                    radius: height / 2
+                    color: row.selected ? theme.accentText : theme.accent
+
+                    Text {
+                        id: activeLabel
+                        anchors.centerIn: parent
+                        text: qsTr("Active")
+                        font.pixelSize: theme.fontSmall
+                        font.bold: true
+                        color: row.selected ? theme.accent : theme.accentText
+                    }
+                }
+
                 // The references carrying a problem - see `shownRefs`.
                 // Kept on the operation and deliberately not mirrored onto
                 // the thing read: a sketch used by six features would grow
@@ -677,10 +700,6 @@ Item {
                         // Straight into the referenced object's editor.
                         onDoubleClicked: nxt.activate(modelData.name)
                         tip: row.refTip(modelData)
-                        onHoveredChanged: function (h) {
-                            if (h) nxt.highlightRelated(modelData.name);
-                            else nxt.highlightRelated(row.name);
-                        }
                     }
                 }
 
@@ -789,11 +808,7 @@ Item {
             }
         }
 
-        HoverHandler {
-            id: hover
-            onHoveredChanged: hovered ? nxt.highlightRelated(row.name)
-                                      : nxt.clearHighlightFor(row.name)
-        }
+        HoverHandler { id: hover }
 
         // ---------------------------------------------------- interaction
 
@@ -1063,10 +1078,6 @@ Item {
             onConsumerClicked: function (name) { nxt.revealObjectRow(name); }
             onReferenceClicked: function (name) { nxt.revealObjectRow(name); }
             onChipActivated: function (name) { nxt.activate(name); }
-            onChipHovered: function (name, hovered) {
-                if (hovered) nxt.highlightRelated(name);
-                else nxt.highlightRelated(row.name);
-            }
         }
     }
 }
