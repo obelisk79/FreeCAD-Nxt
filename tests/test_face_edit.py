@@ -73,6 +73,9 @@ class DoubleClickTests(unittest.TestCase):
                 getCursorPos=lambda: (5, 5),
                 getObjectInfo=lambda _p: self.under_pointer))
         self.found: Any = ("Doc", "Pad")
+        self.picked: Any = None         # the object `found` names
+        App.ActiveDocument = types.SimpleNamespace(  # type: ignore
+            getObject=lambda _name: self.picked)
         self.original_picked = face_edit.picked_feature
         face_edit.picked_feature = lambda: self.found
         self.bridge = Bridge()
@@ -113,6 +116,18 @@ class DoubleClickTests(unittest.TestCase):
     def test_not_when_nothing_is_traced(self) -> None:
         self.found = None
         self.assertFalse(self.send(self.viewport))
+
+    def test_an_origin_plane_is_left_to_an_open_task(self) -> None:
+        self.picked = types.SimpleNamespace(
+            InList=[], isDerivedFrom=lambda t: t == "App::OriginFeature")
+        task: list[bool] = [True]
+        Gui.Control = types.SimpleNamespace(  # type: ignore[attr-defined]
+            activeDialog=lambda: task[0])
+        self.addCleanup(delattr, Gui, "Control")
+        self.assertFalse(self.send(self.viewport))
+        self.assertEqual(self.bridge.edited, [])
+        task[0] = False
+        self.assertTrue(self.send(self.viewport))
 
     def test_it_can_be_turned_off(self) -> None:
         STORE["EditOnDoubleClick"] = False

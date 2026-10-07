@@ -292,6 +292,26 @@ class ActivateTests(unittest.TestCase):
         self.bridge.activate("A")
         self.assertEqual((self.started, self.toggled), ([], ["A"]))
 
+    def test_an_origin_plane_is_left_to_an_open_task(self) -> None:
+        plane = DOC.objects["C"]
+        plane.InList = [types.SimpleNamespace(
+            isDerivedFrom=lambda t: t == "App::Origin")]
+        plane.isDerivedFrom = lambda _t: False
+        self.addCleanup(delattr, plane, "InList")
+        self.addCleanup(delattr, plane, "isDerivedFrom")
+        task: list[bool] = [True]
+        Gui.Control = types.SimpleNamespace(  # type: ignore[attr-defined]
+            activeDialog=lambda: task[0])
+        self.addCleanup(delattr, Gui, "Control")
+        edits: list[Any] = []
+        self.bridge._edit_timer = types.SimpleNamespace(
+            start=lambda: edits.append(self.bridge._pending_edit))
+        self.bridge.activate("C")
+        self.assertEqual(edits, [])
+        task[0] = False
+        self.bridge.activate("C")
+        self.assertEqual(edits, [("Doc", "C")])
+
     def test_a_plain_group_opens_and_closes(self) -> None:
         self.bridge.activate("B")
         self.assertEqual((self.started, self.toggled), ([], ["B"]))
@@ -672,6 +692,27 @@ class PickTests(unittest.TestCase):
             SELECTION.addSelection("Doc", name)
             self.bridge.sync_selection(picked=True)
         self.bridge._reveal_picked()
+
+    def test_an_origin_plane_picked_for_a_task_is_not_revealed(self) -> None:
+        plane = DOC.objects["D"]
+        plane.InList = [types.SimpleNamespace(
+            isDerivedFrom=lambda t: t == "App::Origin")]
+        plane.isDerivedFrom = lambda _t: False
+        self.addCleanup(delattr, plane, "InList")
+        self.addCleanup(delattr, plane, "isDerivedFrom")
+        task: list[bool] = [True]
+        Gui.Control = types.SimpleNamespace(  # type: ignore[attr-defined]
+            activeDialog=lambda: task[0])
+        self.addCleanup(delattr, Gui, "Control")
+        self.pick("D")
+        self.assertEqual(
+            (self.bridge._tree.revealed, self.scrolled, self.flashed),
+            ([], [], []))
+        task[0] = False
+        SELECTION.names = []
+        self.bridge.sync_selection()
+        self.pick("D")
+        self.assertEqual(self.bridge._tree.revealed, ["D"])
 
     def test_a_pick_opens_its_path_scrolls_and_flashes(self) -> None:
         self.pick("D")

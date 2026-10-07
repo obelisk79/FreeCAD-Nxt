@@ -13,6 +13,25 @@ from typing import Any
 import FreeCAD as App
 import FreeCADGui as Gui
 
+ORIGIN = "App::Origin"
+ORIGIN_FEATURE = "App::OriginFeature"
+
+
+def is_reference_pick(obj: Any) -> bool:
+    """Whether a click on `obj` is a reference being picked.
+
+    True for an origin plane, axis or point while a task panel is open:
+    the task (attaching a sketch or a datum) is being given it, so the
+    click neither opens, edits nor reveals anything.
+    """
+    try:
+        if obj is None or not Gui.Control.activeDialog():
+            return False
+        return bool(obj.isDerivedFrom(ORIGIN_FEATURE)) or any(
+            parent.isDerivedFrom(ORIGIN) for parent in obj.InList)
+    except Exception:
+        return False
+
 
 def open_edit_transaction(obj: Any) -> bool:
     """Open the undo step an edit of `obj` runs in. True if one was opened.

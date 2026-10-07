@@ -14,7 +14,9 @@ whenever:
     edit constraints, or a feature's task;
   * nothing is under the pointer (a navigation style may use the
     double-click on empty space);
-  * no face is selected to trace.
+  * no face is selected to trace;
+  * an origin plane, axis or point is double-clicked while a task panel
+    is open, where it is a reference being picked for the task.
 
 A face the tip made opens the tip: FreeCAD's own double-click on a
 Body's solid does not open anything, so this handles that case too.
@@ -31,7 +33,7 @@ import FreeCAD as App
 import FreeCADGui as Gui
 
 from ..qt import QtCore, QtWidgets
-from . import picking, settings
+from . import editing, picking, settings
 
 if TYPE_CHECKING:
     from typing import Protocol
@@ -128,7 +130,8 @@ class DoubleClickEditor(QtCore.QObject):
         except Exception:
             pass
         found = picked_feature()
-        if found is None:
+        if found is None or editing.is_reference_pick(
+                App.ActiveDocument.getObject(found[1])):
             return False
         App.Console.PrintLog("Nxt double-click: edit %s\n" % found[1])
         self._editor.edit_feature(*found)
