@@ -53,6 +53,7 @@ _RELOAD_ORDER = (
     "freecad.nxt.toast",
     "freecad.nxt.sketch_closure",
     "freecad.nxt.sketch_repair",
+    "freecad.nxt.sketch_attach",
     "freecad.nxt.services",
 )
 

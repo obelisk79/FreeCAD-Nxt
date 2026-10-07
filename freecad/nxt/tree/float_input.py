@@ -269,7 +269,7 @@ class FocusClaim:
         return not self._held and now < self._until
 
 
-def _task_ok_button() -> Any:
+def task_ok_button() -> Any:
     """The open task dialog's OK button, or None."""
     main = Gui.getMainWindow()
     for box in main.findChildren(QtWidgets.QDialogButtonBox):
@@ -752,7 +752,7 @@ class FloatingInput(QtCore.QObject):
     @staticmethod
     def _finish_edit() -> None:
         """Close the edit as its task's OK button would, or reset it."""
-        ok = _task_ok_button()
+        ok = task_ok_button()
         if ok is not None:
             ok.click()
             return
