@@ -46,8 +46,11 @@ BODY_BASES = ("PartDesign::Body",)
 #: and the operation carries a chip naming the profile it reads.
 NESTING_PREFIX = "Part::"
 
-#: How Part workbench models are drawn. NESTED keeps each operation's
-#: operands under it; EXPRESSION lists a model's steps flat, oldest first,
+#: How the tree is structured. NESTED is the classic tree: each Part
+#: operation keeps its operands under it, and a Part Design feature keeps
+#: what it claims - its sketch, most often - under it, as FreeCAD's own
+#: tree does. EXPRESSION puts sketches in the Body's timeline beside the
+#: features, and lists a Part model's steps flat, oldest first,
 #: under its latest operation, with chips carrying the references and a
 #: history bar to scrub through them.
 NESTED, EXPRESSION = "nested", "expression"
@@ -535,13 +538,20 @@ class Snapshot:
                        by_name: dict[str, DocObject],
                        links: _LinkCache) -> None:
         """Anything a non-container claims *and* links to is a reference."""
+        classic = self.part_layout == NESTED
         for child_name, parents in claims.items():
             node = self.nodes[child_name]
-            if node.is_lifted:
-                continue
             claimer = by_name.get(parents[0])
             if claimer is None or is_container(claimer):
                 continue        # holding something is not using it
+            if classic and self.nodes[parents[0]].type_id.startswith(
+                    "PartDesign::"):
+                # The classic tree: what a Part Design feature claims
+                # stays under it.
+                node.is_lifted = False
+                continue
+            if node.is_lifted:
+                continue
             if (self.nodes[parents[0]].nests_operands and
                     self.part_layout == NESTED):
                 continue        # a Part operation owns what it combines

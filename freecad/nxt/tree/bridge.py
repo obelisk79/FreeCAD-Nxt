@@ -52,6 +52,10 @@ ACTIVE_POLL_MS = 500
 LIVE_PREVIEW_BUDGET_S = 0.12
 
 
+#: How long a click in the tree stands before its detail strip opens.
+AUTO_DETAIL_MS = 300
+
+
 class TreeBridge(QtCore.QObject):
 
     documentChanged = QtCore.Signal()
@@ -69,6 +73,12 @@ class TreeBridge(QtCore.QObject):
     #: Briefly light up these rows: objects just picked outside the panel.
     flashRows = QtCore.Signal(list)
     pickOriginsChanged = QtCore.Signal()
+    #: Auto-show is about to open or close strips: note where this row
+    #: is, and put it back there once the rows have moved (rowReleased).
+    rowHeld = QtCore.Signal(int)
+    rowReleased = QtCore.Signal()
+    detailAutoShowChanged = QtCore.Signal()
+    pinnedDetailsChanged = QtCore.Signal()
     linkArrowsChanged = QtCore.Signal()
 
     def __init__(self, parent: QtCore.QObject | None = None,
@@ -110,6 +120,15 @@ class TreeBridge(QtCore.QObject):
         # the report view with save-state errors on the panel. Restarting a
         # timer also debounces for free.
         self._rebuild_timer = self._deferral(self._rebuild_if_dirty)
+        # The detail strip follows a click in the tree, after a moment:
+        # see _auto_show_detail.
+        self._auto_timer = self._deferral(self._auto_show_detail)
+        self._activate_timer = self._deferral(self._activate_pending)
+        self._pending_active = ""
+        self._auto_timer.setInterval(AUTO_DETAIL_MS)
+        self._auto_name = ""        # the row the timer is running for
+        self._auto_detail = ""      # the strip auto-show has open
+        self._pinned: set[str] = set()
         self._bars_timer = self._deferral(self.tipBarsChanged.emit)
         self._drain_timer = self._deferral(self._drain_tip_drag)
         self._finish_timer = self._deferral(self._finish_pending_drag)
@@ -505,6 +524,11 @@ class TreeBridge(QtCore.QObject):
     def select(self, name: str, additive: bool = False) -> None:
         self._anchor = self._cursor = name
         if additive:
+            self._auto_timer.stop()
+        else:
+            self._auto_name = name
+            self._auto_timer.start()
+        if additive:
             try:
                 doc = App.ActiveDocument
                 already = {o.Name for o
@@ -529,6 +553,35 @@ class TreeBridge(QtCore.QObject):
     # visibility
     # ------------------------------------------------------------------ #
 
+    def _show_alone(self, doc: Any, shown: Iterable[str]) -> None:
+        """Hide the rest of a Body's features when one of them is shown.
+
+        A Body shows through one feature at a time, so showing one is
+        choosing it: whichever was showing before - the tip, or one picked
+        earlier - gives way. Of several shown at once in the same Body,
+        the latest in its history stays. Sketches and datums are not
+        features of the stack and keep their own visibility.
+        """
+        nodes = getattr(self._snapshot, "nodes", None) or {}
+        keep: dict[str, str] = {}           # Body -> the feature to show
+        for name in shown:
+            owner = getattr(nodes.get(name), "body", None) or ""
+            body = nodes.get(owner)
+            if body is None or name not in body.stack:
+                continue
+            held = keep.get(owner)
+            if held is None or body.stack.index(name) > body.stack.index(
+                    held):
+                keep[owner] = name
+        for body_name, name in keep.items():
+            for other in nodes[body_name].stack:
+                vo = getattr(doc.getObject(other), "ViewObject", None)
+                if vo is None:
+                    continue
+                wanted = other == name
+                if bool(vo.Visibility) != wanted:
+                    vo.Visibility = wanted
+
     @QtCore.Slot(str)
     def toggleVisibility(self, name: str) -> None:
         doc = App.ActiveDocument
@@ -541,6 +594,8 @@ class TreeBridge(QtCore.QObject):
         try:
             doc.openTransaction("Toggle visibility")
             vo.Visibility = not bool(vo.Visibility)
+            if vo.Visibility:
+                self._show_alone(doc, [name])
             doc.commitTransaction()
         except Exception:
             doc.abortTransaction()
@@ -1036,7 +1091,59 @@ class TreeBridge(QtCore.QObject):
     @QtCore.Slot(str, result=bool)
     def toggleDetail(self, name: str) -> bool:
         """Open or close a row's detail strip."""
-        return self._tree.toggle_detail(name)
+        opened = self._tree.toggle_detail(name)
+        if not opened and name in self._pinned:
+            self._pinned.discard(name)      # closed by hand: unpinned
+            self.pinnedDetailsChanged.emit()
+        return opened
+
+    def _auto_show_detail(self) -> None:
+        """Open the clicked row's detail strip, and close the last one.
+
+        The "DetailAutoShow" preference. Only for one row picked in the
+        tree, and only once the click has stood for a moment, so a strip
+        does not flicker open on every row passed through. The strip this
+        opened before is closed again unless it has been pinned; strips
+        opened by hand are never touched. The clicked row is held where
+        it is on screen while the rows around it change height.
+        """
+        name = self._auto_name
+        if not settings.get("DetailAutoShow") or not name \
+                or self._selected_names() != [name]:
+            return
+        last = self._auto_detail
+        if last == name:
+            return
+        self.rowHeld.emit(self._tree.row_of(name))
+        if last and last not in self._pinned:
+            self._tree.close_details([last])
+        self._tree.toggle_detail(name, True)
+        self._auto_detail = name
+        self.rowReleased.emit()
+
+    def refresh_auto_detail(self) -> None:
+        """The preference changed: nothing is pinned once it is off."""
+        if not settings.get("DetailAutoShow"):
+            self._auto_timer.stop()
+            self._auto_detail = ""
+            if self._pinned:
+                self._pinned = set()
+                self.pinnedDetailsChanged.emit()
+        self.detailAutoShowChanged.emit()
+
+    @QtCore.Property(bool, notify=detailAutoShowChanged)
+    def detailAutoShow(self) -> bool:  # noqa: N802 - QML API
+        return bool(settings.get("DetailAutoShow"))
+
+    @QtCore.Property(list, notify=pinnedDetailsChanged)
+    def pinnedDetails(self) -> list[str]:  # noqa: N802 - QML API
+        return sorted(self._pinned)
+
+    @QtCore.Slot(str)
+    def toggleDetailPin(self, name: str) -> None:  # noqa: N802
+        """Keep this strip open while auto-show moves on, or stop."""
+        self._pinned ^= {name}
+        self.pinnedDetailsChanged.emit()
 
     @QtCore.Slot(result=bool)
     def closeDetail(self) -> bool:
@@ -1120,8 +1227,9 @@ class TreeBridge(QtCore.QObject):
         doc = App.ActiveDocument
         if doc is None:
             return
+        names = self._selected_names()
         found = (getattr(doc.getObject(name), "ViewObject", None)
-                 for name in self._selected_names())
+                 for name in names)
         views: list[Any] = [vo for vo in found if vo is not None]
         if not views:
             return
@@ -1130,6 +1238,8 @@ class TreeBridge(QtCore.QObject):
             doc.openTransaction("Toggle visibility")
             for vo in views:
                 vo.Visibility = show
+            if show:
+                self._show_alone(doc, names)
             doc.commitTransaction()
         except Exception:
             doc.abortTransaction()
@@ -1263,12 +1373,23 @@ class TreeBridge(QtCore.QObject):
 
     @QtCore.Slot(str)
     def activate(self, name: str) -> None:
-        """Double-click: open a container, edit anything else."""
+        """Double-click: open a container, edit anything else.
+
+        A Body, Part or assembly that is not the active one is made
+        active first; only the active one opens and closes.
+        """
         doc = App.ActiveDocument
         if doc is None:
             return
         node = self._snapshot.nodes.get(name)
         if node is not None and node.is_container and not node.is_lifted:
+            if name != self._active and self._active_key(
+                    doc.getObject(name)):
+                # Deferred, as an edit is below: activating can switch
+                # workbench or open a task.
+                self._pending_active = name
+                self._activate_timer.start()
+                return
             self.toggleExpanded(name)
             return
         if doc.getObject(name) is None:
@@ -1279,6 +1400,44 @@ class TreeBridge(QtCore.QObject):
         # is still on the stack aborts the process.
         self._pending_edit = (doc.Name, name)
         self._edit_timer.start()
+
+    @staticmethod
+    def _active_key(obj: Any) -> str:
+        """The key FreeCAD keeps this kind of active container under."""
+        type_id = str(getattr(obj, "TypeId", ""))
+        if type_id == "PartDesign::Body":
+            return "pdbody"
+        try:
+            if type_id.startswith("Assembly::Assembly") \
+                    or obj.isDerivedFrom("App::Part"):
+                return "part"
+        except Exception:
+            pass
+        return ""
+
+    def _activate_pending(self) -> None:
+        """Make the double-clicked container the active one.
+
+        As FreeCAD's own tree does it - the view provider's double click,
+        which also brings up the container's workbench - and, if that
+        did not take, by setting the active object directly.
+        """
+        name, self._pending_active = self._pending_active, ""
+        doc = App.ActiveDocument
+        obj = doc.getObject(name) if doc is not None and name else None
+        key = self._active_key(obj)
+        if obj is None or not key:
+            return
+        try:
+            obj.ViewObject.doubleClicked()
+        except Exception:
+            pass
+        try:
+            if self._read_active() != name:
+                Gui.ActiveDocument.ActiveView.setActiveObject(key, obj)
+        except Exception:
+            _err("could not make %s active" % name)
+        self._sync_active()
 
     def edit_feature(self, doc_name: str, name: str) -> None:
         """Mark and reveal a feature opened for editing outside the panel.
@@ -1310,7 +1469,9 @@ class TreeBridge(QtCore.QObject):
 
     def _enter_edit(self, doc_name: str, name: str) -> None:
         """Edit an object inside an undo step of its own (editing.py)."""
-        editing.enter_edit(doc_name, name)
+        editing.enter_edit(
+            doc_name, name,
+            handles=not settings.get("TreeEditHidesHandles"))
 
     # ------------------------------------------------------------------ #
     # drag and drop

@@ -15,13 +15,14 @@ Tick items off as they land; add notes under an item as decisions are made.
 
 - [x] Left edge aligned with the row's pill, indent capped at two levels (accent tick under the pill when capped)
 - [x] Close button (×) on the strip; Escape closes the selected row's strip, else all open strips
-- [ ] **M** Optional auto-show: follow selection after ~300 ms, single tree pick only, keep the clicked row in place; setting plus pin toggle
+- [x] Optional auto-show ("Show details on click", off by default): a single click in the tree opens that row's strip after 300 ms and closes the one it opened before; the clicked row is held in place; a pin on the strip keeps it open
 
 ## 3D drag handles (FreeCAD 26.3 gizmos)
 
 - [x] Step settings on the Nxt Preferences page (tree/gizmos.py): plain drag fine or coarse, the switch key, fine step, coarse multipliers; Nxt default on first run: fine on a plain drag, Ctrl for coarse
 - [x] Floating value field beside the visible arrow, typing into the task's own field (tree/float_input.py; Pad/Pocket `lengthEdit`)
-- [ ] Floating fields for a second arrow (two-length pads) and the taper/rotation handles
+- [x] Floating fields for a second arrow (two-length pads) and the taper/rotation handles: a box per handle, paired with its task field by the order FreeCAD makes them in (`HANDLES`, `pair` in tree/float_input.py)
+- [ ] Confirm that pairing in FreeCAD (`probe.draggers()` with a two-length, tapered Pad open): the rotation handle's node type and the order of the handles are taken from FreeCAD's source, not seen
 - [ ] **M–L** Snap the dragged length to a nearby parallel face (Pad and Pocket first)
 
 ## Overlay (tree over the 3D view)
@@ -32,6 +33,9 @@ Tick items off as they land; add notes under an item as decisions are made.
 - [ ] **S** Write the overlay up in DESIGN.md
 
 ## Tree — finding and navigating
+
+- [x] Tree lines ("Show tree lines", off by default): dotted connectors from each container to its children, in the accent colour for the active Body, Part or assembly and everything inside it (`branch_lines` in tree/models.py, TreeLines.qml)
+- [x] Double-click a Body, Part or assembly that is not active to make it active; the active one opens and closes as before
 
 - [x] 3D-view picks, as SolidWorks does: a face is traced through the element map to the feature that made it (tree/picking.py), which stays outlined until the selection changes; its path opens, the tree scrolls to it and it flashes (setting "Show objects picked in the 3D view")
 - [x] Double-click a face in the 3D view to edit the feature that made it (tree/face_edit.py; setting "Double-click a face to edit its feature")
@@ -68,7 +72,7 @@ Tick items off as they land; add notes under an item as decisions are made.
 ## Housekeeping
 
 - [x] Preferences: gear quick panel in the tree header (Part layout, row density, reference chips, under-constrained marks) and Edit › Preferences › FreeCAD-Nxt page; `NxtSwitch` and `Segmented` controls
-- [ ] Preferences still to add as their features land: detail strip auto-show, context-menu Recent, replace vs. beside the native tree
+- [ ] Preferences still to add as their features land: context-menu Recent, replace vs. beside the native tree
 - [x] On quit the QML view is destroyed first, so its bindings do not fire against null (`_on_quit` in tree/panel.py)
 - [x] GitHub workflow (`.github/workflows/checks.yml`): ruff, pycodestyle, mypy and the offscreen tests on every push
 - [ ] **S** Type-check against `freecad-stubs` too: with them installed mypy reports 36 errors, mostly unchecked `None` from `ActiveDocument`/`ActiveView`

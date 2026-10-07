@@ -29,13 +29,16 @@ def open_edit_transaction(obj: Any) -> bool:
         return False
 
 
-def enter_edit(doc_name: str, name: str) -> None:
+def enter_edit(doc_name: str, name: str, handles: bool = True) -> None:
     """Edit an object, inside an undo step of its own.
 
     FreeCAD's tree opens a transaction before it edits; Part Design's task
     commits it on OK and aborts it on Cancel, which is what puts the model
     back as it was and what Ctrl+Z undoes afterwards. setEdit alone opens
     none, so an edit begun from Nxt could be neither cancelled nor undone.
+
+    `handles` False opens the edit without the 3D drag handles (see
+    gizmos.hidden): for an edit begun from the tree, when asked for.
 
     Call it deferred, never from inside an input event: setEdit opens a
     task dialog, which nests an event loop and can tear down whatever
@@ -50,7 +53,12 @@ def enter_edit(doc_name: str, name: str) -> None:
         if gui_doc.getInEdit() is not None:
             gui_doc.resetEdit()
         opened = open_edit_transaction(obj)
-        gui_doc.setEdit(obj)
+        if handles:
+            gui_doc.setEdit(obj)
+        else:
+            from . import gizmos
+            with gizmos.hidden():
+                gui_doc.setEdit(obj)
         if gui_doc.getInEdit() is None and opened:
             App.closeActiveTransaction(True)    # nothing was edited
     except Exception:

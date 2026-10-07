@@ -42,7 +42,8 @@ DEFAULTS: dict[str, bool | int | float | str] = {
     "FloatY": 0,
     "FloatWidth": 0,
     "FloatHeight": 0,
-    # How Part workbench models are drawn: "expression" or "nested".
+    # How the tree is structured: "expression" (sketches in the timeline,
+    # Part models as flat steps) or "nested" (the classic tree).
     "PartLayout": "expression",
     # The tree's quick settings; see prefs.py for the values each takes.
     "RowDensity": "normal",
@@ -63,6 +64,13 @@ DEFAULTS: dict[str, bool | int | float | str] = {
     "GizmoDefaultsApplied": False,
     # A value field floats beside a feature's drag arrow (float_input.py).
     "FloatingValues": True,
+    # A feature opened by double-clicking its row is edited without the
+    # 3D drag handles; a newly created one still gets them.
+    "TreeEditHidesHandles": False,
+    # Dotted connector lines from each container to its children.
+    "TreeLines": False,
+    # Clicking a row opens its detail strip, after a moment.
+    "DetailAutoShow": False,
     # Selecting an object lights up the rows it reads and the rows that
     # read it.
     "HighlightRelated": False,
