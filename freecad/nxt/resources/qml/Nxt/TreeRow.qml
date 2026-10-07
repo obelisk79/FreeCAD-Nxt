@@ -44,6 +44,8 @@ Item {
     required property var consumers
     required property var keyProps
     required property int propertyCount
+    required property var branches
+    required property int activeFrom
 
     // The feature that made the face just picked in the 3D view, when that
     // is not the selected object - the tip, for a face on a Body's solid.
@@ -324,6 +326,24 @@ Item {
 
     // ================================================================= line
 
+    // Connector lines, behind everything and the full height of the row,
+    // detail strip included, so they run unbroken from row to row. Over
+    // the 3D view they take the ink the expand arrows use, which is
+    // chosen to show against the view's background.
+    TreeLines {
+        visible: theme.showTreeLines
+        anchors.fill: parent
+        branches: theme.showTreeLines ? row.branches : []
+        activeFrom: row.activeFrom
+        firstX: theme.rowPad + theme.tipGutter + row.guideOffset
+        step: theme.indent
+        armEnd: row.hasChildren ? expander.x - 1 : icon.x - 6
+        headHeight: head.height
+        offset: row.y
+        ink: theme.overlay ? theme.branchInk : theme.textDim
+        opacity: row.isolatedOut ? 0.45 : 1.0
+    }
+
     Item {
         id: head
         width: parent.width
@@ -429,7 +449,7 @@ Item {
         // readable. Suppressed in overlay mode - a rule drawn across the 3D
         // view reads as part of the model, not as part of the panel.
         Repeater {
-            model: theme.overlay ? 0 : row.depth
+            model: theme.overlay || theme.showTreeLines ? 0 : row.depth
             Rectangle {
                 required property int index
                 x: theme.rowPad + index * theme.indent + theme.tipGutter
@@ -533,17 +553,13 @@ Item {
             sourceSize.height: width * 2
             // Hidden: gray as well as faded, so the state survives a
             // theme where the fade is hard to tell apart. Served gray by
-            // the icon provider (icons.py); features follow the tip bar,
-            // not their own visibility, and are never grayed for it.
-            source: row.iconUrl
-                    + (!row.objectVisible && !row.isFeature ? "/gray" : "")
-            // Inside a Body, every feature but the tip is hidden by
-            // definition, so Visibility says nothing useful - what matters
-            // is which side of the rollback bar it is on. A sketch drawn
-            // after the bar is in the same position: it had not been drawn
-            // yet at the moment the bar is showing.
+            // the icon provider (icons.py). A Body's features too: the
+            // one whose solid is on screen is the one drawn in full,
+            // which is the tip unless the eye has picked another.
+            source: row.iconUrl + (!row.objectVisible ? "/gray" : "")
+            // Past the rollback bar a row is fainter still: it had not
+            // been built yet at the moment the bar is showing.
             opacity: row.afterTip ? 0.32
-                   : row.isFeature ? 1.0
                    : row.objectVisible ? 1.0 : 0.38
             Behavior on opacity { NumberAnimation { duration: 110 } }
 
@@ -582,11 +598,10 @@ Item {
             elide: Text.ElideMiddle
             font.pixelSize: theme.fontRow
             font.bold: row.isContainer
-            font.italic: !row.objectVisible && !row.isFeature && !row.isProfile
+            font.italic: !row.objectVisible && !row.isProfile
             color: row.selected ? theme.accentText
                  : (row.inError && !row.blamedOnProfile) ? theme.danger
                  : row.afterTip ? theme.textDim
-                 : row.isFeature ? theme.text
                  : row.objectVisible ? theme.text
                  : theme.textDim
 
@@ -720,14 +735,10 @@ Item {
                 anchors.leftMargin: 6
                 spacing: 5
 
-                // Visibility, for everything the bar does not already
-                // govern. A Body's solid features are controlled by the
-                // rollback bar, and giving them an eye as well would offer
-                // two controls for one piece of state that disagree the
-                // moment either is used. Kept in the layout rather than
-                // removed, so the gutter mark to its right sits at the
-                // same x on every row and a glance down the edge of the
-                // panel finds the marks in a column.
+                // Visibility, on every row. On a Body's feature it shows
+                // the solid as it stood at that step and leaves the tip
+                // where it is: a look back, where dragging the bar is a
+                // roll back.
                 Item {
                     anchors.verticalCenter: parent.verticalCenter
                     width: theme.iconSize
@@ -735,7 +746,6 @@ Item {
 
                     EyeToggle {
                         anchors.fill: parent
-                        visible: !row.isFeature
                         open: row.objectVisible
                         ink: row.selected ? theme.accentText : theme.textDim
                         opacity: row.showControls ? 1.0 : 0.0
@@ -748,28 +758,6 @@ Item {
                             shown: eyeHover.hovered
                             text: row.objectVisible ? qsTr("Hide")
                                                     : qsTr("Show")
-                        }
-                    }
-
-                    // A feature's place where the eye would be: a faint
-                    // step mark on hover, and a tooltip saying why there
-                    // is no eye - so the gap reads as meant, not missing.
-                    StepMark {
-                        anchors.fill: parent
-                        visible: row.isFeature
-                        ink: row.selected ? theme.accentText : theme.textDim
-                        opacity: stepHover.hovered ? 0.9
-                                 : row.showControls ? 0.45 : 0.0
-
-                        Behavior on opacity { NumberAnimation { duration: 90 } }
-
-                        HoverHandler { id: stepHover }
-
-                        NxtToolTip {
-                            shown: stepHover.hovered
-                            text: qsTr("Features are steps, not objects.\n"
-                                       + "Drag the tip bar here to see the "
-                                       + "model at this step.")
                         }
                     }
                 }
@@ -1057,10 +1045,66 @@ Item {
             Accessible.name: qsTr("Close details")
         }
 
+        // Pin, while strips follow the selection: a pinned strip stays
+        // open when the next row is clicked.
+        Item {
+            id: pinButton
+            objectName: "detailPin"
+            readonly property bool pinned:
+                nxt.pinnedDetails.indexOf(row.name) >= 0
+            visible: nxt.detailAutoShow
+            z: 2
+            anchors.right: closeButton.left
+            anchors.rightMargin: 2
+            y: 2
+            width: visible ? 18 : 0
+            height: 18
+
+            Rectangle {
+                anchors.fill: parent
+                radius: 3
+                color: pinButton.pinned ? theme.accent : theme.hover
+                visible: pinButton.pinned || pinMouse.containsMouse
+            }
+            // A pin, drawn: a head, and a point below it.
+            Rectangle {
+                anchors.horizontalCenter: parent.horizontalCenter
+                y: 4
+                width: 8
+                height: 5
+                radius: 1.5
+                color: pinButton.pinned ? theme.accentText
+                     : pinMouse.containsMouse ? theme.text : theme.textDim
+            }
+            Rectangle {
+                anchors.horizontalCenter: parent.horizontalCenter
+                y: 9
+                width: 2
+                height: 5
+                color: pinButton.pinned ? theme.accentText
+                     : pinMouse.containsMouse ? theme.text : theme.textDim
+            }
+            MouseArea {
+                id: pinMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: nxt.toggleDetailPin(row.name)
+            }
+            NxtToolTip {
+                shown: pinMouse.containsMouse
+                text: pinButton.pinned ? qsTr("Unpin")
+                                       : qsTr("Keep these details open")
+            }
+            Accessible.role: Accessible.Button
+            Accessible.name: qsTr("Keep these details open")
+        }
+
         DetailStrip {
             id: content
             x: row.detailLeft + 8
-            width: Math.max(40, parent.width - x - 14 - closeButton.width)
+            width: Math.max(40, parent.width - x - 14 - closeButton.width
+                                - pinButton.width)
             level: row.markLevel
             notes: row.notes
             dof: row.dof

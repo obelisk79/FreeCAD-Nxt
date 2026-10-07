@@ -137,6 +137,14 @@ class PartitionTests(unittest.TestCase):
         self.assertEqual([snap.nodes[n].timeline
                           for n in ("Sketch", "Pad", "Pocket")], [0, 1, 2])
 
+    def test_the_classic_tree_keeps_the_sketch_under_its_feature(self):
+        snap = scene.Snapshot(self._partdesign(), part_layout=scene.NESTED)
+        flat = [name for name, _d in snap.flatten(set(snap.nodes))]
+        self.assertEqual(flat, ["Body", "Pad", "Sketch", "Pocket"])
+        self.assertEqual(snap.nodes["Sketch"].parent, "Pad")
+        self.assertFalse(snap.nodes["Sketch"].is_lifted)
+        self.assertEqual(snap.nodes["Pad"].parent, "Body")
+
     def test_sketch_sits_at_one_depth_with_the_features(self):
         snap = scene.Snapshot(self._partdesign())
         depths = dict(snap.flatten(set(snap.nodes)))

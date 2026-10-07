@@ -31,9 +31,21 @@ Keyboard: clicking the box gives it the keyboard; double-clicking selects
 the whole value, ready to overwrite with a number or an expression. While
 it has the keyboard, FreeCAD's single-key shortcuts are held off, so
 typing "v" or Escape reaches the field, not a command. Enter or Escape
-hand the keyboard back to the 3D view. The drag's step keys (Shift, Ctrl)
+hand the keyboard back to the 3D view. Tab moves to the next box and
+Shift+Tab to the one before, round and round, keeping what was typed and
+selecting the next value to type over. The drag's step keys (Shift, Ctrl)
 are read from the mouse as it drags, not from whichever widget has the
 keyboard, so they work either way.
+
+Several handles: a Pad with two lengths has two arrows, and a taper
+adds a rotation handle for each side. Each gets a box of its own, tied
+to its own task field. Which handle drags which field is not something
+the scene says, so it is taken from the order FreeCAD makes them in
+(HANDLES): the first arrow is the first length, the second the second.
+A handle is given a box only while both it and its task field are
+showing. When that pairing finds nothing - another feature type, or a
+scene laid out some other way - the one visible arrow gets the one
+box, as before.
 
 Polled rather than signalled: FreeCAD announces neither the start of an
 edit nor a gizmo appearing. Slow (4 Hz) while nothing is being edited,
@@ -58,7 +70,26 @@ PROPERTIES = {
     "lengthEdit": "Length",
     "lengthEdit2": "Length2",
     "revolveAngle": "Angle",
+    "revolveAngle2": "Angle2",
     "taperEdit": "TaperAngle",
+    "taperEdit2": "TaperAngle2",
+}
+
+#: The scene nodes that hold a handle: an arrow, and a rotation handle.
+LINEAR = "SoLinearDraggerContainer"
+ROTATION = "SoRotationDraggerContainer"
+
+_EXTRUDE = ((LINEAR, ("lengthEdit", "lengthEdit2")),
+            (ROTATION, ("taperEdit", "taperEdit2")))
+_REVOLVE = ((ROTATION, ("revolveAngle", "revolveAngle2")),)
+
+#: Per feature type, each kind of handle and the task fields its handles
+#: drag, in the order FreeCAD creates them.
+HANDLES = {
+    "PartDesign::Pad": _EXTRUDE,
+    "PartDesign::Pocket": _EXTRUDE,
+    "PartDesign::Revolution": _REVOLVE,
+    "PartDesign::Groove": _REVOLVE,
 }
 
 #: The task panel field a feature's arrow drags, by feature type. Any
@@ -91,16 +122,37 @@ def _task_field(type_id: str) -> Any:
     return fallback
 
 
-def _arrow_box(view: Any) -> Any:
-    """The visible arrow's 3D bounding box corners, or None."""
+def _task_fields() -> dict[str, Any]:
+    """Every value field showing in the task panel, by its name."""
+    found: dict[str, Any] = {}
+    for widget in Gui.getMainWindow().findChildren(
+            QtWidgets.QAbstractSpinBox):
+        if widget.isVisible() and widget.objectName() \
+                and "QuantitySpinBox" in widget.metaObject().className():
+            found.setdefault(widget.objectName(), widget)
+    return found
+
+
+def _handle_boxes(view: Any, kind: str = LINEAR) -> list[Any]:
+    """Each handle of this kind in the scene, in the scene's order.
+
+    A handle that is showing gives its 3D bounding box corners; one that
+    is hidden gives None, and keeps its place in the list - the place is
+    what says which task field it drags.
+    """
     from pivy import coin
+    node_type = coin.SoType.fromName(kind)
+    if node_type.isBad():
+        return []
     search = coin.SoSearchAction()
-    search.setType(coin.SoType.fromName("SoLinearDraggerContainer"))
+    search.setType(node_type)
     search.setInterest(coin.SoSearchAction.ALL)
     search.setSearchingAll(True)
     search.apply(view.getSceneGraph())
     paths = search.getPaths()
+    boxes: list[Any] = []
     for i in range(paths.getLength()):
+        boxes.append(None)
         node = paths[i].getTail()
         try:
             if not node.visible.getValue():
@@ -113,9 +165,48 @@ def _arrow_box(view: Any) -> Any:
         if box.isEmpty():
             continue
         low, high = box.getMin().getValue(), box.getMax().getValue()
-        return [App.Vector(x, y, z) for x in (low[0], high[0])
-                for y in (low[1], high[1]) for z in (low[2], high[2])]
+        boxes[-1] = [App.Vector(x, y, z) for x in (low[0], high[0])
+                     for y in (low[1], high[1]) for z in (low[2], high[2])]
+    return boxes
+
+
+def _arrow_box(view: Any) -> Any:
+    """The first visible arrow's 3D bounding box corners, or None."""
+    for corners in _handle_boxes(view):
+        if corners is not None:
+            return corners
     return None
+
+
+def pair(type_id: str, showing: dict[str, list[bool]],
+         fields: Any) -> list[tuple[str, int, str]]:
+    """Which handle gets a box for which task field.
+
+    `showing` says, per kind of handle, whether each one in the scene is
+    visible; `fields` holds the names of the task fields on screen. The
+    answer is (kind, place among its kind, field name) for every handle
+    that is showing and whose field is too.
+    """
+    pairs: list[tuple[str, int, str]] = []
+    for kind, names in HANDLES.get(type_id, ()):
+        for place, shown in enumerate(showing.get(kind, ())):
+            if shown and place < len(names) and names[place] in fields:
+                pairs.append((kind, place, names[place]))
+    return pairs
+
+
+def label_for(name: str) -> str:
+    """What a box says it is, from its task field's name."""
+    lower = name.lower()
+    second = lower.endswith("2")
+    if "taper" in lower:
+        return translate("Nxt", "Taper 2") if second \
+            else translate("Nxt", "Taper")
+    if "angle" in lower:
+        return translate("Nxt", "Angle 2") if second \
+            else translate("Nxt", "Angle")
+    return translate("Nxt", "Length 2") if second \
+        else translate("Nxt", "Length")
 
 
 def parse_quantity(text: str) -> float | None:
@@ -235,6 +326,8 @@ class Field(QtCore.QObject):
     committed = QtCore.Signal()
     #: Enter was pressed: commit and finish the edit, as the task's OK.
     finished = QtCore.Signal()
+    #: Tab was pressed: on to the next box, or (True) back to the last.
+    tabbed = QtCore.Signal(bool)
 
     def __init__(self, parent: QtCore.QObject | None = None) -> None:
         super().__init__(parent)
@@ -353,6 +446,11 @@ class Field(QtCore.QObject):
         self._closing = True
         self.finished.emit()
 
+    @QtCore.Slot(bool)
+    def tab(self, backward: bool) -> None:
+        """Tab or Shift+Tab: the keyboard goes to the next box."""
+        self.tabbed.emit(backward)
+
     @QtCore.Slot()
     def grab(self) -> None:
         """Take the keyboard from the 3D view, for typing a value."""
@@ -364,25 +462,42 @@ class Field(QtCore.QObject):
         self.released = True
 
 
+def next_box(order: list[str], name: str, backward: bool = False) -> str:
+    """The box Tab moves to from `name`: the next one shown, wrapping.
+
+    With one box, or a box no longer shown, that is the box itself or
+    the first: Tab never leaves the boxes for the 3D view.
+    """
+    if not order:
+        return name
+    if name not in order:
+        return order[0]
+    step = -1 if backward else 1
+    return order[(order.index(name) + step) % len(order)]
+
+
+class _Box:
+    """One floating box: its field, and the widget once it is built."""
+
+    def __init__(self, parent: QtCore.QObject) -> None:
+        self.field = Field(parent)
+        self.widget: Any = None
+
+
 class FloatingInput(QtCore.QObject):
-    """Shows the field while an arrow is up, and keeps it beside the tip."""
+    """Shows a box for each handle that is up, and keeps it beside it."""
 
     def __init__(self, parent: QtCore.QObject | None = None) -> None:
         super().__init__(parent)
-        self._field = Field(self)
-        self._widget: Any = None
+        #: A box per task field name, made as its handle first shows.
+        self._boxes: dict[str, _Box] = {}
+        #: The boxes showing, in the order Tab goes through them.
+        self._order: list[str] = []
         self._viewport: Any = None
         self._timer = QtCore.QTimer(self)
         self._timer.timeout.connect(self._tick)
-        self._field.grabbed.connect(self._take_keyboard)
-        self._field.focusRequested.connect(self._take_keyboard)
-        self._field.committed.connect(self._recompute)
-        # Queued: the OK button closes the task dialog, which must not
-        # happen from inside the key event that asked for it.
-        self._field.finished.connect(
-            self._finish_edit, QtCore.Qt.ConnectionType.QueuedConnection)
-        # The edit the box last took the keyboard for: it does so once
-        # per edit, when the edit begins.
+        # The edit the first box last took the keyboard for: it does so
+        # once per edit, when the edit begins.
         self._session: tuple[str, str] | None = None
         self._claim = FocusClaim()
 
@@ -391,10 +506,38 @@ class FloatingInput(QtCore.QObject):
 
     def remove(self) -> None:
         self._timer.stop()
-        self._hide()
-        if _alive(self._widget):
-            self._widget.deleteLater()
-        self._widget = self._viewport = None
+        self._drop_widgets()
+
+    def _box(self, name: str) -> _Box:
+        box = self._boxes.get(name)
+        if box is None:
+            box = self._boxes[name] = _Box(self)
+            field = box.field
+            field.grabbed.connect(lambda: self._take_keyboard(name))
+            field.focusRequested.connect(
+                lambda _select: self._take_keyboard(name))
+            field.committed.connect(self._recompute)
+            field.tabbed.connect(
+                lambda backward: self._tab_from(name, backward))
+            # Queued: the OK button closes the task dialog, which must
+            # not happen from inside the key event that asked for it.
+            field.finished.connect(
+                self._finish_edit,
+                QtCore.Qt.ConnectionType.QueuedConnection)
+        return box
+
+    def _tab_from(self, name: str, backward: bool) -> None:
+        target = self._boxes.get(next_box(self._order, name, backward))
+        if target is not None:
+            target.field.focusRequested.emit(True)
+
+    def _drop_widgets(self) -> None:
+        for box in self._boxes.values():
+            if _alive(box.widget):
+                box.widget.hide()
+                box.widget.deleteLater()
+            box.widget = None
+        self._viewport = None
 
     # ------------------------------------------------------------------
 
@@ -402,8 +545,9 @@ class FloatingInput(QtCore.QObject):
         # Nothing here may raise out of the timer: an error each tick is
         # an error four to thirty times a second in the Report view.
         try:
-            if not _alive(self._widget):
-                self._widget = self._viewport = None
+            for box in self._boxes.values():
+                if not _alive(box.widget):
+                    box.widget = None
             shown = self._update()
         except Exception as exc:
             App.Console.PrintLog("Nxt floating value: %s\n" % exc)
@@ -412,8 +556,27 @@ class FloatingInput(QtCore.QObject):
             if not shown:
                 self._hide()
         except Exception:
-            self._widget = self._viewport = None
+            for box in self._boxes.values():
+                box.widget = None
         self._timer.setInterval(ACTIVE_MS if shown else IDLE_MS)
+
+    def _targets(self, view: Any, type_id: str) -> list[tuple[str, Any, Any]]:
+        """(box name, task field, the handle's corners) for each box."""
+        fields = _task_fields()
+        boxes = {kind: _handle_boxes(view, kind)
+                 for kind, _names in HANDLES.get(type_id, ())}
+        showing = {kind: [c is not None for c in found]
+                   for kind, found in boxes.items()}
+        targets = [(name, fields[name], boxes[kind][place])
+                   for kind, place, name in pair(type_id, showing, fields)]
+        if targets:
+            return targets
+        # Nothing paired: the one visible arrow and the one field.
+        corners = _arrow_box(view)
+        spin = _task_field(type_id) if corners is not None else None
+        if spin is None:
+            return []
+        return [(spin.objectName() or "value", spin, corners)]
 
     def _update(self) -> bool:
         if not settings.get("FloatingValues"):
@@ -426,51 +589,62 @@ class FloatingInput(QtCore.QObject):
             self._claim.stop()
             return False
         view = gui_doc.ActiveView
-        corners = _arrow_box(view)
-        if corners is None:
-            return False
-        spin = _task_field(str(obj.TypeId))
-        if spin is None:
+        targets = self._targets(view, str(obj.TypeId))
+        if not targets:
             return False
         viewport = _viewport(view)
         if viewport is None:
             return False
-        self._field.bind(spin, self._label_for(spin), obj)
-        widget = self._ensure_widget(viewport)
-        if widget is None:
+        if self._viewport is not viewport:
+            self._drop_widgets()
+            self._viewport = viewport
+        placed: list[tuple[_Box, Any, placement.Rect]] = []
+        for name, spin, corners in targets:
+            box = self._box(name)
+            box.field.bind(spin, label_for(name), obj)
+            widget = self._ensure_widget(box, viewport)
+            arrow = placement.bounding(
+                self._to_widget(view, viewport, c) for c in corners)
+            if widget is not None and arrow is not None:
+                placed.append((box, widget, arrow))
+        if not placed:
             return False
-        arrow = placement.bounding(
-            self._to_widget(view, viewport, c) for c in corners)
-        if arrow is None:
-            return False
-        size = widget.sizeHint()
-        spot = placement.beside(
-            arrow, size.width(), size.height(),
+        shown = {id(box) for box, _w, _a in placed}
+        self._order = [name for name, _s, _c in targets
+                       if id(self._boxes[name]) in shown]
+        sizes = [w.sizeHint() for _b, w, _a in placed]
+        spots = placement.layout(
+            [arrow for _b, _w, arrow in placed],
+            [(size.width(), size.height()) for size in sizes],
             placement.Rect(0, 0, viewport.width(), viewport.height()))
-        widget.resize(size)
-        widget.move(round(spot.x), round(spot.y))
+        live = set()
+        for (box, widget, _arrow), size, spot in zip(placed, sizes, spots):
+            live.add(id(box))
+            widget.resize(size)
+            widget.move(round(spot.x), round(spot.y))
+            if not widget.isVisible():
+                widget.show()
+                widget.raise_()
+        for box in self._boxes.values():
+            if id(box) not in live and _alive(box.widget) \
+                    and box.widget.isVisible():
+                box.widget.hide()
+        first, first_widget = placed[0][0], placed[0][1]
         session = (gui_doc.Document.Name, obj.Name)
-        if not widget.isVisible():
-            widget.show()
-            widget.raise_()
         if session != self._session:
-            # A new edit: the value is ready to type over, until a click
-            # elsewhere takes the keyboard away.
+            # A new edit: the first value is ready to type over, until a
+            # click elsewhere takes the keyboard away.
             self._session = session
             self._claim.start(time.monotonic())
-        if self._claim.wanted(time.monotonic(), widget.hasFocus()):
-            self._field.focusRequested.emit(True)
-        if self._field.released:
-            self._field.released = False
-            viewport.setFocus()
+        has_focus = any(w.hasFocus() for _b, w, _a in placed)
+        if self._claim.wanted(time.monotonic(), has_focus) \
+                and not first_widget.hasFocus():
+            first.field.focusRequested.emit(True)
+        for box, _widget, _arrow in placed:
+            if box.field.released:
+                box.field.released = False
+                viewport.setFocus()
         return True
-
-    @staticmethod
-    def _label_for(spin: Any) -> str:
-        name = spin.objectName().lower()
-        if "angle" in name:
-            return translate("Nxt", "Angle")
-        return translate("Nxt", "Length")
 
     @staticmethod
     def _to_widget(view: Any, viewport: Any,
@@ -484,13 +658,10 @@ class FloatingInput(QtCore.QObject):
         return placement.from_viewport(x, y, viewport.height() * ratio,
                                        ratio)
 
-    def _ensure_widget(self, viewport: Any) -> Any:
-        if (_alive(self._widget) and _alive(self._viewport)
-                and self._viewport is viewport):
-            return self._widget
-        if _alive(self._widget):
-            self._widget.deleteLater()
-        self._widget = self._viewport = None
+    def _ensure_widget(self, box: _Box, viewport: Any) -> Any:
+        if _alive(box.widget):
+            return box.widget
+        box.widget = None
         qtquick.use_shared_graphics_api()
         _QtQml, _QtQuick, QtQuickWidgets = qtquick.modules()  # noqa: N806
         widget = QtQuickWidgets.QQuickWidget(viewport)
@@ -501,7 +672,7 @@ class FloatingInput(QtCore.QObject):
         widget.installEventFilter(self)
         widget.setClearColor(QtGui.QColor(0, 0, 0, 0))
         context = widget.rootContext()
-        context.setContextProperty("field", self._field)
+        context.setContextProperty("field", box.field)
         context.setContextProperty("theme", self._theme())
         widget.setSource(QtCore.QUrl.fromLocalFile(
             str(resources.qml("FloatingValue.qml"))))
@@ -511,7 +682,7 @@ class FloatingInput(QtCore.QObject):
                                    % detail)
             widget.deleteLater()
             return None
-        self._widget, self._viewport = widget, viewport
+        box.widget = widget
         return widget
 
     def _theme(self) -> Any:
@@ -557,23 +728,54 @@ class FloatingInput(QtCore.QObject):
             except Exception:
                 pass
 
-    def _take_keyboard(self, *_select: Any) -> None:
-        if _alive(self._widget) and self._widget.isVisible():
-            self._widget.activateWindow()
-            self._widget.setFocus(QtCore.Qt.FocusReason.MouseFocusReason)
+    def _take_keyboard(self, name: str) -> None:
+        box = self._boxes.get(name)
+        widget: Any = box.widget if box is not None else None
+        if _alive(widget) and widget.isVisible():
+            widget.activateWindow()
+            widget.setFocus(QtCore.Qt.FocusReason.MouseFocusReason)
 
     def eventFilter(self, watched: Any, event: Any) -> bool:  # noqa: N802
-        """Hold FreeCAD's shortcuts off while the box has the keyboard.
+        """Hold FreeCAD's shortcuts off while a box has the keyboard.
 
         A shortcut is offered to the focused widget first, as a
         ShortcutOverride; accepting it keeps the key for the widget. Only
-        the box's own widget is watched, and only while it has focus.
+        the boxes' own widgets are watched, and only while one has focus.
         """
-        if (event.type() == QtCore.QEvent.Type.ShortcutOverride
-                and watched is self._widget and watched.hasFocus()):
-            event.accept()
-        return False
+        kind = event.type()
+        if kind not in (QtCore.QEvent.Type.ShortcutOverride,
+                        QtCore.QEvent.Type.KeyPress):
+            return False
+        if not any(watched is box.widget for box in self._boxes.values()):
+            return False
+        if kind == QtCore.QEvent.Type.ShortcutOverride:
+            if watched.hasFocus():
+                event.accept()
+            return False
+        # Tab: a widget hands it to Qt's focus chain before its content
+        # sees it, which took the keyboard out of the boxes altogether.
+        # Taken here instead and given to the box, which keeps what was
+        # typed and passes the keyboard to the next box.
+        key = event.key()
+        if key not in (QtCore.Qt.Key.Key_Tab, QtCore.Qt.Key.Key_Backtab) \
+                or event.modifiers() & (
+                    QtCore.Qt.KeyboardModifier.ControlModifier
+                    | QtCore.Qt.KeyboardModifier.AltModifier):
+            return False
+        backward = key == QtCore.Qt.Key.Key_Backtab or bool(
+            event.modifiers() & QtCore.Qt.KeyboardModifier.ShiftModifier)
+        self._send_tab(watched, backward)
+        return True
+
+    @staticmethod
+    def _send_tab(widget: Any, backward: bool) -> None:
+        root = widget.rootObject() if hasattr(widget, "rootObject") else None
+        if root is not None:
+            QtCore.QMetaObject.invokeMethod(
+                root, "tab", QtCore.Qt.ConnectionType.DirectConnection,
+                QtCore.Q_ARG("QVariant", backward))
 
     def _hide(self) -> None:
-        if _alive(self._widget) and self._widget.isVisible():
-            self._widget.hide()
+        for box in self._boxes.values():
+            if _alive(box.widget) and box.widget.isVisible():
+                box.widget.hide()

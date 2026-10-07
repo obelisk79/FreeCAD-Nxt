@@ -54,6 +54,26 @@ class GizmoTests(unittest.TestCase):
             "plain": "coarse", "key": "shift", "coarse": True,
             "step": 1.0, "linear": 5, "rotation": 5})
 
+    def enabled(self) -> Any:
+        return STORE[gizmos.GIZMOS].get(gizmos.ENABLED, "unset")
+
+    def test_handles_are_off_inside_and_back_on_after(self) -> None:
+        with gizmos.hidden():
+            self.assertIs(self.enabled(), False)
+        self.assertIs(self.enabled(), True)
+
+    def test_they_come_back_even_if_the_edit_fails(self) -> None:
+        with self.assertRaises(RuntimeError):
+            with gizmos.hidden():
+                raise RuntimeError("setEdit failed")
+        self.assertIs(self.enabled(), True)
+
+    def test_a_user_who_has_them_off_keeps_them_off(self) -> None:
+        Group(gizmos.GIZMOS).SetBool(gizmos.ENABLED, False)
+        with gizmos.hidden():
+            self.assertIs(self.enabled(), False)
+        self.assertIs(self.enabled(), False)
+
     def test_writing_fine_first_and_ctrl(self) -> None:
         gizmos.write({"plain": "fine", "key": "ctrl"})
         self.assertEqual(self.gizmo("DefaultCoarseDragBehavior"), 1)

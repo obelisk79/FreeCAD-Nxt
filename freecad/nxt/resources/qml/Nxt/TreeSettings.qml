@@ -43,7 +43,7 @@ Popup {
             bottomPadding: 2
         }
 
-        Caption { text: qsTr("Part workbench models") }
+        Caption { text: qsTr("Tree structure") }
         Segmented {
             width: parent.width
             value: settingsPopup.values.PartLayout
@@ -105,18 +105,9 @@ Popup {
             }
         }
 
-        Setting {
-            key: "UnderConstrainedMarks"
-            text: qsTr("Mark under-constrained sketches")
-        }
-        Setting {
-            key: "RowToolTips"
-            text: qsTr("Show tooltips on rows")
-        }
-        Setting {
-            key: "FollowSelection"
-            text: qsTr("Show objects picked in the 3D view")
-        }
+        // Under-constrained marks, row tooltips and following 3D picks
+        // are on unless turned off on the Preferences page (its Tree
+        // group): set once, they are not what this panel is opened for.
         Setting {
             key: "EditOnDoubleClick"
             text: qsTr("Double-click a face to edit its feature")
@@ -128,6 +119,14 @@ Popup {
         Setting {
             key: "HighlightRelated"
             text: qsTr("Highlight related objects")
+        }
+        Setting {
+            key: "TreeLines"
+            text: qsTr("Show tree lines")
+        }
+        Setting {
+            key: "DetailAutoShow"
+            text: qsTr("Show details on click")
         }
 
         Rectangle {

@@ -195,7 +195,7 @@ DEFAULTS = dict(name="", label="", depth=0, hasChildren=False, expanded=False,
                 isProfile=False, severity=0, notes=[], dof=-1, constrained=-1,
                 detailOpen=False, timeline=0, bodyName="", consumers=[],
                 isLifted=False, isActive=False, keyProps=[],
-                propertyCount=0)
+                propertyCount=0, branches=[], activeFrom=-1)
 # refs entries must carry every key the delegate reads; a missing one shows
 # up as undefined rather than as an error, so it is worth being strict.
 REF_KEYS = {"name", "label", "severity", "sub", "iconUrl"}
@@ -252,6 +252,12 @@ def make_bridge():
     ns = {
         "changed": QtCore.Signal(),
         "revealTreeRow": QtCore.Signal(int),
+        "rowHeld": QtCore.Signal(int),
+        "rowReleased": QtCore.Signal(),
+        "detailAutoShow": QtCore.Property(bool, lambda self: True,
+                                          constant=True),
+        "pinnedDetails": QtCore.Property(list, lambda self: ["Sketch"],
+                                         constant=True),
         "propertyInspectorRequested": QtCore.Signal(int),
         "contextMenuRequested": QtCore.Signal(float, float),
         "renameRowRequested": QtCore.Signal(int),

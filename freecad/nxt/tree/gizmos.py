@@ -26,6 +26,8 @@ reopening.
 
 from __future__ import annotations
 
+import contextlib
+from collections.abc import Iterator
 from typing import Any
 
 import FreeCAD as App
@@ -34,6 +36,8 @@ from . import settings
 
 GIZMOS = "User parameter:BaseApp/Preferences/Gui/Gizmos"
 HISTORY = "User parameter:BaseApp/History/Dragger"
+#: "Show interactive draggers while editing features", in GIZMOS.
+ENABLED = "EnableGizmos"
 
 #: Qt::KeyboardModifier values, as FineSnapModifier stores them.
 SHIFT = 0x02000000
@@ -93,6 +97,27 @@ def write(values: dict[str, Any]) -> None:
     if "step" in values:
         App.ParamGet(HISTORY).SetFloat(
             "LastTranslationIncrement", max(0.001, float(values["step"])))
+
+
+@contextlib.contextmanager
+def hidden() -> Iterator[None]:
+    """Open an edit without its drag handles.
+
+    FreeCAD decides whether a task gets handles when the task is made,
+    from FreeCAD's own preference. So the preference is turned off
+    for just that moment and put back at once: the edit opened inside
+    has none, and a feature created afterwards has them as usual. Left
+    alone when the user has them off already.
+    """
+    group = App.ParamGet(GIZMOS)
+    was_on = bool(group.GetBool(ENABLED, True))
+    if was_on:
+        group.SetBool(ENABLED, False)
+    try:
+        yield
+    finally:
+        if was_on:
+            group.SetBool(ENABLED, True)
 
 
 def apply_defaults_once() -> bool:

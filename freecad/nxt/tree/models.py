@@ -7,7 +7,7 @@ model: indentation here is presentation, not structure. See DESIGN.md.
 from __future__ import annotations
 
 import difflib
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from typing import Any
 
 import FreeCAD as App
@@ -20,6 +20,45 @@ _ROLE: int = QtCore.Qt.ItemDataRole.UserRole
 
 def _q(name: str) -> QtCore.QByteArray:
     return QtCore.QByteArray(name.encode("utf-8"))
+
+
+#: What a row draws in one column of connector lines.
+NO_LINE, LINE_THROUGH, LINE_TEE, LINE_END = 0, 1, 2, 3
+
+
+def branch_lines(rows: Sequence[tuple[str, int]], active: str = "",
+                 ) -> dict[str, tuple[tuple[int, ...], int]]:
+    """The connector lines each row draws, as a tree view has them.
+
+    A row at depth d has d columns, one per ancestor. In its own (last)
+    column the line comes down from its parent and turns to the row:
+    LINE_TEE when a sibling follows, LINE_END when it is the last. In an
+    earlier column the line passes straight through (LINE_THROUGH) while
+    that ancestor still has children to come, and is absent after its
+    last one.
+
+    The second value is the column from which the lines are the active
+    container's own - the lines to its children, and everything inside -
+    or -1 when the row is not under the active container.
+    """
+    lines: dict[str, tuple[tuple[int, ...], int]] = {}
+    more: list[bool] = []       # by depth: is a sibling still to come?
+    for name, depth in reversed(rows):
+        del more[depth + 1:]
+        more += [False] * (depth + 1 - len(more))
+        columns = [LINE_THROUGH if more[level] else NO_LINE
+                   for level in range(1, depth)]
+        if depth > 0:
+            columns.append(LINE_TEE if more[depth] else LINE_END)
+        more[depth] = True
+        lines[name] = (tuple(columns), -1)
+    path: list[str] = []
+    for name, depth in rows:
+        del path[depth:]
+        if active and active in path:
+            lines[name] = (lines[name][0], path.index(active))
+        path.append(name)
+    return lines
 
 
 class TreeRowModel(QtCore.QAbstractListModel):
@@ -54,6 +93,8 @@ class TreeRowModel(QtCore.QAbstractListModel):
     ActiveRole = _ROLE + 27
     KeyPropsRole = _ROLE + 28
     PropertyCountRole = _ROLE + 29
+    BranchesRole = _ROLE + 30
+    ActiveFromRole = _ROLE + 31
 
     _ROLE_NAMES = {
         NameRole: "name",
@@ -103,6 +144,9 @@ class TreeRowModel(QtCore.QAbstractListModel):
         ActiveRole: "isActive",
         KeyPropsRole: "keyProps",
         PropertyCountRole: "propertyCount",
+        # The connector lines to the left of a row (see branch_lines).
+        BranchesRole: "branches",
+        ActiveFromRole: "activeFrom",
     }
 
     countChanged = QtCore.Signal()
@@ -120,6 +164,9 @@ class TreeRowModel(QtCore.QAbstractListModel):
         self._highlight: set[str] = set()
         self._detail: set[str] = set()
         self._active = ""
+        #: Per row name: (its connector lines, the column they turn to
+        #: the accent colour from).
+        self._lines: dict[str, tuple[tuple[int, ...], int]] = {}
         self._icon_rev = 0
         self._known: set[str] = set()
 
@@ -209,6 +256,9 @@ class TreeRowModel(QtCore.QAbstractListModel):
                     self.endInsertRows()
             self.countChanged.emit()
         self._rows = list(new_rows)
+        redrawn = self._reline()
+        if changed is not None and redrawn:
+            changed = set(changed) | redrawn
         # `changed` is None the first time, or when there is nothing to
         # compare against - then every row has to be re-read. Otherwise only
         # the rows whose displayed state actually moved are announced: a
@@ -221,6 +271,14 @@ class TreeRowModel(QtCore.QAbstractListModel):
         elif changed:
             self._touch(changed)
         self.rowsRefreshed.emit()
+
+    def _reline(self) -> set[str]:
+        """Work the connector lines out again; the rows they changed on."""
+        lines = branch_lines(self._rows, self._active)
+        changed = {name for name, drawn in lines.items()
+                   if self._lines.get(name) != drawn}
+        self._lines = lines
+        return changed
 
     def _touch_all(self) -> None:
         if self._rows:
@@ -311,7 +369,8 @@ class TreeRowModel(QtCore.QAbstractListModel):
         # rows their previous answer.
         changed = {n for n in (self._active, name) if n}
         self._active = name
-        self._touch(changed)
+        # And every row under either, whose lines change colour.
+        self._touch(changed | self._reline())
 
     def toggle_detail(self, name: str,
                       open_it: bool | None = None) -> bool:
@@ -450,6 +509,10 @@ class TreeRowModel(QtCore.QAbstractListModel):
             return node.is_lifted
         if role == self.ActiveRole:
             return name == self._active
+        if role == self.BranchesRole:
+            return list(self._lines.get(name, ((), -1))[0])
+        if role == self.ActiveFromRole:
+            return self._lines.get(name, ((), -1))[1]
         if role == self.SeverityRole:
             return node.severity
         if role == self.NotesRole:

@@ -8,9 +8,17 @@ import QtQuick
 // work as they do in the panel. A click takes the keyboard; a double
 // click selects the whole value to type over. Enter keeps the value and
 // closes the edit, as the task's OK does; clicking away keeps it and
-// recomputes; Escape puts the value back as it was.
+// recomputes; Escape puts the value back as it was; Tab moves to the
+// next box.
 Rectangle {
     id: box
+
+    // Tab, handed over by the widget (float_input.py's event filter): Qt
+    // takes Tab for its own focus chain before a key handler here sees
+    // it, and the keyboard went off into FreeCAD's window.
+    function tab(backward) {
+        input.tabOn(backward);
+    }
 
     function takeKeyboard(selectAll) {
         field.grab();
@@ -95,6 +103,19 @@ Rectangle {
         Keys.onEnterPressed: {
             field.finish(text); text = field.text; field.release();
         }
+        // Tab and Shift+Tab move between the boxes of a feature with
+        // several handles. What was typed is kept first, and shown back
+        // as the panel formats it, so losing the keyboard next finds
+        // nothing changed.
+        function tabOn(backward) {
+            if (text !== field.text) {
+                field.commit(text);
+                text = field.text;
+            }
+            field.tab(backward);
+        }
+        Keys.onTabPressed: tabOn(false)
+        Keys.onBacktabPressed: tabOn(true)
         // Escape puts the value back first, so losing the keyboard next
         // has nothing to commit.
         Keys.onEscapePressed: { text = field.text; field.release(); }

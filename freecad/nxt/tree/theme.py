@@ -290,6 +290,7 @@ class Theme(QtCore.QObject):
         self._chip_mode = str(settings.get("ReferenceChips"))
         self._under_constrained = bool(settings.get("UnderConstrainedMarks"))
         self._tool_tips = bool(settings.get("RowToolTips"))
+        self._tree_lines = bool(settings.get("TreeLines"))
         self._rebuild()
         self.changed.emit()
 
@@ -439,6 +440,11 @@ class Theme(QtCore.QObject):
     def showUnderConstrained(self) -> bool:  # noqa: N802 - QML API
         """Whether a merely under-constrained sketch gets its ring."""
         return getattr(self, "_under_constrained", True)
+
+    @QtCore.Property(bool, notify=changed)
+    def showTreeLines(self) -> bool:  # noqa: N802 - QML API
+        """Whether rows draw dotted connector lines (TreeLines.qml)."""
+        return getattr(self, "_tree_lines", False)
 
     @QtCore.Property(bool, notify=changed)
     def showToolTips(self) -> bool:  # noqa: N802 - QML API

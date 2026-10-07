@@ -367,6 +367,10 @@ Rectangle {
             // The rows being dragged, and whether the drag is a reorder
             // within a Body (see the drag ghost below).
             property var dragSources: []
+            // A row kept where it is on screen while strips above it
+            // open and close (auto-show; see the bridge's rowHeld).
+            property int heldRow: -1
+            property real heldOffset: 0
             property bool reorderDrag: false
 
             delegate: TreeRow { dragGhost: ghost; detailCap: root.contentCap }
@@ -757,6 +761,18 @@ Rectangle {
     // agrees with what the 3D view and the rest of FreeCAD consider current.
     // A focused TextInput consumes these first, so typing a space into the
     // search box or a rename field does not toggle anything.
+    // Space is also a FreeCAD shortcut (toggle visibility), and a shortcut
+    // is offered the key before the panel is: FreeCAD's command then ran
+    // in place of the handler below, without the Part Design handling in
+    // toggleSelectedVisibility. Claiming the key here keeps it for the
+    // panel while the panel has the keyboard.
+    Keys.onShortcutOverride: function (event) {
+        if (event.key === Qt.Key_Space
+                && !(event.modifiers & (Qt.ControlModifier | Qt.AltModifier
+                                        | Qt.MetaModifier)))
+            event.accepted = true;
+    }
+
     Keys.onPressed: function (event) {
         if (event.key === Qt.Key_F2) {
             root.startRename(nxt.treeRenameRow());
@@ -809,6 +825,27 @@ Rectangle {
         }
         function onRenameRowRequested(row) {
             root.startRename(row);
+        }
+        function onRowHeld(row) {
+            var item = treeList.itemAtIndex(row);
+            treeList.heldRow = item ? row : -1;
+            if (item)
+                treeList.heldOffset = item.y - treeList.contentY;
+        }
+        function onRowReleased() {
+            var row = treeList.heldRow;
+            treeList.heldRow = -1;
+            if (row < 0)
+                return;
+            var offset = treeList.heldOffset;
+            // After the rows have taken their new heights.
+            Qt.callLater(function () {
+                var item = treeList.itemAtIndex(row);
+                if (!item)
+                    return;
+                treeList.contentY = item.y - offset;
+                treeList.returnToBounds();
+            });
         }
         function onRevealTreeRow(row) {
             treeList.positionViewAtIndex(row, ListView.Contain);

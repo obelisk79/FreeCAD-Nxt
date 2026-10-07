@@ -178,6 +178,81 @@ class FocusClaimTests(unittest.TestCase):
         self.assertTrue(claim.wanted(5.1, False))
 
 
+class PairTests(unittest.TestCase):
+    """Which handle gets a box for which task field."""
+
+    L, R = float_input.LINEAR, float_input.ROTATION
+
+    def pair(self, showing: dict[str, list[bool]],
+             fields: str, kind: str = "PartDesign::Pad") -> list[str]:
+        return [name for _k, _p, name
+                in float_input.pair(kind, showing, fields.split())]
+
+    def test_one_length(self) -> None:
+        self.assertEqual(self.pair(
+            {self.L: [True, False], self.R: [False, False]},
+            "lengthEdit offset"), ["lengthEdit"])
+
+    def test_two_lengths_each_get_their_own(self) -> None:
+        self.assertEqual(self.pair(
+            {self.L: [True, True]}, "lengthEdit lengthEdit2"),
+            ["lengthEdit", "lengthEdit2"])
+
+    def test_tapers_follow_the_lengths(self) -> None:
+        self.assertEqual(self.pair(
+            {self.L: [True, True], self.R: [True, True]},
+            "lengthEdit lengthEdit2 taperEdit taperEdit2"),
+            ["lengthEdit", "lengthEdit2", "taperEdit", "taperEdit2"])
+
+    def test_a_handle_without_its_field_gets_no_box(self) -> None:
+        self.assertEqual(self.pair(
+            {self.L: [True, True], self.R: [True, False]},
+            "lengthEdit taperEdit2"), ["lengthEdit"])
+
+    def test_a_revolution_pairs_its_angles(self) -> None:
+        self.assertEqual(self.pair(
+            {self.R: [True, True]}, "revolveAngle revolveAngle2",
+            "PartDesign::Revolution"), ["revolveAngle", "revolveAngle2"])
+
+    def test_an_unknown_feature_pairs_nothing(self) -> None:
+        self.assertEqual(self.pair(
+            {self.L: [True]}, "lengthEdit", "PartDesign::Hole"), [])
+
+    def test_extra_handles_are_ignored(self) -> None:
+        self.assertEqual(self.pair(
+            {self.L: [True, True, True]}, "lengthEdit lengthEdit2"),
+            ["lengthEdit", "lengthEdit2"])
+
+    def test_tab_goes_round_the_boxes(self) -> None:
+        order = ["lengthEdit", "lengthEdit2", "taperEdit"]
+        step = float_input.next_box
+        self.assertEqual(step(order, "lengthEdit"), "lengthEdit2")
+        self.assertEqual(step(order, "taperEdit"), "lengthEdit")
+        self.assertEqual(step(order, "lengthEdit", True), "taperEdit")
+        self.assertEqual(step(["lengthEdit"], "lengthEdit"), "lengthEdit")
+        self.assertEqual(step(order, "gone"), "lengthEdit")
+
+    def test_tab_hands_the_keyboard_to_the_next_box(self) -> None:
+        floating = float_input.FloatingInput()
+        first, second = floating._box("lengthEdit"), floating._box(
+            "lengthEdit2")
+        floating._order = ["lengthEdit", "lengthEdit2"]
+        asked: list[str] = []
+        first.field.focusRequested.connect(lambda _s: asked.append("1"))
+        second.field.focusRequested.connect(lambda _s: asked.append("2"))
+        first.field.tab(False)
+        second.field.tab(False)
+        first.field.tab(True)
+        self.assertEqual(asked, ["2", "1", "2"])
+
+    def test_labels_tell_the_boxes_apart(self) -> None:
+        self.assertEqual(
+            [float_input.label_for(n) for n in (
+                "lengthEdit", "lengthEdit2", "taperEdit", "taperEdit2",
+                "revolveAngle")],
+            ["Length", "Length 2", "Taper", "Taper 2", "Angle"])
+
+
 class DeletedWidgetTests(unittest.TestCase):
     """The box's widget can be deleted under it, with its 3D view.
 
@@ -188,14 +263,15 @@ class DeletedWidgetTests(unittest.TestCase):
     def test_a_deleted_box_is_forgotten_quietly(self) -> None:
         import shiboken6
         floating = float_input.FloatingInput()
-        floating._widget = QtWidgets.QWidget()
+        box = floating._box("lengthEdit")
+        box.widget = QtWidgets.QWidget()
         floating._viewport = QtWidgets.QWidget()
-        shiboken6.delete(floating._widget)
+        shiboken6.delete(box.widget)
         floating._update = lambda: False    # no edit going on
         floating._tick()
-        self.assertIsNone(floating._widget)
+        self.assertIsNone(box.widget)
         floating._tick()                    # and again: still quiet
-        floating._take_keyboard(True)
+        floating._take_keyboard("lengthEdit")
         floating.remove()
 
 
@@ -205,7 +281,7 @@ class ShortcutTests(unittest.TestCase):
         floating = float_input.FloatingInput()
         widget = QtWidgets.QLineEdit()
         widget.show()
-        floating._widget = widget
+        floating._box("lengthEdit").widget = widget
         override = QtGui.QKeyEvent(QtCore.QEvent.Type.ShortcutOverride,
                                    QtCore.Qt.Key.Key_V,
                                    QtCore.Qt.KeyboardModifier.NoModifier)
@@ -219,6 +295,41 @@ class ShortcutTests(unittest.TestCase):
         override.ignore()
         floating.eventFilter(other, override)
         self.assertFalse(override.isAccepted())
+
+
+class TabKeyTests(unittest.TestCase):
+    """Tab is taken at the widget, before Qt's focus chain has it."""
+
+    def press(self, key: Any, modifiers: Any = None) -> tuple[bool, list]:
+        floating = float_input.FloatingInput()
+        widget = QtWidgets.QLineEdit()
+        floating._box("lengthEdit").widget = widget
+        sent: list[bool] = []
+        floating._send_tab = lambda _w, back: sent.append(back)
+        event = QtGui.QKeyEvent(
+            QtCore.QEvent.Type.KeyPress, key,
+            modifiers or QtCore.Qt.KeyboardModifier.NoModifier)
+        return floating.eventFilter(widget, event), sent
+
+    def test_tab_is_taken_and_goes_forward(self) -> None:
+        self.assertEqual(self.press(QtCore.Qt.Key.Key_Tab), (True, [False]))
+
+    def test_shift_tab_goes_back_however_it_arrives(self) -> None:
+        shift = QtCore.Qt.KeyboardModifier.ShiftModifier
+        self.assertEqual(self.press(QtCore.Qt.Key.Key_Backtab, shift),
+                         (True, [True]))
+        self.assertEqual(self.press(QtCore.Qt.Key.Key_Tab, shift),
+                         (True, [True]))
+
+    def test_other_keys_pass(self) -> None:
+        self.assertEqual(self.press(QtCore.Qt.Key.Key_A), (False, []))
+
+    def test_another_widgets_tab_is_left_alone(self) -> None:
+        floating = float_input.FloatingInput()
+        event = QtGui.QKeyEvent(QtCore.QEvent.Type.KeyPress,
+                                QtCore.Qt.Key.Key_Tab,
+                                QtCore.Qt.KeyboardModifier.NoModifier)
+        self.assertFalse(floating.eventFilter(QtWidgets.QLineEdit(), event))
 
 
 class QmlTests(unittest.TestCase):
@@ -297,6 +408,26 @@ class QmlTests(unittest.TestCase):
         self.view.rootObject().forceActiveFocus()
         settle()
         self.assertEqual(committed, [])
+
+    def test_tab_keeps_the_value_and_moves_on(self) -> None:
+        tabbed: list[bool] = []
+        self.field.tabbed.connect(tabbed.append)
+        self.field.focusRequested.emit(True)
+        settle()
+        self.input.setProperty("text", "80")
+        QTest.keyClick(self.view, QtCore.Qt.Key.Key_Tab)
+        settle()
+        self.assertEqual(self.spin._raw(), 80)
+        QTest.keyClick(self.view, QtCore.Qt.Key.Key_Backtab,
+                       QtCore.Qt.KeyboardModifier.ShiftModifier)
+        settle()
+        self.assertEqual(tabbed, [False, True])
+        # And as the widget hands it over.
+        QtCore.QMetaObject.invokeMethod(
+            self.view.rootObject(), "tab",
+            QtCore.Qt.ConnectionType.DirectConnection,
+            QtCore.Q_ARG("QVariant", False))
+        self.assertEqual(tabbed, [False, True, False])
 
     def test_enter_commits_and_escape_restores(self) -> None:
         finished: list[bool] = []

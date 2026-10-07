@@ -113,6 +113,10 @@ def make_bridge() -> Any:
     bridge._snapshot = types.SimpleNamespace(doc_name="Doc")
     bridge._pushing_selection = False
     bridge._related = False
+    bridge._auto_timer = types.SimpleNamespace(
+        start=lambda: None, stop=lambda: None)
+    bridge._auto_name = bridge._auto_detail = ""
+    bridge._pinned = set()
     bridge.sync_selection = lambda: None
     bridge.invalidate = lambda *a, **k: None
     return bridge
@@ -207,6 +211,240 @@ class Branches:
 
     def set_expanded(self, name: str, expanded: bool) -> None:
         (self.expanded.add if expanded else self.expanded.discard)(name)
+
+
+class TreeLineTests(unittest.TestCase):
+    """The connector lines each row draws (models.branch_lines)."""
+
+    # Body          0
+    #   Sketch      1
+    #   Pad         1
+    #     Inner     2
+    #   Pocket      1
+    # Part          0
+    #   Box         1
+    ROWS = [("Body", 0), ("Sketch", 1), ("Pad", 1), ("Inner", 2),
+            ("Pocket", 1), ("Part", 0), ("Box", 1)]
+
+    def lines(self, active: str = "") -> dict[str, Any]:
+        from freecad.nxt.tree import models
+        return models.branch_lines(self.ROWS, active)
+
+    def test_tees_until_the_last_child_which_ends_the_line(self) -> None:
+        lines = self.lines()
+        self.assertEqual([lines[n][0] for n in ("Sketch", "Pad", "Pocket")],
+                         [(2,), (2,), (3,)])
+        self.assertEqual(lines["Box"][0], (3,))
+
+    def test_top_level_rows_draw_none(self) -> None:
+        self.assertEqual(self.lines()["Body"][0], ())
+
+    def test_a_line_passes_through_while_siblings_follow(self) -> None:
+        self.assertEqual(self.lines()["Inner"][0], (1, 3))
+
+    def test_no_line_passes_after_the_last_child(self) -> None:
+        from freecad.nxt.tree import models
+        rows = [("A", 0), ("B", 1), ("C", 2)]
+        self.assertEqual(models.branch_lines(rows)["C"][0], (0, 3))
+
+    def test_nothing_is_accented_with_nothing_active(self) -> None:
+        self.assertEqual({v[1] for v in self.lines().values()}, {-1})
+
+    def test_the_active_containers_lines_are_accented(self) -> None:
+        lines = self.lines("Body")
+        self.assertEqual([lines[n][1] for n, _d in self.ROWS],
+                         [-1, 0, 0, 0, 0, -1, -1])
+
+    def test_only_lines_inside_a_nested_active_one(self) -> None:
+        # Pad's own line belongs to Body; the line to Inner is Pad's.
+        lines = self.lines("Pad")
+        self.assertEqual(lines["Pad"][1], -1)
+        self.assertEqual(lines["Inner"][1], 1)
+
+
+class ActivateTests(unittest.TestCase):
+    """Double-click: an inactive container is activated, not opened."""
+
+    def setUp(self) -> None:
+        self.bridge = make_bridge()
+        node = types.SimpleNamespace
+        self.bridge._snapshot.nodes = {
+            "A": node(is_container=True, is_lifted=False),
+            "B": node(is_container=True, is_lifted=False),
+        }
+        DOC.objects["A"].TypeId = "PartDesign::Body"
+        DOC.objects["B"].TypeId = "App::DocumentObjectGroup"
+        DOC.objects["B"].isDerivedFrom = lambda _t: False
+        self.bridge._active = ""
+        self.bridge._pending_active = ""
+        self.started: list[str] = []
+        self.bridge._activate_timer = types.SimpleNamespace(
+            start=lambda: self.started.append(self.bridge._pending_active))
+        self.toggled: list[str] = []
+        self.bridge.toggleExpanded = self.toggled.append
+
+    def test_an_inactive_body_is_activated_not_opened(self) -> None:
+        self.bridge.activate("A")
+        self.assertEqual((self.started, self.toggled), (["A"], []))
+
+    def test_the_active_body_opens_and_closes(self) -> None:
+        self.bridge._active = "A"
+        self.bridge.activate("A")
+        self.assertEqual((self.started, self.toggled), ([], ["A"]))
+
+    def test_a_plain_group_opens_and_closes(self) -> None:
+        self.bridge.activate("B")
+        self.assertEqual((self.started, self.toggled), ([], ["B"]))
+
+    def test_the_keys(self) -> None:
+        key = bridge_mod.TreeBridge._active_key
+        part = types.SimpleNamespace(
+            TypeId="App::Part", isDerivedFrom=lambda t: t == "App::Part")
+        assembly = types.SimpleNamespace(
+            TypeId="Assembly::AssemblyObject", isDerivedFrom=lambda t: False)
+        self.assertEqual([key(DOC.objects["A"]), key(part), key(assembly),
+                          key(DOC.objects["B"])],
+                         ["pdbody", "part", "part", ""])
+
+
+class AutoDetailTests(unittest.TestCase):
+    """A click in the tree opens that row's detail strip, if asked to."""
+
+    def setUp(self) -> None:
+        SELECTION.names = []
+        self.bridge = make_bridge()
+        rows = self.bridge._tree
+        rows.open = set()
+        rows.toggle_detail = self.toggle
+        rows.close_details = lambda names: rows.open.difference_update(
+            names)
+        self.started = 0
+        self.bridge._auto_timer = types.SimpleNamespace(
+            start=self.start, stop=lambda: setattr(self, "started", 0))
+        self.held: list[int] = []
+        self.bridge.rowHeld.connect(self.held.append)
+        self.on = True
+        original = bridge_mod.settings.get
+        bridge_mod.settings.get = lambda key: (
+            self.on if key == "DetailAutoShow" else original(key))
+        self.addCleanup(setattr, bridge_mod.settings, "get", original)
+
+    def start(self) -> None:
+        self.started += 1
+
+    def toggle(self, name: str, open_it: Any = None) -> bool:
+        rows = self.bridge._tree
+        want = (name not in rows.open) if open_it is None else open_it
+        (rows.open.add if want else rows.open.discard)(name)
+        return bool(want)
+
+    def click(self, name: str) -> None:
+        self.bridge.select(name, False)
+        self.bridge._auto_show_detail()
+
+    def test_off_by_default(self) -> None:
+        self.assertFalse(bridge_mod.settings.DEFAULTS["DetailAutoShow"])
+        self.on = False
+        self.click("B")
+        self.assertEqual(self.bridge._tree.open, set())
+
+    def test_a_click_starts_the_wait_and_a_ctrl_click_ends_it(self) -> None:
+        self.bridge.select("B", False)
+        self.assertEqual(self.started, 1)
+        self.bridge.select("C", True)
+        self.assertEqual(self.started, 0)
+
+    def test_the_strip_follows_the_click(self) -> None:
+        self.click("B")
+        self.assertEqual(self.bridge._tree.open, {"B"})
+        self.click("D")
+        self.assertEqual(self.bridge._tree.open, {"D"})
+        self.assertEqual(self.held, [1, 3])
+
+    def test_not_for_several_selected(self) -> None:
+        self.bridge.select("B", False)
+        SELECTION.names = ["B", "C"]
+        self.bridge._auto_show_detail()
+        self.assertEqual(self.bridge._tree.open, set())
+
+    def test_a_pinned_strip_stays(self) -> None:
+        self.click("B")
+        self.bridge.toggleDetailPin("B")
+        self.click("D")
+        self.assertEqual(self.bridge._tree.open, {"B", "D"})
+        self.assertEqual(self.bridge.pinnedDetails, ["B"])
+
+    def test_a_strip_opened_by_hand_is_left_alone(self) -> None:
+        self.bridge.toggleDetail("E")
+        self.click("B")
+        self.click("D")
+        self.assertEqual(self.bridge._tree.open, {"D", "E"})
+
+    def test_closing_by_hand_unpins(self) -> None:
+        self.click("B")
+        self.bridge.toggleDetailPin("B")
+        self.bridge.toggleDetail("B")
+        self.assertEqual(self.bridge.pinnedDetails, [])
+
+    def test_turning_it_off_unpins(self) -> None:
+        self.click("B")
+        self.bridge.toggleDetailPin("B")
+        self.on = False
+        self.bridge.refresh_auto_detail()
+        self.assertEqual(self.bridge.pinnedDetails, [])
+
+
+class FeatureEyeTests(unittest.TestCase):
+    """Showing a Body's feature hides the Body's other features."""
+
+    def setUp(self) -> None:
+        SELECTION.names = []
+        self.bridge = make_bridge()
+        node = types.SimpleNamespace
+        # A is a Body with the features B, C, D; E stands outside it.
+        self.bridge._snapshot.nodes = {
+            "A": node(body=None, stack=["B", "C", "D"]),
+            "B": node(body="A", stack=[]),
+            "C": node(body="A", stack=[]),
+            "D": node(body="A", stack=[]),
+            "E": node(body=None, stack=[]),
+        }
+        for name, shown in zip("ABCDE", (True, False, False, True, True)):
+            DOC.objects[name].ViewObject.Visibility = shown
+        self.addCleanup(lambda: [setattr(
+            o.ViewObject, "Visibility", True) for o in DOC.objects.values()])
+
+    def shown(self) -> str:
+        return "".join(n for n in "ABCDE"
+                       if DOC.objects[n].ViewObject.Visibility)
+
+    def test_the_eye_shows_one_feature_and_hides_the_rest(self) -> None:
+        self.bridge.toggleVisibility("B")
+        self.assertEqual(self.shown(), "ABE")
+        self.bridge.toggleVisibility("C")
+        self.assertEqual(self.shown(), "ACE")
+
+    def test_hiding_a_feature_shows_no_other(self) -> None:
+        self.bridge.toggleVisibility("D")
+        self.assertEqual(self.shown(), "AE")
+
+    def test_space_then_the_eye_leaves_only_the_last_choice(self) -> None:
+        SELECTION.names = ["B"]
+        self.bridge.toggleSelectedVisibility()
+        self.assertEqual(self.shown(), "ABE")
+        self.bridge.toggleVisibility("C")
+        self.assertEqual(self.shown(), "ACE")
+
+    def test_of_several_shown_at_once_the_latest_stays(self) -> None:
+        DOC.objects["D"].ViewObject.Visibility = False
+        SELECTION.names = ["C", "B"]
+        self.bridge.toggleSelectedVisibility()
+        self.assertEqual(self.shown(), "ACE")
+
+    def test_objects_outside_a_body_are_left_alone(self) -> None:
+        self.bridge.toggleVisibility("E")
+        self.bridge.toggleVisibility("E")
+        self.assertEqual(self.shown(), "ADE")
 
 
 class RelatedTests(unittest.TestCase):

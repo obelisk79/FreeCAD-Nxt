@@ -57,8 +57,8 @@ class Prefs(QtCore.QObject):
         super().__init__()
         self.store: dict[str, Any] = {
             "PartLayout": "expression", "RowDensity": "normal",
-            "ReferenceChips": "problems", "UnderConstrainedMarks": True,
-            "FollowSelection": True}
+            "ReferenceChips": "problems", "EditOnDoubleClick": True,
+            "TreeLines": False}
         self.writes: list[tuple[str, Any]] = []
         self.opened = 0
 
@@ -165,7 +165,8 @@ def click(window: QtGui.QWindow, item: Any) -> None:
 
 
 def switch_of(window: QtGui.QWindow,
-              label: str = "Mark under-constrained sketches") -> Any:
+              label: str = "Double-click a face to edit its feature"
+              ) -> Any:
     """The switch with this label (a Switch, whatever its QML type)."""
     return next(i for i in items_of(window.contentItem())
                 if i.property("text") == label
@@ -179,7 +180,8 @@ check("it opens in a window of its own", len(windows) == 1)
 window = windows[0]
 check("wider than the panel", window.width() > view.width())
 for label in ("Tree settings", "Expression rows", "Compact", "Problems",
-              "Mark under-constrained sketches", "More preferences…"):
+              "Double-click a face to edit its feature",
+              "More preferences…"):
     try:
         text_item(window, label)
         found = True
@@ -198,20 +200,25 @@ check("each control writes its own key",
       prefs.writes[-1] == ("RowDensity", "roomy"))
 click(window, switch_of(window))
 check("the switch writes false", prefs.writes[-1]
-      == ("UnderConstrainedMarks", False))
+      == ("EditOnDoubleClick", False))
 check("and shows it", switch_of(window).property("checked") is False)
-prefs.store["UnderConstrainedMarks"] = True
+prefs.store["EditOnDoubleClick"] = True
 prefs.changed.emit()
 settle()
 check("it follows the store, not the last click",
       switch_of(window).property("checked") is True)
 
-follow = "Show objects picked in the 3D view"
-check("the follow switch shows the stored value",
-      switch_of(window, follow).property("checked") is True)
-click(window, switch_of(window, follow))
+lines = "Show tree lines"
+check("another switch shows its own stored value",
+      switch_of(window, lines).property("checked") is False)
+click(window, switch_of(window, lines))
 check("and writes its own key",
-      prefs.writes[-1] == ("FollowSelection", False))
+      prefs.writes[-1] == ("TreeLines", True))
+for moved in ("Mark under-constrained sketches", "Show tooltips on rows",
+              "Show objects picked in the 3D view"):
+    check("%r is on the Preferences page only" % moved,
+          not any(i.property("text") == moved
+                  for i in items_of(window.contentItem())))
 
 print("keyboard")
 click(window, text_item(window, "Roomy"))    # focus the density row

@@ -20,4 +20,5 @@ ContextMenu 1.0 ContextMenu.qml
 NxtSwitch 1.0 NxtSwitch.qml
 Segmented 1.0 Segmented.qml
 TreeSettings 1.0 TreeSettings.qml
+TreeLines 1.0 TreeLines.qml
 DependencyArrows 1.0 DependencyArrows.qml

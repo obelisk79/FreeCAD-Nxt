@@ -27,13 +27,12 @@ GROUP = "FreeCAD-Nxt"
 
 #: What the quick panel offers. The page offers these and more.
 QUICK = ("PartLayout", "RowDensity", "ReferenceChips",
-         "UnderConstrainedMarks", "FollowSelection", "EditOnDoubleClick",
-         "DependencyArrows", "HighlightRelated", "RowToolTips",
-         "OverlayMode")
+         "EditOnDoubleClick", "DependencyArrows", "HighlightRelated",
+         "DetailAutoShow", "TreeLines", "OverlayMode")
 
 #: Settings the theme reads: changing one restyles the panel.
 _VIEW = frozenset({"RowDensity", "ReferenceChips", "UnderConstrainedMarks",
-                   "RowToolTips",
+                   "RowToolTips", "TreeLines",
                    "HeaderMaxPercent", "HeaderMinWidth"})
 #: Settings the snapshot reads: changing one rebuilds it.
 _SNAPSHOT = frozenset({"PartLayout", "DependencyArrows"})
@@ -66,6 +65,10 @@ def apply(keys: set[str] | frozenset[str]) -> None:
             bridge = panel.bridge()
             if bridge is not None:
                 bridge.refresh_related()
+        if "DetailAutoShow" in keys:
+            bridge = panel.bridge()
+            if bridge is not None:
+                bridge.refresh_auto_detail()
     for prefs in list(_live):
         prefs.changed.emit()
 
@@ -150,7 +153,7 @@ class PreferencesPage:
         labels = _labels()
         self._choices: dict[str, QtWidgets.QComboBox] = {}
         for key, text in (
-                ("PartLayout", translate("Nxt", "Part workbench models")),
+                ("PartLayout", translate("Nxt", "Tree structure")),
                 ("RowDensity", translate("Nxt", "Row density")),
                 ("ReferenceChips", translate("Nxt", "Reference chips"))):
             box = QtWidgets.QComboBox(tree)
@@ -177,6 +180,12 @@ class PreferencesPage:
         self._related = QtWidgets.QCheckBox(translate(
             "Nxt", "Highlight the objects related to the selection"), tree)
         layout.addRow(self._related)
+        self._lines = QtWidgets.QCheckBox(translate(
+            "Nxt", "Show tree lines"), tree)
+        layout.addRow(self._lines)
+        self._auto_detail = QtWidgets.QCheckBox(translate(
+            "Nxt", "Show a row's details when it is clicked"), tree)
+        layout.addRow(self._auto_detail)
         outer.addWidget(tree)
 
         panel = QtWidgets.QGroupBox(translate("Nxt", "Panel"), self.form)
@@ -241,6 +250,13 @@ class PreferencesPage:
         self._floating = QtWidgets.QCheckBox(translate(
             "Nxt", "Show the value beside the arrow while dragging"), drag)
         layout.addRow(self._floating)
+        self._no_handles = QtWidgets.QCheckBox(translate(
+            "Nxt", "No drag handles when a feature is edited from the tree"),
+            drag)
+        self._no_handles.setToolTip(translate(
+            "Nxt", "Double-clicking a feature's row opens it without the "
+                   "handles.\nA new feature still gets them."))
+        layout.addRow(self._no_handles)
         for signal in (self._step.valueChanged, self._linear.valueChanged):
             signal.connect(self._update_note)
         self._coarse.toggled.connect(self._linear.setEnabled)
@@ -267,12 +283,16 @@ class PreferencesPage:
         self._dbl.setChecked(bool(settings.get("EditOnDoubleClick")))
         self._arrows.setChecked(bool(settings.get("DependencyArrows")))
         self._related.setChecked(bool(settings.get("HighlightRelated")))
+        self._auto_detail.setChecked(bool(settings.get("DetailAutoShow")))
+        self._lines.setChecked(bool(settings.get("TreeLines")))
         self._visible.setChecked(bool(settings.get("Visible")))
         self._percent.setValue(int(settings.get("HeaderMaxPercent")))
         self._min_width.setValue(int(settings.get("HeaderMinWidth")))
         self._pinned.setChecked(bool(settings.get("InspectorPinned")))
         self._show_drag(gizmos.read())
         self._floating.setChecked(bool(settings.get("FloatingValues")))
+        self._no_handles.setChecked(
+            bool(settings.get("TreeEditHidesHandles")))
 
     def saveSettings(self) -> None:  # noqa: N802
         for key, box in self._choices.items():
@@ -283,11 +303,14 @@ class PreferencesPage:
         settings.put("EditOnDoubleClick", self._dbl.isChecked())
         settings.put("DependencyArrows", self._arrows.isChecked())
         settings.put("HighlightRelated", self._related.isChecked())
+        settings.put("DetailAutoShow", self._auto_detail.isChecked())
+        settings.put("TreeLines", self._lines.isChecked())
         settings.put("Visible", self._visible.isChecked())
         settings.put("HeaderMaxPercent", self._percent.value())
         settings.put("HeaderMinWidth", self._min_width.value())
         settings.put("InspectorPinned", self._pinned.isChecked())
         settings.put("FloatingValues", self._floating.isChecked())
+        settings.put("TreeEditHidesHandles", self._no_handles.isChecked())
         gizmos.write({
             "plain": self._plain.currentData(),
             "key": self._key.currentData(),
@@ -314,12 +337,17 @@ class PreferencesPage:
         self._arrows.setChecked(bool(settings.DEFAULTS["DependencyArrows"]))
         self._related.setChecked(
             bool(settings.DEFAULTS["HighlightRelated"]))
+        self._auto_detail.setChecked(
+            bool(settings.DEFAULTS["DetailAutoShow"]))
+        self._lines.setChecked(bool(settings.DEFAULTS["TreeLines"]))
         self._visible.setChecked(bool(settings.DEFAULTS["Visible"]))
         self._percent.setValue(int(settings.DEFAULTS["HeaderMaxPercent"]))
         self._min_width.setValue(int(settings.DEFAULTS["HeaderMinWidth"]))
         self._pinned.setChecked(bool(settings.DEFAULTS["InspectorPinned"]))
         self._show_drag(gizmos.DEFAULTS)
         self._floating.setChecked(bool(settings.DEFAULTS["FloatingValues"]))
+        self._no_handles.setChecked(
+            bool(settings.DEFAULTS["TreeEditHidesHandles"]))
 
     def _show_drag(self, values: dict[str, Any]) -> None:
         self._plain.setCurrentIndex(
