@@ -693,6 +693,27 @@ class PickTests(unittest.TestCase):
             self.bridge.sync_selection(picked=True)
         self.bridge._reveal_picked()
 
+    def test_an_origin_plane_picked_for_a_task_is_not_revealed(self) -> None:
+        plane = DOC.objects["D"]
+        plane.InList = [types.SimpleNamespace(
+            isDerivedFrom=lambda t: t == "App::Origin")]
+        plane.isDerivedFrom = lambda _t: False
+        self.addCleanup(delattr, plane, "InList")
+        self.addCleanup(delattr, plane, "isDerivedFrom")
+        task: list[bool] = [True]
+        Gui.Control = types.SimpleNamespace(  # type: ignore[attr-defined]
+            activeDialog=lambda: task[0])
+        self.addCleanup(delattr, Gui, "Control")
+        self.pick("D")
+        self.assertEqual(
+            (self.bridge._tree.revealed, self.scrolled, self.flashed),
+            ([], [], []))
+        task[0] = False
+        SELECTION.names = []
+        self.bridge.sync_selection()
+        self.pick("D")
+        self.assertEqual(self.bridge._tree.revealed, ["D"])
+
     def test_a_pick_opens_its_path_scrolls_and_flashes(self) -> None:
         self.pick("D")
         self.assertEqual(self.bridge._tree.revealed, ["D"])

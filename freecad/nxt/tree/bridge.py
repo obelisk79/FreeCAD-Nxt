@@ -492,9 +492,16 @@ class TreeBridge(QtCore.QObject):
         setting - SolidWorks' "Scroll selected item into view". Scrolls to
         the first picked row in tree order, so a box selection lands at
         the top of what it caught; every picked row flashes.
+
+        None of it for an origin plane, axis or point a task is being
+        given: opening the Origin under a pick made for the task moves
+        the tree for nothing.
         """
         picked, self._picked = self._picked, []
-        picked = [n for n in picked if n in self._snapshot.nodes]
+        doc = App.ActiveDocument
+        picked = [n for n in picked if n in self._snapshot.nodes
+                  and not (doc is not None and editing.is_reference_pick(
+                      doc.getObject(n)))]
         if not picked:
             return
         selected = self._tree.selection()

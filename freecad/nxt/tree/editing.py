@@ -18,11 +18,11 @@ ORIGIN_FEATURE = "App::OriginFeature"
 
 
 def is_reference_pick(obj: Any) -> bool:
-    """Whether a double-click on `obj` is a reference being picked.
+    """Whether a click on `obj` is a reference being picked.
 
     True for an origin plane, axis or point while a task panel is open:
     the task (attaching a sketch or a datum) is being given it, so the
-    double-click neither opens nor edits anything.
+    click neither opens, edits nor reveals anything.
     """
     try:
         if obj is None or not Gui.Control.activeDialog():
