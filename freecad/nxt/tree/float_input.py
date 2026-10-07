@@ -33,9 +33,12 @@ it has the keyboard, FreeCAD's single-key shortcuts are held off, so
 typing "v" or Escape reaches the field, not a command. Enter or Escape
 hand the keyboard back to the 3D view. Tab moves to the next box and
 Shift+Tab to the one before, round and round, keeping what was typed and
-selecting the next value to type over. The drag's step keys (Shift, Ctrl)
-are read from the mouse as it drags, not from whichever widget has the
-keyboard, so they work either way.
+selecting the next value to type over. The mouse wheel over a box steps
+its value by the task panel field's own step, ten at a time with Ctrl
+held. Only the box changes while the wheel turns; the value is set, and
+the model recomputed, once the wheel has rested a moment. The drag's
+step keys (Shift, Ctrl) are read from the mouse as it drags, not from
+whichever widget has the keyboard, so they work either way.
 
 Several handles: a Pad with two lengths has two arrows, and a taper
 adds a rotation handle for each side. Each gets a box of its own, tied
@@ -54,6 +57,7 @@ edit nor a gizmo appearing. Slow (4 Hz) while nothing is being edited,
 
 from __future__ import annotations
 
+import re
 import time
 from typing import Any
 
@@ -100,6 +104,9 @@ FIELDS = {
     "PartDesign::Revolution": "revolveAngle",
     "PartDesign::Groove": "revolveAngle",
 }
+
+#: The number a field's text starts with, and its decimals.
+_NUMBER = re.compile(r"\s*-?\d+(?:[.,](\d+))?")
 
 IDLE_MS = 250
 ACTIVE_MS = 33
@@ -446,6 +453,36 @@ class Field(QtCore.QObject):
         self._closing = True
         self.finished.emit()
 
+    @QtCore.Slot(int, result=str)
+    def stepped(self, steps: int) -> str:
+        """The panel's value moved by this many of its steps, as text.
+
+        For the mouse wheel. Nothing is set: every notch setting the
+        feature would recompute the model on every notch. The box shows
+        this while the wheel turns and commits it once the wheel rests.
+        Written as the panel writes it - the same decimals and unit -
+        and kept within the field's own limits.
+        """
+        spin = self._live_spin()
+        if spin is None or self._closing:
+            return self._text
+        try:
+            raw = float(spin.property("rawValue"))
+            size = float(spin.property("singleStep") or 1.0)
+            value = raw + steps * size
+            for name, limit in (("minimum", max), ("maximum", min)):
+                bound = spin.property(name)
+                if bound is not None:
+                    value = limit(value, float(bound))
+            shown = spin.text()
+        except (RuntimeError, TypeError, ValueError):
+            return self._text
+        match = _NUMBER.match(shown)
+        if match is None:
+            return "%g" % value
+        decimals = len(match.group(1) or "")
+        return "%.*f%s" % (decimals, value, shown[match.end():])
+
     @QtCore.Slot(bool)
     def tab(self, backward: bool) -> None:
         """Tab or Shift+Tab: the keyboard goes to the next box."""
@@ -744,10 +781,19 @@ class FloatingInput(QtCore.QObject):
         """
         kind = event.type()
         if kind not in (QtCore.QEvent.Type.ShortcutOverride,
-                        QtCore.QEvent.Type.KeyPress):
+                        QtCore.QEvent.Type.KeyPress,
+                        QtCore.QEvent.Type.Wheel):
             return False
         if not any(watched is box.widget for box in self._boxes.values()):
             return False
+        if kind == QtCore.QEvent.Type.Wheel:
+            # Kept from the 3D view under the box, which would zoom:
+            # the box steps its value and the event ends here.
+            self._send_wheel(watched, event.angleDelta().y(), bool(
+                event.modifiers()
+                & QtCore.Qt.KeyboardModifier.ControlModifier))
+            event.accept()
+            return True
         if kind == QtCore.QEvent.Type.ShortcutOverride:
             if watched.hasFocus():
                 event.accept()
@@ -766,6 +812,15 @@ class FloatingInput(QtCore.QObject):
             event.modifiers() & QtCore.Qt.KeyboardModifier.ShiftModifier)
         self._send_tab(watched, backward)
         return True
+
+    @staticmethod
+    def _send_wheel(widget: Any, angle: int, tenfold: bool) -> None:
+        root = widget.rootObject() if hasattr(widget, "rootObject") else None
+        if root is not None:
+            QtCore.QMetaObject.invokeMethod(
+                root, "turn", QtCore.Qt.ConnectionType.DirectConnection,
+                QtCore.Q_ARG("QVariant", angle),
+                QtCore.Q_ARG("QVariant", tenfold))
 
     @staticmethod
     def _send_tab(widget: Any, backward: bool) -> None:
