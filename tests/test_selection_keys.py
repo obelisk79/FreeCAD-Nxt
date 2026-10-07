@@ -292,6 +292,26 @@ class ActivateTests(unittest.TestCase):
         self.bridge.activate("A")
         self.assertEqual((self.started, self.toggled), ([], ["A"]))
 
+    def test_an_origin_plane_is_left_to_an_open_task(self) -> None:
+        plane = DOC.objects["C"]
+        plane.InList = [types.SimpleNamespace(
+            isDerivedFrom=lambda t: t == "App::Origin")]
+        plane.isDerivedFrom = lambda _t: False
+        self.addCleanup(delattr, plane, "InList")
+        self.addCleanup(delattr, plane, "isDerivedFrom")
+        task: list[bool] = [True]
+        Gui.Control = types.SimpleNamespace(  # type: ignore[attr-defined]
+            activeDialog=lambda: task[0])
+        self.addCleanup(delattr, Gui, "Control")
+        edits: list[Any] = []
+        self.bridge._edit_timer = types.SimpleNamespace(
+            start=lambda: edits.append(self.bridge._pending_edit))
+        self.bridge.activate("C")
+        self.assertEqual(edits, [])
+        task[0] = False
+        self.bridge.activate("C")
+        self.assertEqual(edits, [("Doc", "C")])
+
     def test_a_plain_group_opens_and_closes(self) -> None:
         self.bridge.activate("B")
         self.assertEqual((self.started, self.toggled), ([], ["B"]))
