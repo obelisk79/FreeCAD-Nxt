@@ -48,7 +48,7 @@ Tick items off as they land; add notes under an item as decisions are made.
 
 - [ ] **S** Step the tip from the keyboard: Ctrl+Up/Down on a focused Body row scrubs the rollback
 - [ ] **M** Drag a feature onto another Body to move it there, with the same up-front check as reorder
-- [ ] **S** Undo feedback toast after reorder, tip move or rename ("Moved Pocket after Pad · Undo")
+- [x] Undo toast after a reorder, a move between containers, a tip move or a rename ("Moved Pocket after Pad · Undo"); its Undo acts only while that change is still the document's last (UndoToast.qml, `_toast`/`undoLast` in tree/bridge.py)
 - [ ] **S** Inline rename: Tab moves to the next row's name, Escape restores the old one
 
 ## Context menu

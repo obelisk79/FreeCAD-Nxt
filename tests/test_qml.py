@@ -262,6 +262,8 @@ def make_bridge():
         "contextMenuRequested": QtCore.Signal(float, float),
         "renameRowRequested": QtCore.Signal(int),
         "flashRows": QtCore.Signal(list),
+        "toastShown": QtCore.Signal(str),
+        "toastCleared": QtCore.Signal(),
         "treeModel": QtCore.Property(QtCore.QObject,
                                      lambda self: ROWS_MODEL, constant=True),
         "hasDocument": QtCore.Property(bool, lambda self: True),
@@ -299,6 +301,10 @@ class Host(QtCore.QObject):
 
     @QtCore.Slot()
     def repaintBehind(self):
+        pass
+
+    @QtCore.Slot()
+    def takeKeyboard(self):  # noqa: N802
         pass
 
     @QtCore.Slot(result=QtCore.QPointF)
