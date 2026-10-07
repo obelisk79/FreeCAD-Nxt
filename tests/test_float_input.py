@@ -138,6 +138,26 @@ class FieldTests(unittest.TestCase):
         self.field.sync()
         self.assertEqual(committed, [])
 
+    def test_the_wheel_only_says_what_the_value_would_be(self) -> None:
+        done: list[bool] = []
+        self.field.committed.connect(lambda: done.append(True))
+        start = self.spin._raw()
+        step = self.spin.singleStep()
+        self.assertEqual(self.field.stepped(2),
+                         "%.2f" % (start + 2 * step))
+        self.assertEqual(self.field.stepped(-3),
+                         "%.2f" % (start - 3 * step))
+        # Nothing was set, and nothing recomputed.
+        self.assertEqual((self.spin._raw(), done), (start, []))
+
+    def test_it_is_written_as_the_panel_writes_it(self) -> None:
+        self.spin.setSuffix(" mm")
+        self.assertEqual(self.field.stepped(1), "51.00 mm")
+
+    def test_it_stays_within_the_fields_limits(self) -> None:
+        self.assertEqual(self.field.stepped(-500), "0.00")
+        self.assertEqual(self.field.stepped(5000), "1000.00")
+
     def test_it_shows_the_panels_value(self) -> None:
         self.assertEqual(self.field.text, self.spin.text())
         self.assertEqual(self.field.label, "Length")
@@ -321,6 +341,29 @@ class TabKeyTests(unittest.TestCase):
         self.assertEqual(self.press(QtCore.Qt.Key.Key_Tab, shift),
                          (True, [True]))
 
+    def test_the_wheel_is_kept_from_the_view_underneath(self) -> None:
+        floating = float_input.FloatingInput()
+        widget = QtWidgets.QLineEdit()
+        floating._box("lengthEdit").widget = widget
+        turned: list[tuple[int, bool]] = []
+        floating._send_wheel = lambda _w, a, t: turned.append((a, t))
+
+        def wheel(modifiers: Any) -> QtGui.QWheelEvent:
+            return QtGui.QWheelEvent(
+                QtCore.QPointF(5, 5), QtCore.QPointF(5, 5), QtCore.QPoint(),
+                QtCore.QPoint(0, -120), QtCore.Qt.MouseButton.NoButton,
+                modifiers, QtCore.Qt.ScrollPhase.NoScrollPhase, False)
+
+        plain = wheel(QtCore.Qt.KeyboardModifier.NoModifier)
+        plain.ignore()
+        self.assertTrue(floating.eventFilter(widget, plain))
+        self.assertTrue(plain.isAccepted())
+        self.assertTrue(floating.eventFilter(
+            widget, wheel(QtCore.Qt.KeyboardModifier.ControlModifier)))
+        self.assertEqual(turned, [(-120, False), (-120, True)])
+        # Another widget's wheel is its own.
+        self.assertFalse(floating.eventFilter(QtWidgets.QLineEdit(), plain))
+
     def test_other_keys_pass(self) -> None:
         self.assertEqual(self.press(QtCore.Qt.Key.Key_A), (False, []))
 
@@ -428,6 +471,26 @@ class QmlTests(unittest.TestCase):
             QtCore.Qt.ConnectionType.DirectConnection,
             QtCore.Q_ARG("QVariant", False))
         self.assertEqual(tabbed, [False, True, False])
+
+    def test_the_wheel_shows_at_once_and_sets_when_it_rests(self) -> None:
+        start = self.spin._raw()
+        root = self.view.rootObject()
+        centre = QtCore.QPointF(root.property("width") / 2,
+                                root.property("height") / 2)
+        wheel = QtGui.QWheelEvent(
+            centre, self.view.mapToGlobal(centre.toPoint()),
+            QtCore.QPoint(), QtCore.QPoint(0, 240),
+            QtCore.Qt.MouseButton.NoButton,
+            QtCore.Qt.KeyboardModifier.NoModifier,
+            QtCore.Qt.ScrollPhase.NoScrollPhase, False)
+        QtCore.QCoreApplication.sendEvent(self.view, wheel)
+        settle(40)
+        want = start + 2 * self.spin.singleStep()
+        self.assertEqual(float(self.input.property("text")), want)
+        self.assertEqual(self.spin._raw(), start)       # not yet
+        settle(600)
+        self.assertEqual(self.spin._raw(), want)
+        self.assertEqual(self.input.property("text"), self.spin.text())
 
     def test_enter_commits_and_escape_restores(self) -> None:
         finished: list[bool] = []

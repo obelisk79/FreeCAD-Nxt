@@ -9,7 +9,7 @@ import QtQuick
 // click selects the whole value to type over. Enter keeps the value and
 // closes the edit, as the task's OK does; clicking away keeps it and
 // recomputes; Escape puts the value back as it was; Tab moves to the
-// next box.
+// next box; the mouse wheel steps the value.
 Rectangle {
     id: box
 
@@ -40,6 +40,48 @@ Rectangle {
                 mouse.x - input.x, input.height / 2);
         }
         onDoubleClicked: box.takeKeyboard(true)
+    }
+
+    // The wheel steps the value, a notch a step and ten with Ctrl, by
+    // the panel field's own step. Part notches from a touchpad add up
+    // until they make a whole one. Only the text here changes while the
+    // wheel turns: setting the feature on every notch would recompute
+    // the model on every notch. The value is set once the wheel rests.
+    WheelHandler {
+        id: wheel
+        property real pending: 0
+        property int steps: 0
+        acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+        onWheel: function (event) {
+            box.turn(event.angleDelta.y,
+                     (event.modifiers & Qt.ControlModifier) !== 0);
+        }
+    }
+    // Also called by the widget (float_input.py's event filter), which
+    // takes the wheel before it gets here: left to arrive on its own, it
+    // went on to the 3D view as well and zoomed it.
+    function turn(angle, tenfold) {
+        wheel.pending += angle / 120;
+        var notches = wheel.pending > 0 ? Math.floor(wheel.pending)
+                                        : Math.ceil(wheel.pending);
+        if (notches === 0)
+            return;
+        wheel.pending -= notches;
+        wheel.steps += notches * (tenfold ? 10 : 1);
+        input.text = field.stepped(wheel.steps);
+        wheelRest.restart();
+    }
+    Timer {
+        id: wheelRest
+        interval: 400
+        onTriggered: {
+            wheel.steps = 0;
+            wheel.pending = 0;
+            if (input.text !== field.text) {
+                field.commit(input.text);
+                input.text = field.text;
+            }
+        }
     }
 
     implicitWidth: Math.max(96, input.contentWidth + caption.width + 22)
