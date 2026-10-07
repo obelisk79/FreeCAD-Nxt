@@ -48,7 +48,11 @@ _RELOAD_ORDER = (
     "freecad.nxt.tree.panel",
     "freecad.nxt.property_inspector",
     "freecad.nxt.isolate",
+    "freecad.nxt.view_notice",
     "freecad.nxt.isolate_notice",
+    "freecad.nxt.toast",
+    "freecad.nxt.sketch_closure",
+    "freecad.nxt.sketch_repair",
     "freecad.nxt.services",
 )
 

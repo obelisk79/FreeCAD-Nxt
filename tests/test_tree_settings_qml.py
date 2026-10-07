@@ -208,6 +208,12 @@ settle()
 check("it follows the store, not the last click",
       switch_of(window).property("checked") is True)
 
+repair = "Auto repair 'Wire not closed' errors"
+check("auto repair has a switch", switch_of(window, repair) is not None)
+click(window, switch_of(window, repair))
+check("which writes its setting",
+      prefs.writes[-1] == ("RepairProfiles", True))
+
 lines = "Show tree lines"
 check("another switch shows its own stored value",
       switch_of(window, lines).property("checked") is False)

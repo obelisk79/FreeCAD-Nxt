@@ -50,9 +50,6 @@ Rectangle {
     // handler on a chip takes a press without accepting it, and the chip's
     // click was lost to the model.
     function wantsPoint(x, y) {
-        if (undoToast.visible
-                && undoToast.contains(undoToast.mapFromItem(root, x, y)))
-            return true;
         if (header.contains(header.mapFromItem(root, x, y)))
             return true;
         var bar = tipLayer.childAt(x - tipLayer.x, y - treePane.y);
@@ -454,22 +451,6 @@ Rectangle {
         }
     }
 
-    // ============================================================ undo toast
-
-    // In the 3D view the panel spans the view, and the toast sits at the
-    // view's top centre: where the eye is, and clear of the tree on the
-    // left. Docked, the panel is all there is to draw in, so it sits at
-    // the panel's foot.
-    UndoToast {
-        id: undoToast
-        objectName: "undoToast"
-        z: 150
-        x: host.viewOverlay ? Math.round((parent.width - width) / 2)
-                            : margin
-        y: host.viewOverlay ? margin : parent.height - height - margin
-        onUndoRequested: nxt.undoLast()
-    }
-
     // ============================================================ drag ghost
 
     Item {
@@ -845,8 +826,6 @@ Rectangle {
         function onRenameRowRequested(row) {
             root.startRename(row);
         }
-        function onToastShown(message) { undoToast.show(message); }
-        function onToastCleared() { undoToast.dismiss(); }
         function onRowHeld(row) {
             var item = treeList.itemAtIndex(row);
             treeList.heldRow = item ? row : -1;

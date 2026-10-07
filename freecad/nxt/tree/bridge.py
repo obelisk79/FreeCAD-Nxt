@@ -16,11 +16,13 @@ from __future__ import annotations
 import time
 import traceback
 from collections.abc import Callable, Iterable
+from functools import partial
 from typing import Any
 
 import FreeCAD as App
 import FreeCADGui as Gui
 
+from .. import services
 from ..i18n import translate
 from ..qt import QtCore
 from . import (
@@ -74,9 +76,6 @@ class TreeBridge(QtCore.QObject):
     #: Briefly light up these rows: objects just picked outside the panel.
     flashRows = QtCore.Signal(list)
     pickOriginsChanged = QtCore.Signal()
-    #: The panel changed the model in one gesture: say what, with Undo.
-    toastShown = QtCore.Signal(str)
-    toastCleared = QtCore.Signal()
     #: Auto-show is about to open or close strips: note where this row
     #: is, and put it back there once the rows have moved (rowReleased).
     rowHeld = QtCore.Signal(int)
@@ -127,9 +126,6 @@ class TreeBridge(QtCore.QObject):
         # The detail strip follows a click in the tree, after a moment:
         # see _auto_show_detail.
         self._auto_timer = self._deferral(self._auto_show_detail)
-        #: What the toast's Undo would undo: (document, its undo count
-        #: just after the change, the Body whose tip moved or "").
-        self._undoable: tuple[str, int, str] | None = None
         self._activate_timer = self._deferral(self._activate_pending)
         self._pending_active = ""
         self._auto_timer.setInterval(AUTO_DETAIL_MS)
@@ -1401,16 +1397,12 @@ class TreeBridge(QtCore.QObject):
         return str(getattr(obj, "Label", names[0]))
 
     def _toast(self, doc: Any, message: str, body: str = "") -> None:
-        """Say what the panel just did, and offer to undo it.
+        """Say what the panel just did, and offer to undo it (toast.py).
 
-        A drag, a rename or a tip move changes the model in one gesture
-        with nothing to confirm; this is the confirmation, after the
-        fact. What it would undo is remembered by the document's undo
-        count, so Undo does nothing once anything else has happened.
+        `body` is the Body whose tip moved, if one did.
         """
-        self._undoable = (str(getattr(doc, "Name", "")),
-                          int(getattr(doc, "UndoCount", -1)), body)
-        self.toastShown.emit(message)
+        services.toast(doc, message,
+                       partial(self._show_through_tip, body) if body else None)
 
     def _toast_tip(self, doc: Any, body_name: str,
                    feature_name: str | None) -> None:
@@ -1421,37 +1413,21 @@ class TreeBridge(QtCore.QObject):
             self._named(doc, [body_name]),
             self._named(doc, [feature_name or body_name])), body_name)
 
-    @QtCore.Slot(result=bool)
-    def undoLast(self) -> bool:  # noqa: N802
-        """The toast's Undo. True if the change was undone."""
-        pending, self._undoable = self._undoable, None
-        self.toastCleared.emit()
-        doc = App.ActiveDocument
-        if pending is None or doc is None:
-            return False
-        name, count, body_name = pending
-        if doc.Name != name or int(getattr(doc, "UndoCount", -1)) != count:
-            return False        # something else has happened since
-        try:
-            doc.undo()
-            body = doc.getObject(body_name) if body_name else None
-            if body is not None:
-                # Undo puts Tip back but not what is shown: visibility is
-                # view state. Show the Body through its tip again.
-                tip = getattr(getattr(body, "Tip", None), "Name", None)
-                for other in getattr(
-                        self._snapshot.nodes.get(body_name), "stack", ()):
-                    vo = getattr(doc.getObject(other), "ViewObject", None)
-                    if vo is not None and bool(vo.Visibility) != (
-                            other == tip):
-                        vo.Visibility = other == tip
-            doc.recompute()
-        except Exception:
-            _err("could not undo")
-            return False
-        finally:
-            self.invalidate(icons=True)
-        return True
+    def _show_through_tip(self, body_name: str, doc: Any) -> None:
+        """Show a Body through its tip again, after a tip move is undone.
+
+        Undo puts Tip back but not what is shown: visibility is view
+        state.
+        """
+        body = doc.getObject(body_name)
+        if body is None:
+            return
+        tip = getattr(getattr(body, "Tip", None), "Name", None)
+        for other in getattr(
+                self._snapshot.nodes.get(body_name), "stack", ()):
+            vo = getattr(doc.getObject(other), "ViewObject", None)
+            if vo is not None and bool(vo.Visibility) != (other == tip):
+                vo.Visibility = other == tip
 
     # ------------------------------------------------------------------ #
     # activation
