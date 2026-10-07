@@ -113,7 +113,6 @@ def make_bridge() -> Any:
     bridge._snapshot = types.SimpleNamespace(doc_name="Doc")
     bridge._pushing_selection = False
     bridge._related = False
-    bridge._undoable = None
     bridge._auto_timer = types.SimpleNamespace(
         start=lambda: None, stop=lambda: None)
     bridge._auto_name = bridge._auto_detail = ""
@@ -345,36 +344,34 @@ class TipBarTests(unittest.TestCase):
 
 
 class UndoToastTests(unittest.TestCase):
-    """A rename says what it did, and its Undo undoes only that."""
+    """What the panel does in one gesture goes to the services' toast."""
 
     def setUp(self) -> None:
         self.bridge = make_bridge()
-        self.said: list[str] = []
-        self.bridge.toastShown.connect(self.said.append)
-        DOC.UndoCount = 3
-        self.undone = 0
-        DOC.undo = self.undo
-        DOC.recompute = lambda: None
+        self.said: list[tuple[str, Any]] = []
+        self.addCleanup(setattr, bridge_mod.services, "toast",
+                        bridge_mod.services.toast)
+        bridge_mod.services.toast = (
+            lambda _doc, message, after_undo=None:
+            self.said.append((message, after_undo)))
         self.addCleanup(setattr, DOC.objects["B"], "Label", "B")
-
-    def undo(self) -> None:
-        self.undone += 1
 
     def test_a_rename_is_announced(self) -> None:
         self.bridge.rename("B", "Bracket")
-        self.assertEqual(self.said, ["Renamed B to Bracket"])
+        self.assertEqual(self.said, [("Renamed B to Bracket", None)])
 
-    def test_undo_undoes_it_once(self) -> None:
-        self.bridge.rename("B", "Bracket")
-        self.assertTrue(self.bridge.undoLast())
-        self.assertFalse(self.bridge.undoLast())
-        self.assertEqual(self.undone, 1)
-
-    def test_not_after_something_else_has_happened(self) -> None:
-        self.bridge.rename("B", "Bracket")
-        DOC.UndoCount = 4
-        self.assertFalse(self.bridge.undoLast())
-        self.assertEqual(self.undone, 0)
+    def test_an_undone_tip_move_shows_the_body_through_its_tip(self) -> None:
+        self.bridge._snapshot.nodes = {
+            "A": types.SimpleNamespace(stack=["B", "C"], is_model=False)}
+        DOC.objects["A"].Tip = DOC.objects["B"]
+        self.addCleanup(delattr, DOC.objects["A"], "Tip")
+        DOC.objects["B"].ViewObject.Visibility = False
+        self.bridge._toast_tip(DOC, "A", "C")
+        (_message, after_undo), = self.said
+        after_undo(DOC)
+        self.assertTrue(DOC.objects["B"].ViewObject.Visibility)
+        self.assertFalse(DOC.objects["C"].ViewObject.Visibility)
+        DOC.objects["C"].ViewObject.Visibility = True
 
     def test_several_objects_are_counted_not_listed(self) -> None:
         named = bridge_mod.TreeBridge._named

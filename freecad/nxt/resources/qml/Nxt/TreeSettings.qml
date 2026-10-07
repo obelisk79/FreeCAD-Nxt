@@ -128,6 +128,10 @@ Popup {
             key: "DetailAutoShow"
             text: qsTr("Show details on click")
         }
+        Setting {
+            key: "RepairProfiles"
+            text: qsTr("Auto repair 'Wire not closed' errors")
+        }
 
         Rectangle {
             width: parent.width

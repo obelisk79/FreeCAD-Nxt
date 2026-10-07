@@ -48,9 +48,11 @@ class Services(QtCore.QObject):
         self._theme: Any = None
         self._double_click: Any = None
         self._floating: Any = None
+        self._sketch_repair: Any = None
         self._isolation: Any = None
         self._isolation_observer: Any = None
         self._notice: Any = None
+        self._toasts: Any = None
         self._escape: Any = None
         self._pending_edit: tuple[str, str] | None = None
         self._edit_timer = self._deferral(self._enter_pending_edit)
@@ -81,18 +83,32 @@ class Services(QtCore.QObject):
         except Exception:
             _err("could not install the floating value field")
             self._floating = None
+        try:
+            from .sketch_repair import SketchRepair
+            self._sketch_repair = SketchRepair(self)
+            self._sketch_repair.install()
+        except Exception:
+            _err("could not install the sketch profile repair")
+            self._sketch_repair = None
 
     def remove(self) -> None:
         self._remove_isolation()
+        if self._toasts is not None:
+            try:
+                self._toasts.remove()
+            except Exception:
+                _err("could not remove the undo toast")
+            self._toasts = None
         self._edit_timer.stop()
         self._restyle_timer.stop()
-        for part in (self._double_click, self._floating):
+        for part in (self._double_click, self._floating,
+                     self._sketch_repair):
             if part is not None:
                 try:
                     part.remove()
                 except Exception:
                     _err("could not remove %s" % type(part).__name__)
-        self._double_click = self._floating = None
+        self._double_click = self._floating = self._sketch_repair = None
         try:
             self._main_window.removeEventFilter(self)
         except RuntimeError:
@@ -149,6 +165,17 @@ class Services(QtCore.QObject):
         except Exception:
             pass
         self._isolation = self._isolation_observer = self._notice = None
+
+    # -- undo toast --------------------------------------------------------- #
+
+    def toasts(self) -> Any:
+        """The undo toast (toast.py), under the isolate notice if any."""
+        if self._toasts is None:
+            from . import toast as toast_mod
+            self._toasts = toast_mod.Toast(
+                self.theme(), lambda: self._notice, self)
+            self._toasts.install()
+        return self._toasts
 
     # -- theme -------------------------------------------------------------- #
 
@@ -240,3 +267,18 @@ def isolation() -> Any:
 def theme() -> Any:
     """The shared Theme, or None while the services are not running."""
     return None if _services is None else _services.theme()
+
+
+def toast(doc: Any, message: str, after_undo: Any = None,
+          undoable: bool = True, actions: Any = (),
+          sticky: bool = False) -> None:
+    """Say what Nxt just did to `doc`, with Undo (toast.py).
+
+    `after_undo(doc)` runs once that Undo has undone it. Not `undoable`:
+    a message with no Undo. `actions` are further buttons, as (label,
+    callable) pairs; `sticky` keeps the toast up until it is dismissed.
+    Says nothing while the services are not running.
+    """
+    if _services is not None:
+        _services.toasts().show(doc, message, after_undo, undoable,
+                                actions, sticky)

@@ -262,8 +262,6 @@ def make_bridge():
         "contextMenuRequested": QtCore.Signal(float, float),
         "renameRowRequested": QtCore.Signal(int),
         "flashRows": QtCore.Signal(list),
-        "toastShown": QtCore.Signal(str),
-        "toastCleared": QtCore.Signal(),
         "treeModel": QtCore.Property(QtCore.QObject,
                                      lambda self: ROWS_MODEL, constant=True),
         "hasDocument": QtCore.Property(bool, lambda self: True),

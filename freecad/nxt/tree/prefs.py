@@ -28,7 +28,7 @@ GROUP = "FreeCAD-Nxt"
 #: What the quick panel offers. The page offers these and more.
 QUICK = ("PartLayout", "RowDensity", "ReferenceChips",
          "EditOnDoubleClick", "DependencyArrows", "HighlightRelated",
-         "DetailAutoShow", "TreeLines", "OverlayMode")
+         "DetailAutoShow", "TreeLines", "RepairProfiles", "OverlayMode")
 
 #: Settings the theme reads: changing one restyles the panel.
 _VIEW = frozenset({"RowDensity", "ReferenceChips", "UnderConstrainedMarks",
@@ -174,6 +174,9 @@ class PreferencesPage:
             "Nxt", "Double-click a face to edit the feature that made it"),
             tree)
         layout.addRow(self._dbl)
+        self._repair = QtWidgets.QCheckBox(translate(
+            "Nxt", "Auto repair 'Wire not closed' errors"), tree)
+        layout.addRow(self._repair)
         self._arrows = QtWidgets.QCheckBox(translate(
             "Nxt", "Show the selection's dependencies as arrows"), tree)
         layout.addRow(self._arrows)
@@ -281,6 +284,7 @@ class PreferencesPage:
         self._tips.setChecked(bool(settings.get("RowToolTips")))
         self._follow.setChecked(bool(settings.get("FollowSelection")))
         self._dbl.setChecked(bool(settings.get("EditOnDoubleClick")))
+        self._repair.setChecked(bool(settings.get("RepairProfiles")))
         self._arrows.setChecked(bool(settings.get("DependencyArrows")))
         self._related.setChecked(bool(settings.get("HighlightRelated")))
         self._auto_detail.setChecked(bool(settings.get("DetailAutoShow")))
@@ -301,6 +305,7 @@ class PreferencesPage:
         settings.put("RowToolTips", self._tips.isChecked())
         settings.put("FollowSelection", self._follow.isChecked())
         settings.put("EditOnDoubleClick", self._dbl.isChecked())
+        settings.put("RepairProfiles", self._repair.isChecked())
         settings.put("DependencyArrows", self._arrows.isChecked())
         settings.put("HighlightRelated", self._related.isChecked())
         settings.put("DetailAutoShow", self._auto_detail.isChecked())
@@ -334,6 +339,7 @@ class PreferencesPage:
         self._tips.setChecked(bool(settings.DEFAULTS["RowToolTips"]))
         self._follow.setChecked(bool(settings.DEFAULTS["FollowSelection"]))
         self._dbl.setChecked(bool(settings.DEFAULTS["EditOnDoubleClick"]))
+        self._repair.setChecked(bool(settings.DEFAULTS["RepairProfiles"]))
         self._arrows.setChecked(bool(settings.DEFAULTS["DependencyArrows"]))
         self._related.setChecked(
             bool(settings.DEFAULTS["HighlightRelated"]))
