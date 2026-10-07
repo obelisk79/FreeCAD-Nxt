@@ -685,6 +685,24 @@ class ModelPanel(QtWidgets.QDockWidget):
         return QtCore.QPointF(corner)
 
     @QtCore.Slot()
+    def takeKeyboard(self) -> None:  # noqa: N802 - QML API
+        """Give the panel the keyboard, for a field that is about to edit.
+
+        A field in the panel can have the panel's own focus and still get
+        no keys: the keys go to whichever widget has the keyboard, and
+        with the panel in the 3D view that is usually the view. A rename
+        box then opened, took nothing typed and never closed.
+        """
+        view = self._view
+        if view is None:
+            return
+        try:
+            view.activateWindow()
+            view.setFocus(QtCore.Qt.FocusReason.OtherFocusReason)
+        except RuntimeError:
+            pass
+
+    @QtCore.Slot()
     def repaintBehind(self) -> None:
         """Nudge whatever is under the panel to repaint.
 

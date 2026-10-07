@@ -113,6 +113,7 @@ def make_bridge() -> Any:
     bridge._snapshot = types.SimpleNamespace(doc_name="Doc")
     bridge._pushing_selection = False
     bridge._related = False
+    bridge._undoable = None
     bridge._auto_timer = types.SimpleNamespace(
         start=lambda: None, stop=lambda: None)
     bridge._auto_name = bridge._auto_detail = ""
@@ -305,6 +306,80 @@ class ActivateTests(unittest.TestCase):
         self.assertEqual([key(DOC.objects["A"]), key(part), key(assembly),
                           key(DOC.objects["B"])],
                          ["pdbody", "part", "part", ""])
+
+
+class TipBarTests(unittest.TestCase):
+    """Only the active Body has a rollback bar."""
+
+    def setUp(self) -> None:
+        self.bridge = make_bridge()
+        rows = self.bridge._tree
+        rows.row_index_map = lambda: {n: i for i, n in enumerate("ABCDE")}
+        rows.depth_at = lambda _row: 1
+        node = types.SimpleNamespace
+        # Two Bodies: A holds B, D holds E. C is a Part model's step.
+        self.bridge._snapshot.nodes = {
+            "A": node(stack=["B"], children=["B"], is_model=False,
+                      tip="B", label="A"),
+            "D": node(stack=["E"], children=["E"], is_model=False,
+                      tip="E", label="D"),
+            "B": node(stack=[], children=[], is_model=False),
+            "E": node(stack=[], children=[], is_model=False),
+        }
+        self.bridge._bar_anchor = {}
+        self.bridge._active = ""
+
+    def bodies(self) -> list[str]:
+        return [bar["body"] for bar in self.bridge.tipBars]
+
+    def test_none_without_an_active_body(self) -> None:
+        self.assertEqual(self.bodies(), [])
+
+    def test_the_active_body_has_the_only_bar(self) -> None:
+        self.bridge._active = "D"
+        self.assertEqual(self.bodies(), ["D"])
+
+    def test_a_part_model_keeps_its_bar(self) -> None:
+        self.bridge._snapshot.nodes["A"].is_model = True
+        self.assertEqual(self.bodies(), ["A"])
+
+
+class UndoToastTests(unittest.TestCase):
+    """A rename says what it did, and its Undo undoes only that."""
+
+    def setUp(self) -> None:
+        self.bridge = make_bridge()
+        self.said: list[str] = []
+        self.bridge.toastShown.connect(self.said.append)
+        DOC.UndoCount = 3
+        self.undone = 0
+        DOC.undo = self.undo
+        DOC.recompute = lambda: None
+        self.addCleanup(setattr, DOC.objects["B"], "Label", "B")
+
+    def undo(self) -> None:
+        self.undone += 1
+
+    def test_a_rename_is_announced(self) -> None:
+        self.bridge.rename("B", "Bracket")
+        self.assertEqual(self.said, ["Renamed B to Bracket"])
+
+    def test_undo_undoes_it_once(self) -> None:
+        self.bridge.rename("B", "Bracket")
+        self.assertTrue(self.bridge.undoLast())
+        self.assertFalse(self.bridge.undoLast())
+        self.assertEqual(self.undone, 1)
+
+    def test_not_after_something_else_has_happened(self) -> None:
+        self.bridge.rename("B", "Bracket")
+        DOC.UndoCount = 4
+        self.assertFalse(self.bridge.undoLast())
+        self.assertEqual(self.undone, 0)
+
+    def test_several_objects_are_counted_not_listed(self) -> None:
+        named = bridge_mod.TreeBridge._named
+        self.assertEqual(named(DOC, ["B"]), "B")
+        self.assertEqual(named(DOC, ["B", "C", "D"]), "3 objects")
 
 
 class AutoDetailTests(unittest.TestCase):

@@ -21,4 +21,5 @@ NxtSwitch 1.0 NxtSwitch.qml
 Segmented 1.0 Segmented.qml
 TreeSettings 1.0 TreeSettings.qml
 TreeLines 1.0 TreeLines.qml
+UndoToast 1.0 UndoToast.qml
 DependencyArrows 1.0 DependencyArrows.qml

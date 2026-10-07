@@ -110,13 +110,23 @@ Item {
 
     // Losing the selection cancels a pending rename: it was armed because
     // this row was the selection, and it no longer is.
-    onSelectedChanged: if (!row.selected) row.disarmRename()
+    // And ends one that is open, keeping what was typed - as clicking
+    // away from a name being edited does in a file manager. The box
+    // closing itself relies on it losing the keyboard, which it does not
+    // when it never had it.
+    onSelectedChanged: {
+        if (!row.selected) {
+            row.disarmRename();
+            row.commitRename();
+        }
+    }
 
     // Rename edits Label, never Name: Name is the immutable identifier every
     // link in the document is written against.
     function beginRename() {
         renameInput.text = row.label;
         row.renaming = true;
+        host.takeKeyboard();
         renameInput.forceActiveFocus();
         renameInput.selectAll();
     }

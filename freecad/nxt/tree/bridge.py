@@ -21,6 +21,7 @@ from typing import Any
 import FreeCAD as App
 import FreeCADGui as Gui
 
+from ..i18n import translate
 from ..qt import QtCore
 from . import (
     editing,
@@ -73,6 +74,9 @@ class TreeBridge(QtCore.QObject):
     #: Briefly light up these rows: objects just picked outside the panel.
     flashRows = QtCore.Signal(list)
     pickOriginsChanged = QtCore.Signal()
+    #: The panel changed the model in one gesture: say what, with Undo.
+    toastShown = QtCore.Signal(str)
+    toastCleared = QtCore.Signal()
     #: Auto-show is about to open or close strips: note where this row
     #: is, and put it back there once the rows have moved (rowReleased).
     rowHeld = QtCore.Signal(int)
@@ -123,6 +127,9 @@ class TreeBridge(QtCore.QObject):
         # The detail strip follows a click in the tree, after a moment:
         # see _auto_show_detail.
         self._auto_timer = self._deferral(self._auto_show_detail)
+        #: What the toast's Undo would undo: (document, its undo count
+        #: just after the change, the Body whose tip moved or "").
+        self._undoable: tuple[str, int, str] | None = None
         self._activate_timer = self._deferral(self._activate_pending)
         self._pending_active = ""
         self._auto_timer.setInterval(AUTO_DETAIL_MS)
@@ -202,6 +209,7 @@ class TreeBridge(QtCore.QObject):
             return
         self._active = name
         self._tree.set_active(name)
+        self._publish_tip_bars()        # the bar goes with the active Body
 
     def _deferral(self, slot: Callable[[], Any]) -> QtCore.QTimer:
         timer = QtCore.QTimer(self)
@@ -261,7 +269,12 @@ class TreeBridge(QtCore.QObject):
 
     @QtCore.Property(list, notify=tipBarsChanged)
     def tipBars(self) -> list[dict[str, Any]]:
-        """One descriptor per Body whose timeline is currently visible.
+        """The rollback bars: the active Body's, and each Part model's.
+
+        Only the active Body has one. A bar on every Body offered a
+        handle that changes the model on Bodies that are not being worked
+        on; the one being worked on is the active one. A Part model has
+        no active state, so its history bar is always there.
 
         `pos` is the row the bar sits *below*. A collapsed Body contributes
         nothing: there is no gap to put a bar in.
@@ -270,6 +283,8 @@ class TreeBridge(QtCore.QObject):
         bars: list[dict[str, Any]] = []
         for name, node in self._snapshot.nodes.items():
             if not node.stack:
+                continue
+            if not node.is_model and name != self._active:
                 continue
             feature_rows = [index[f] for f in node.stack if f in index]
             if not feature_rows:
@@ -769,6 +784,7 @@ class TreeBridge(QtCore.QObject):
             doc.abortTransaction()      # nothing moved; no undo entry
         else:
             doc.commitTransaction()
+            self._toast_tip(doc, body_name, drag["current"])
 
     def _restore_model_tips(self) -> None:
         """Carry each model's history position across a rebuild.
@@ -921,6 +937,7 @@ class TreeBridge(QtCore.QObject):
             doc.openTransaction("Move tip")
             if self._apply_tip(body_name, feature_name):
                 doc.commitTransaction()
+                self._toast_tip(doc, body_name, feature_name)
             else:
                 doc.abortTransaction()
         except Exception:
@@ -1359,13 +1376,82 @@ class TreeBridge(QtCore.QObject):
         if obj is None or not label or label == obj.Label:
             return
         try:
+            old = obj.Label
             doc.openTransaction("Rename")
             obj.Label = label
             doc.commitTransaction()
+            self._toast(doc, translate("Nxt", "Renamed %s to %s")
+                        % (old, label))
         except Exception:
             doc.abortTransaction()
             _err("could not rename %s" % name)
         self.invalidate()
+
+    # ------------------------------------------------------------------ #
+    # the undo toast
+    # ------------------------------------------------------------------ #
+
+    @staticmethod
+    def _named(doc: Any, names: Iterable[Any]) -> str:
+        """One object by its label; several by how many there are."""
+        names = [str(n) for n in names]
+        if len(names) != 1:
+            return translate("Nxt", "%d objects") % len(names)
+        obj = doc.getObject(names[0]) if doc is not None else None
+        return str(getattr(obj, "Label", names[0]))
+
+    def _toast(self, doc: Any, message: str, body: str = "") -> None:
+        """Say what the panel just did, and offer to undo it.
+
+        A drag, a rename or a tip move changes the model in one gesture
+        with nothing to confirm; this is the confirmation, after the
+        fact. What it would undo is remembered by the document's undo
+        count, so Undo does nothing once anything else has happened.
+        """
+        self._undoable = (str(getattr(doc, "Name", "")),
+                          int(getattr(doc, "UndoCount", -1)), body)
+        self.toastShown.emit(message)
+
+    def _toast_tip(self, doc: Any, body_name: str,
+                   feature_name: str | None) -> None:
+        node = self._snapshot.nodes.get(body_name)
+        if node is not None and node.is_model:
+            return      # a Part model's bar is a view; there is no undo
+        self._toast(doc, translate("Nxt", "Tip of %s moved to %s") % (
+            self._named(doc, [body_name]),
+            self._named(doc, [feature_name or body_name])), body_name)
+
+    @QtCore.Slot(result=bool)
+    def undoLast(self) -> bool:  # noqa: N802
+        """The toast's Undo. True if the change was undone."""
+        pending, self._undoable = self._undoable, None
+        self.toastCleared.emit()
+        doc = App.ActiveDocument
+        if pending is None or doc is None:
+            return False
+        name, count, body_name = pending
+        if doc.Name != name or int(getattr(doc, "UndoCount", -1)) != count:
+            return False        # something else has happened since
+        try:
+            doc.undo()
+            body = doc.getObject(body_name) if body_name else None
+            if body is not None:
+                # Undo puts Tip back but not what is shown: visibility is
+                # view state. Show the Body through its tip again.
+                tip = getattr(getattr(body, "Tip", None), "Name", None)
+                for other in getattr(
+                        self._snapshot.nodes.get(body_name), "stack", ()):
+                    vo = getattr(doc.getObject(other), "ViewObject", None)
+                    if vo is not None and bool(vo.Visibility) != (
+                            other == tip):
+                        vo.Visibility = other == tip
+            doc.recompute()
+        except Exception:
+            _err("could not undo")
+            return False
+        finally:
+            self.invalidate(icons=True)
+        return True
 
     # ------------------------------------------------------------------ #
     # activation
@@ -1558,6 +1644,15 @@ class TreeBridge(QtCore.QObject):
             except Exception:
                 _err("could not reorder %s" % body.Name)
                 return False
+            what = self._named(body.Document, plan.moving)
+            if target_name == body.Name:
+                self._toast(body.Document, translate(
+                    "Nxt", "Moved %s to the start of %s")
+                    % (what, body.Label))
+            else:
+                self._toast(body.Document, translate(
+                    "Nxt", "Moved %s after %s")
+                    % (what, self._named(body.Document, [target_name])))
             self.invalidate(icons=True)
             return True
         if not self.canDropOn(sources, target_name):
@@ -1578,6 +1673,9 @@ class TreeBridge(QtCore.QObject):
                     drop(source)
                     moved = True
             doc.commitTransaction()
+            if moved:
+                self._toast(doc, translate("Nxt", "Moved %s into %s")
+                            % (self._named(doc, sources), target.Label))
         except Exception:
             doc.abortTransaction()
             _err("drop onto %s failed" % target_name)
@@ -1694,6 +1792,10 @@ class TreeBridge(QtCore.QObject):
                     parent.removeObject(source)
                     moved = True
             doc.commitTransaction()
+            if moved:
+                self._toast(doc, translate(
+                    "Nxt", "Moved %s to the top level")
+                    % self._named(doc, sources))
         except Exception:
             doc.abortTransaction()
             _err("could not move to the top level")
