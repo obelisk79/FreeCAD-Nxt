@@ -50,6 +50,7 @@ Tick items off as they land; add notes under an item as decisions are made.
 - [ ] **M** Drag a feature onto another Body to move it there, with the same up-front check as reorder
 - [x] Undo toast after a reorder, a move between containers, a tip move or a rename ("Moved Pocket after Pad · Undo"); its Undo acts only while that change is still the document's last (toast.py, UndoToast.qml; raised through `services.toast`, shown over the 3D view with the panel open or closed)
 - [x] Sketch profiles that all but close are closed without asking: near-miss gaps joined, duplicate and zero-length edges deleted, one undo step, said in the toast; wide openings, branch points and overlapping lines or arcs reported once when the feature fails, in a toast that stays, with Edit and (where deleting the overlap closes the profile) Repair (sketch_closure.py, sketch_repair.py; `RepairProfiles`). **Untested inside FreeCAD.**
+- [x] New Sketch with three points, or a straight edge and a point, preselected attaches as "Plane by 3 points" and opens the sketch, answering FreeCAD's attachment dialog; Shift or PartDesign's `NewSketchUseAttachmentDialog` keeps the dialog (sketch_attach.py; `AttachSketchByPoints`). **Untested inside FreeCAD.**
 - [ ] **S** Inline rename: Tab moves to the next row's name, Escape restores the old one
 
 ## Context menu
