@@ -430,6 +430,18 @@ class TreeRowModel(QtCore.QAbstractListModel):
             return self._rows[row][1]
         return 0
 
+    def ancestor_rows(self, row: int) -> list[int]:
+        """The rows `row` is shown nested in, outermost first."""
+        found: list[int] = []
+        depth = self.depth_at(row)
+        for above in range(row - 1, -1, -1):
+            if depth == 0:
+                break
+            if self._rows[above][1] < depth:
+                depth = self._rows[above][1]
+                found.append(above)
+        return found[::-1]
+
     def row_index_map(self) -> dict[str, int]:
         """Name -> row, for callers that need many lookups at once."""
         return {name: row for row, (name, _depth) in enumerate(self._rows)}

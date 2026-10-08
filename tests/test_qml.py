@@ -282,6 +282,12 @@ def make_bridge():
                 {"row": 40, "dir": "out", "kind": "link", "count": 1}]},
             constant=True),
     }
+
+    # Called as the list scrolls, with no click to prompt it, so it needs
+    # a stub QML can really call: every row but the first is in the Body.
+    def breadcrumb(self, row):
+        return [{"row": 0, "label": "Body"}] if row > 0 else []
+    ns["breadcrumb"] = QtCore.Slot(int, result="QVariantList")(breadcrumb)
     for name, types in bridge_slots().items():
         if name in ns:
             continue
@@ -888,6 +894,26 @@ def run(overlay):
         if abs(back_h - before_h) > 0.5:
             problems.append("overlay=%s: the gap did not close again (%.1f)"
                             % (overlay, back_h))
+
+    # The breadcrumb: nothing while the Body's row is on screen, the Body
+    # once it has scrolled off, and back to it on a click.
+    crumb = root.findChild(QtCore.QObject, "breadcrumb")
+    if crumb is None:
+        problems.append("overlay=%s: no breadcrumb" % overlay)
+    else:
+        shown = [crumb.property("visible")]
+        listview.setProperty("contentY", 60)
+        settle(0.2)
+        shown.append(crumb.property("visible"))
+        labels = [c["label"] for c in crumb.property("crumbs").toVariant()]
+        crumb.crumbClicked.emit(0)
+        settle(0.2)
+        shown.append(crumb.property("visible"))
+        print("     breadcrumb: shown %s, %s, back at %.0f"
+              % (shown, labels, listview.property("contentY")))
+        if shown != [False, True, False] or labels != ["Body"]:
+            problems.append("overlay=%s: breadcrumb shown %s with %s"
+                            % (overlay, shown, labels))
 
     plain = 20 * len(ROWS)
     if content <= plain:

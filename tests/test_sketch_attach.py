@@ -196,7 +196,6 @@ class AttachTests(unittest.TestCase):
         self.assertEqual(self.clicks, 0)
 
 
-
 class AttacherPanelTests(unittest.TestCase):
     """OK is pressed only on the attachment dialog."""
 

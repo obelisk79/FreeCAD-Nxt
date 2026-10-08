@@ -39,10 +39,8 @@ Tick items off as they land; add notes under an item as decisions are made.
 
 - [x] 3D-view picks, as SolidWorks does: a face is traced through the element map to the feature that made it (tree/picking.py), which stays outlined until the selection changes; its path opens, the tree scrolls to it and it flashes (setting "Show objects picked in the 3D view")
 - [x] Double-click a face in the 3D view to edit the feature that made it (tree/face_edit.py; setting "Double-click a face to edit its feature")
-- [ ] **S** Right-click a face in the 3D view: "Find in tree", for when automatic scrolling is off (as Fusion 360)
-- [ ] **M** Search as a filter: narrow the tree to matches and their parents; support `type:sketch`, `failed`
-- [ ] **S** Keyboard jumps: Home/End for first/last row; Alt+Up/Down steps between problems
-- [ ] **S** Breadcrumb header pinned when scrolled deep into a Body (e.g. Body › Pocket001)
+- [x] Home and End select the first and last row, Shift extends to it; claimed from FreeCAD's "home view" shortcut while the panel has the keyboard (`jumpSelection` in tree/bridge.py)
+- [x] Breadcrumb pinned over the top of the list once the containers of the top row have scrolled away ("Bracket › Body › Pocket001"); a name scrolls back to its row (Breadcrumb.qml, `breadcrumb` in tree/bridge.py)
 
 ## Tree — acting on objects
 

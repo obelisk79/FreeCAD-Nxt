@@ -160,6 +160,24 @@ class KeyTests(unittest.TestCase):
         self.assertEqual(self.bridge.stepSelection(1, False), 0)
         self.assertEqual(SELECTION.names, ["A"])
 
+    def test_home_and_end_go_to_the_first_and_last_row(self) -> None:
+        self.bridge.select("C")
+        self.assertEqual(self.bridge.jumpSelection(True, False), 4)
+        self.assertEqual(SELECTION.names, ["E"])
+        self.assertEqual(self.bridge.jumpSelection(False, False), 0)
+        self.assertEqual(SELECTION.names, ["A"])
+
+    def test_shift_end_extends_to_the_last_row(self) -> None:
+        self.bridge.select("C")
+        self.bridge.jumpSelection(True, True)
+        self.assertEqual(SELECTION.names, ["C", "D", "E"])
+        self.bridge.jumpSelection(False, True)     # the anchor stays at C
+        self.assertEqual(SELECTION.names, ["A", "B", "C"])
+
+    def test_end_needs_no_selection(self) -> None:
+        self.assertEqual(self.bridge.jumpSelection(True, False), 4)
+        self.assertEqual(SELECTION.names, ["E"])
+
     def test_space_hides_all_selected_as_one_step(self) -> None:
         DOC.objects["C"].ViewObject.Visibility = False
         SELECTION.names = ["B", "C"]
@@ -361,6 +379,45 @@ class TipBarTests(unittest.TestCase):
     def test_a_part_model_keeps_its_bar(self) -> None:
         self.bridge._snapshot.nodes["A"].is_model = True
         self.assertEqual(self.bodies(), ["A"])
+
+
+class BreadcrumbTests(unittest.TestCase):
+    """The containers a row is shown inside, outermost first."""
+
+    #: A Part holding a Body, whose Pocket holds a sketch; then a Group.
+    ROWS = [("Part", 0), ("Body", 1), ("Pad", 2), ("Pocket", 2),
+            ("Sketch", 3), ("Fillet", 2), ("Group", 0), ("Box", 1)]
+
+    def setUp(self) -> None:
+        from freecad.nxt.tree import models
+        rows = self.ROWS
+        tree = types.SimpleNamespace(
+            _rows=rows, depth_at=lambda row: rows[row][1],
+            name_at=lambda row: rows[row][0])
+        tree.ancestor_rows = types.MethodType(
+            models.TreeRowModel.ancestor_rows, tree)
+        self.bridge = make_bridge()
+        self.bridge._tree = tree
+        self.bridge._snapshot.nodes = {
+            name: types.SimpleNamespace(label=name.upper())
+            for name, _depth in rows}
+
+    def crumbs(self, row: int) -> list[tuple[int, str]]:
+        return [(c["row"], c["label"]) for c in self.bridge.breadcrumb(row)]
+
+    def test_a_top_level_row_is_inside_nothing(self) -> None:
+        self.assertEqual((self.crumbs(0), self.crumbs(6)), ([], []))
+
+    def test_a_nested_row_names_every_container(self) -> None:
+        self.assertEqual(self.crumbs(4),
+                         [(0, "PART"), (1, "BODY"), (3, "POCKET")])
+
+    def test_a_sibling_above_is_not_a_container(self) -> None:
+        self.assertEqual(self.crumbs(5), [(0, "PART"), (1, "BODY")])
+        self.assertEqual(self.crumbs(7), [(6, "GROUP")])
+
+    def test_no_row_at_all(self) -> None:
+        self.assertEqual(self.crumbs(-1), [])
 
 
 class UndoToastTests(unittest.TestCase):

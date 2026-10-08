@@ -23,3 +23,4 @@ TreeSettings 1.0 TreeSettings.qml
 TreeLines 1.0 TreeLines.qml
 UndoToast 1.0 UndoToast.qml
 DependencyArrows 1.0 DependencyArrows.qml
+Breadcrumb 1.0 Breadcrumb.qml
