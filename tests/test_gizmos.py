@@ -6,6 +6,7 @@ Run with: python3 tests/test_gizmos.py
 from __future__ import annotations
 
 import sys
+import tempfile
 import types
 import unittest
 from pathlib import Path
@@ -28,6 +29,13 @@ class Group:
 
     def _set(self, key: str, value: Any) -> None:
         self.values[key] = value
+
+    def GetInts(self) -> list[str]:
+        return [k for k, v in self.values.items()
+                if isinstance(v, int) and not isinstance(v, bool)]
+
+    def RemInt(self, key: str) -> None:
+        del self.values[key]
 
     GetInt = GetBool = GetFloat = GetString = _get
     SetInt = SetBool = SetFloat = SetString = _set
@@ -101,6 +109,56 @@ class GizmoTests(unittest.TestCase):
         gizmos.write({"linear": 10})
         gizmos.apply_defaults_once()
         self.assertEqual(gizmos.read()["linear"], 10)
+
+
+class RestoreTests(unittest.TestCase):
+    """Putting back what Nxt's defaults replaced."""
+
+    def setUp(self) -> None:
+        STORE.clear()
+
+    def values(self) -> dict[str, Any]:
+        return {k: v for k, v in STORE[gizmos.GIZMOS].items()
+                if k in gizmos.OURS}
+
+    def test_unset_before_is_unset_again(self) -> None:
+        gizmos.apply_defaults_once()
+        self.assertTrue(gizmos.restore_freecads())
+        self.assertEqual(self.values(), {})
+        self.assertEqual(gizmos.read()["plain"], "coarse")
+
+    def test_set_before_is_set_back(self) -> None:
+        gizmos.write({"key": "alt"})
+        gizmos.apply_defaults_once()
+        gizmos.restore_freecads()
+        self.assertEqual(self.values(), {"FineSnapModifier": gizmos.ALT})
+
+    def test_a_value_changed_since_is_the_users(self) -> None:
+        gizmos.apply_defaults_once()
+        gizmos.write({"key": "shift"})
+        gizmos.restore_freecads()
+        self.assertEqual(self.values(), {"FineSnapModifier": gizmos.SHIFT})
+
+    def test_only_once_and_set_again_if_nxt_runs_again(self) -> None:
+        self.assertFalse(gizmos.restore_freecads())     # never applied
+        gizmos.apply_defaults_once()
+        gizmos.restore_freecads()
+        self.assertFalse(gizmos.restore_freecads())
+        self.assertTrue(gizmos.apply_defaults_once())
+        self.assertEqual(gizmos.read()["key"], "ctrl")
+
+    def test_only_when_nxt_is_disabled_or_gone(self) -> None:
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            (root / gizmos.MANIFEST).write_text("")
+            gizmos.apply_defaults_once()
+            self.assertFalse(gizmos.restore_if_leaving(root))
+            (root / gizmos.DISABLED).write_text("")
+            self.assertTrue(gizmos.restore_if_leaving(root))
+            gizmos.apply_defaults_once()
+            (root / gizmos.DISABLED).unlink()
+            (root / gizmos.MANIFEST).unlink()
+            self.assertTrue(gizmos.restore_if_leaving(root))
 
 
 if __name__ == "__main__":

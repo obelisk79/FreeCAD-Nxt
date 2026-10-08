@@ -67,6 +67,8 @@ DEFAULTS: dict[str, bool | int | float | str] = {
     "RepairProfiles": True,
     # Set once Nxt has put its drag-handle defaults in place (gizmos.py).
     "GizmoDefaultsApplied": False,
+    # What those defaults replaced, to put back (gizmos.py): JSON.
+    "GizmoOriginals": "",
     # A value field floats beside a feature's drag arrow (float_input.py).
     "FloatingValues": True,
     # A feature opened by double-clicking its row is edited without the

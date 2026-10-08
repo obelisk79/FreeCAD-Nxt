@@ -3,26 +3,24 @@
 No FreeCAD here: sketch_repair.py reads the edges out of a sketch and
 applies what this finds, so the reasoning can be tested without one.
 
-A profile closes when every edge end meets exactly one other. Three
-things stop that and can be told apart with no doubt about intent:
+A profile closes when every edge end meets exactly one other. What
+stops that:
 
-    a gap        two loose ends that all but touch;
+    a gap        two loose ends that all but touch - the one thing
+                 mended in the sketch itself;
     a duplicate  an edge drawn again over the same two ends;
-    a stub       an edge of no length.
-
-What is left is the user's to deal with, and is reported, not touched:
-loose ends (a profile not finished, a stray edge), points where the
-profile forks, and edges lying over part of one another. An overlap is
-found between straight lines and between circular arcs; where deleting
-one side of every overlap would leave a closed profile, those edges are
-named, for a repair the user asks for.
+    a stub       an edge of no length;
+    a loose end  a profile not finished, or a stray edge;
+    a fork       three or more edges meeting at a point;
+    an overlap   edges lying over part of one another, found between
+                 straight lines and between circular arcs.
 """
 
 from __future__ import annotations
 
 from collections import Counter
 from collections.abc import Iterator, Sequence
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, field
 from itertools import combinations
 from math import atan2, hypot, tau
 
@@ -64,7 +62,7 @@ class Edge:
 class Findings:
     #: Pairs of loose ends to join.
     gaps: list[tuple[End, End]] = field(default_factory=list)
-    #: Indices of duplicates and stubs, to delete.
+    #: Indices of duplicates and stubs.
     surplus: list[int] = field(default_factory=list)
     #: Loose ends that joining the gaps will leave.
     open_ends: int = 0
@@ -72,16 +70,10 @@ class Findings:
     forks: int = 0
     #: Pairs of edges lying over part of one another, by index.
     overlaps: list[tuple[int, int]] = field(default_factory=list)
-    #: Overlapping edges whose deletion would leave a closed profile.
-    removable: list[int] = field(default_factory=list)
-
-    def repairable(self) -> bool:
-        """Whether there is anything to mend without asking."""
-        return bool(self.gaps or self.surplus)
 
     def closed(self) -> bool:
-        return not (self.repairable() or self.open_ends or self.forks
-                    or self.overlaps)
+        return not (self.gaps or self.surplus or self.open_ends
+                    or self.forks or self.overlaps)
 
 
 def _distance(a: Point, b: Point) -> float:
@@ -161,55 +153,28 @@ def _places(on: Edge, other: Edge, slack: float) -> list[float] | None:
     return [at - tau * radius if at > beyond else at for at in places]
 
 
-def _lies_on(on: Edge, other: Edge, slack: float) -> tuple[bool, bool]:
-    """(part of `other` is inside `on`, all of `other` is on `on`)."""
+def _lies_on(on: Edge, other: Edge, slack: float) -> bool:
+    """Whether part of `other` lies inside `on`."""
     places = _places(on, other, slack)
-    if places is None:
-        return False, False
-    return (any(slack < at < on.length - slack for at in places),
-            all(-slack <= at <= on.length + slack for at in places))
+    return places is not None \
+        and any(slack < at < on.length - slack for at in places)
 
 
-def _overlaps(edges: Sequence[Edge], slack: float
-              ) -> tuple[list[tuple[int, int]], set[int], set[int]]:
-    """(overlapping pairs, edges inside another, edges with one inside)."""
-    pairs: list[tuple[int, int]] = []
-    inner: set[int] = set()
-    outer: set[int] = set()
+def _overlaps(edges: Sequence[Edge],
+              slack: float) -> list[tuple[int, int]]:
+    """Pairs of edges lying over part of one another, by index."""
     shaped = [e for e in edges if e.straight or e.centre is not None]
-    for a, b in combinations(shaped, 2):
-        (b_in_a, b_on_a), (a_in_b, a_on_b) = (
-            _lies_on(a, b, slack), _lies_on(b, a, slack))
-        if not (b_in_a or a_in_b):
-            continue
-        pairs.append((a.index, b.index))
-        if b_on_a or a_on_b:
-            inside, around = (b, a) if b_on_a else (a, b)
-            inner.add(inside.index)
-            outer.add(around.index)
-    return pairs, inner, outer
+    return [(a.index, b.index) for a, b in combinations(shaped, 2)
+            if _lies_on(a, b, slack) or _lies_on(b, a, slack)]
 
 
 def inspect(edges: Sequence[Edge],
             fraction: float = GAP_FRACTION) -> Findings:
-    """What keeps these edges from closing, and what would mend it."""
-    found, inner, outer = _inspect(edges, fraction)
-    # The fewer edges first: the short one drawn over a long one, before
-    # the long one drawn over several.
-    for extra in sorted((inner, outer), key=len):
-        rest = [e for e in edges if e.index not in extra]
-        if extra and _inspect(rest, fraction)[0].closed():
-            return replace(found, removable=sorted(extra))
-    return found
-
-
-def _inspect(edges: Sequence[Edge], fraction: float
-             ) -> tuple[Findings, set[int], set[int]]:
-    """The findings, and the edges inside and around an overlap."""
+    """What keeps these edges from closing."""
     surplus = [e.index for e in edges if e.length <= JOINED]
     edges = [e for e in edges if e.length > JOINED]
     if not edges:
-        return Findings(surplus=surplus), set(), set()
+        return Findings(surplus=surplus)
     diagonal = _diagonal(edges)
     tolerance = fraction * diagonal
 
@@ -246,12 +211,7 @@ def _inspect(edges: Sequence[Edge], fraction: float
 
     # An overlap always leaves a loose end or a fork: without either
     # there is none to look for.
-    pairs: list[tuple[int, int]] = []
-    inner: set[int] = set()
-    outer: set[int] = set()
-    if loose or forks:
-        pairs, inner, outer = _overlaps(
-            [e for k, e in enumerate(edges) if k not in duplicate],
-            OVERLAP_FRACTION * diagonal)
-    return (Findings(gaps, surplus, len(loose) - len(joined), forks, pairs),
-            inner, outer)
+    pairs = _overlaps(
+        [e for k, e in enumerate(edges) if k not in duplicate],
+        OVERLAP_FRACTION * diagonal) if loose or forks else []
+    return Findings(gaps, surplus, len(loose) - len(joined), forks, pairs)

@@ -1,19 +1,27 @@
-"""Closing a sketch profile that all but closes, without being asked.
+"""Mending a sketch profile that will not close, without being asked.
 
-"Wire is not closed" is most often two ends that look joined and are
-not, or an edge drawn twice. When a sketch is the profile of a feature
-(a Pad, a Pocket, a Revolution...), this joins such ends with coincident
-constraints and deletes such edges, in one undo step of its own, and
-says so in the undo toast. What it cannot be sure of - an opening too
-wide to be a slip, a stray edge, edges lying over one another - it
-leaves alone, and says so once if the feature has failed: in a toast
-that stays, with Edit to open the sketch on the trouble, and Repair
-where deleting the overlapping edges would close the profile.
+"Wire is not closed" is most often one of two things. Two ends that look
+joined and are not: those are joined in the sketch, with a coincident
+constraint. Or edges the profile was never meant to have - a line drawn
+twice, a stray edge, one edge lying over another: those are left in the
+sketch, and the feature built on it is pointed at the sketch's closed
+regions instead of the whole sketch (the sketch's "MakeInternals"
+faces), as a user picking them by hand would. Holes stay holes: a region
+inside an odd number of others is left out, as the whole sketch would
+leave it.
 
-It looks at a sketch when its editing ends and when a feature built on
-it fails to recompute, and acts once nothing is being edited and no
-undo step is open: a repair inside someone else's would be cancelled or
-undone along with it. sketch_closure.py does the reasoning.
+Only a sketch that is a feature's profile, and only for a feature that
+uses the whole sketch and has failed. What it does is said in the undo
+toast; what it could not mend is said once, in a toast that stays, with
+Edit to open the sketch on the trouble.
+
+It looks at a sketch when its editing ends, when a feature built on it
+fails to recompute, and when it is picked while a task is open - the
+profile chosen in a Pad's task, say. Outside a task a repair is an undo
+step of its own; inside one it is part of the task's, so the task's
+Cancel takes it back with everything else, and the toast offers no Undo
+of its own. It waits only while the sketch itself is open for editing.
+sketch_closure.py does the reasoning.
 """
 
 from __future__ import annotations
@@ -37,15 +45,24 @@ ARC = "Part::GeomArcOfCircle"
 
 #: (document, sketch), by name.
 Key = tuple[str, str]
+#: A sketch's findings, with the features failing on it: (name, whether
+#: it uses the whole sketch). The same again is neither retried nor
+#: reported twice; a feature newly failing on it - another one built on
+#: it, or one whose repair was cancelled - is something new.
+Settled = tuple[Findings, tuple[tuple[str, bool], ...]]
 
-#: What a repair did, and what is left to do, in the order the toast
-#: lists them: (phrase, the finding it counts).
-_DONE = (
-    (QT_TRANSLATE_NOOP("Nxt", "gaps closed: %d"), "gaps"),
-    (QT_TRANSLATE_NOOP("Nxt", "extra edges removed: %d"), "surplus"),
-)
+#: The sub-element a closed region of a sketch is, once the sketch makes
+#: its internal faces.
+REGION = "InternalFace%d"
+#: How coarse the mesh a region's inner point is taken from may be, as a
+#: fraction of the region's size: only its first triangle is used.
+MESH_FRACTION = 0.1
+
+#: What is left to do, in the order the toast lists it: (phrase, the
+#: finding it counts).
 _LEFT = (
     (QT_TRANSLATE_NOOP("Nxt", "open ends: %d"), "open_ends"),
+    (QT_TRANSLATE_NOOP("Nxt", "extra edges: %d"), "surplus"),
     (QT_TRANSLATE_NOOP("Nxt", "branch points: %d"), "forks"),
     (QT_TRANSLATE_NOOP("Nxt", "overlapping edges: %d"), "overlaps"),
 )
@@ -67,6 +84,19 @@ def _profile(feature: Any) -> Any:
     if isinstance(link, (tuple, list)):
         return link[0] if link else None
     return link
+
+
+def _whole(feature: Any) -> bool:
+    """Whether a feature takes the whole of its profile, not parts of it."""
+    link = feature.Profile
+    subs = link[1] if isinstance(link, (tuple, list)) and len(link) > 1 \
+        else ()
+    return not any(subs)
+
+
+def _settled(found: Findings, users: list[Any]) -> Settled:
+    return found, tuple(sorted((user.Name, _whole(user))
+                               for user in users if _failed(user)))
 
 
 def _users(sketch: Any) -> list[Any]:
@@ -93,32 +123,89 @@ def _edges(sketch: Any) -> list[Edge]:
     return edges
 
 
-def _apply(doc: Any, sketch: Any, found: Findings) -> bool:
-    """Mend the sketch in one undo step.
+def _close_gaps(sketch: Any, gaps: list[Any]) -> bool:
+    """Join near-miss ends with coincident constraints.
 
-    False, and no change, if that would leave it worse constrained.
+    False, and taken back, if that leaves the sketch worse constrained.
     """
     import Sketcher
     before, _notes = health.inspect(sketch)
-    doc.openTransaction("Close sketch profile")
+    count = len(sketch.Constraints)
     try:
-        for (first, first_end), (second, second_end) in found.gaps:
+        for (first, first_end), (second, second_end) in gaps:
             sketch.addConstraint(Sketcher.Constraint(
                 "Coincident", first, first_end, second, second_end))
-        if found.surplus:
-            # Highest first: deleting one renumbers those after it.
-            sketch.delGeometries(sorted(found.surplus, reverse=True))
         sketch.solve()
-        worse = health.inspect(sketch)[0] > before
+        if health.inspect(sketch)[0] <= before:
+            return True
     except Exception:
-        _err("could not close the profile of %s" % sketch.Name)
-        worse = True
-    if worse:
-        doc.abortTransaction()
-        return False
-    doc.commitTransaction()
-    doc.recompute()
-    return True
+        _err("could not close the gaps in %s" % sketch.Name)
+    try:
+        for index in range(len(sketch.Constraints) - 1, count - 1, -1):
+            sketch.delConstraint(index)
+        sketch.solve()
+    except Exception:
+        _err("could not take back the constraints added to %s" % sketch.Name)
+    return False
+
+
+def _regions(sketch: Any) -> list[str]:
+    """The sketch's closed regions, as profile sub-elements, less holes.
+
+    Its internal faces are every region its edges bound, whatever stray
+    or overlapping edges there are. One inside an odd number of others
+    is a hole, as it would be in the whole sketch's profile.
+    """
+    import Part
+    faces = sketch.InternalShape.Faces
+    outlines = [Part.Face(face.OuterWire) for face in faces]
+    kept = []
+    for i, face in enumerate(faces):
+        points, triangles = face.tessellate(
+            face.BoundBox.DiagonalLength * MESH_FRACTION)
+        if not triangles:
+            continue
+        a, b, c = (points[k] for k in triangles[0])
+        inside = (a + b + c) * (1 / 3)
+        depth = sum(1 for j, outline in enumerate(outlines) if j != i
+                    and outline.isInside(inside, sketch_closure.JOINED, True))
+        if depth % 2 == 0:
+            kept.append(REGION % (i + 1))
+    return kept
+
+
+def _use_regions(sketch: Any, feature: Any) -> int:
+    """Point a feature at the sketch's closed regions, not the whole.
+
+    How many regions it now uses: 0, and nothing changed, if that does
+    not mend it.
+    """
+    was = (feature.Profile, sketch.MakeInternals,
+           getattr(feature, "AllowMultiFace", None))
+    try:
+        if not sketch.MakeInternals:
+            sketch.MakeInternals = True
+            sketch.recompute()
+        regions = _regions(sketch)
+        if regions:
+            if was[2] is not None:
+                feature.AllowMultiFace = True
+            feature.Profile = (sketch, regions)
+            feature.recompute()
+            if not _failed(feature):
+                return len(regions)
+    except Exception:
+        _err("could not use the closed regions of %s" % sketch.Name)
+    try:
+        feature.Profile = was[0]
+        sketch.MakeInternals = was[1]
+        if was[2] is not None:
+            feature.AllowMultiFace = was[2]
+        sketch.recompute()
+        feature.recompute()
+    except Exception:
+        _err("could not put back the profile of %s" % feature.Name)
+    return 0
 
 
 def _counts(phrases: tuple[tuple[str, str], ...],
@@ -157,6 +244,17 @@ class _Observer:
     def slotDeletedDocument(self, doc: Any) -> None:  # noqa: N802
         self._repair.forget(getattr(doc, "Document", doc).Name)
 
+    def addSelection(  # noqa: N802
+            self, doc: str, name: str, *_rest: Any) -> None:
+        """A sketch picked while a task is open: a profile being chosen."""
+        try:
+            if not Gui.Control.activeDialog():
+                return
+            document = App.getDocument(doc)
+        except Exception:
+            return
+        self._repair.consider(document.getObject(name))
+
 
 class SketchRepair(QtCore.QObject):
     """Mends the profiles put to it, as soon as it is safe to."""
@@ -166,9 +264,8 @@ class SketchRepair(QtCore.QObject):
         self._observer = _Observer(self)
         #: Sketches to look at, in the order they were put.
         self._pending: dict[Key, None] = {}
-        #: What was last found in each sketch and dealt with: the same
-        #: findings again are neither retried nor reported twice.
-        self._settled: dict[Key, Findings] = {}
+        #: What was last found in each sketch and dealt with.
+        self._settled: dict[Key, Settled] = {}
         self._timer = QtCore.QTimer(self)
         self._timer.setSingleShot(True)
         self._timer.setInterval(0)
@@ -177,12 +274,15 @@ class SketchRepair(QtCore.QObject):
     def install(self) -> None:
         App.addDocumentObserver(self._observer)
         Gui.addDocumentObserver(self._observer)
+        Gui.Selection.addObserver(self._observer)
 
     def remove(self) -> None:
         self._timer.stop()
-        for module in (App, Gui):
+        for remove in (App.removeDocumentObserver,
+                       Gui.removeDocumentObserver,
+                       Gui.Selection.removeObserver):
             try:
-                module.removeDocumentObserver(self._observer)
+                remove(self._observer)
             except Exception:
                 pass
 
@@ -223,8 +323,15 @@ class SketchRepair(QtCore.QObject):
         return doc, doc.getObject(key[1]) if doc is not None else None
 
     @staticmethod
-    def _busy(doc_name: str) -> bool:
-        """Whether a change now would land inside someone else's."""
+    def _in_edit(key: Key) -> bool:
+        """Whether the sketch itself is open for editing."""
+        editing_now = Gui.getDocument(key[0]).getInEdit()
+        return getattr(getattr(editing_now, "Object", None), "Name",
+                       None) == key[1]
+
+    @staticmethod
+    def _in_task(doc_name: str) -> bool:
+        """Whether a change now lands in a task's undo step, not its own."""
         return bool(App.getActiveTransaction()) \
             or Gui.getDocument(doc_name).getInEdit() is not None
 
@@ -233,41 +340,60 @@ class SketchRepair(QtCore.QObject):
         doc, sketch = self._find(key)
         if sketch is None:
             return True
-        if self._busy(key[0]):
+        if self._in_edit(key):
             return False
         users = _users(sketch)
         if not users:
             return True
         found = sketch_closure.inspect(_edges(sketch))
-        if found == self._settled.get(key):
+        settled = _settled(found, users)
+        if settled == self._settled.get(key):
             return True
-        self._settled[key] = found
-        if found.repairable():
-            self._mend(key, doc, sketch, found)
-        elif found.closed():
-            pass
-        elif any(_failed(user) for user in users):
-            self._tell(key, doc, sketch, found)
-        else:
-            del self._settled[key]      # say so if a feature fails on it
+        self._settled[key] = settled
+        if found.gaps or not found.closed() and settled[1]:
+            self._mend(key, doc, sketch, found, users)
+        elif not found.closed():
+            del self._settled[key]      # mend it if a feature fails on it
         return True
 
-    def _mend(self, key: Key, doc: Any, sketch: Any, fix: Findings) -> None:
-        """Apply a fix, and say what it did and what it left."""
-        if not _apply(doc, sketch, fix):
-            return
+    def _mend(self, key: Key, doc: Any, sketch: Any, found: Findings,
+              users: list[Any]) -> None:
+        """Close the gaps, then repoint what still fails; say so."""
+        own_step = not self._in_task(key[0])
+        if own_step:
+            doc.openTransaction("Close sketch profile")
+        done = []
+        if found.gaps and _close_gaps(sketch, found.gaps):
+            done.append(translate("Nxt", "gaps closed: %d") % len(found.gaps))
+            doc.recompute()
+        for feature in users:
+            if _failed(feature) and _whole(feature):
+                count = _use_regions(sketch, feature)
+                if count:
+                    done.append(translate(
+                        "Nxt", "%s uses its closed profiles: %d")
+                        % (feature.Label, count))
+        if own_step:
+            (doc.commitTransaction if done else doc.abortTransaction)()
+        if done:
+            doc.recompute()
         left = sketch_closure.inspect(_edges(sketch))
-        self._settled[key] = left
-        self._tell(key, doc, sketch, left, _counts(_DONE, fix))
+        self._settled[key] = _settled(left, users)
+        self._tell(key, doc, sketch, left, done, own_step,
+                   any(_failed(user) for user in users))
 
     def _tell(self, key: Key, doc: Any, sketch: Any, found: Findings,
-              done: list[str] | None = None) -> None:
-        """The toast: what was repaired, and what the user is left with."""
+              done: list[str], undoable: bool, failing: bool) -> None:
+        """The toast: what was mended, and what still stops a feature.
+
+        Not `undoable`: the repair was part of a task's undo step.
+        """
         repaired = translate("Nxt", "Repaired %s (%s)") % (
-            sketch.Label, ", ".join(done or ()))
-        left = _counts(_LEFT, found)
+            sketch.Label, ", ".join(done))
+        left = _counts(_LEFT, found) if failing else []
         if not left:
-            services.toast(doc, repaired)
+            if done:
+                services.toast(doc, repaired, undoable=undoable)
             return
         if done:
             message = translate("Nxt", "%s; still not closed (%s)") % (
@@ -277,11 +403,8 @@ class SketchRepair(QtCore.QObject):
                 sketch.Label, ", ".join(left))
         actions = [(translate("Nxt", "Edit"),
                     partial(self._edit, key, found))]
-        if found.removable:
-            actions.append((translate("Nxt", "Repair"),
-                            partial(self._remove, key, found)))
-        services.toast(doc, message, undoable=bool(done), actions=actions,
-                       sticky=True)
+        services.toast(doc, message, undoable=bool(done) and undoable,
+                       actions=actions, sticky=True)
 
     # -- the toast's buttons ------------------------------------------------ #
 
@@ -300,16 +423,3 @@ class SketchRepair(QtCore.QObject):
                 Gui.Selection.addSelection(*key, "Edge%d" % (index + 1))
         except Exception:
             _err("could not select the overlapping edges of %s" % key[1])
-
-    def _remove(self, key: Key, found: Findings) -> None:
-        """Delete the overlapping edges the toast offered to."""
-        doc, sketch = self._find(key)
-        if sketch is None:
-            return
-        if self._busy(key[0]) \
-                or sketch_closure.inspect(_edges(sketch)) != found:
-            # Not now, or no longer the sketch the offer was made for:
-            # look at it afresh.
-            self.consider(sketch, edited=True)
-            return
-        self._mend(key, doc, sketch, Findings(surplus=found.removable))
