@@ -96,8 +96,9 @@ class EscapeToExit(QtCore.QObject):
     @staticmethod
     def _free() -> bool:
         """Whether Escape means nothing else right now."""
-        app = QtWidgets.QApplication.instance()
-        if app is None:
+        # Static: asked of the class, which also types them as widgets.
+        app = QtWidgets.QApplication
+        if app.instance() is None:
             return False
         if app.activeModalWidget() is not None \
                 or app.activePopupWidget() is not None:

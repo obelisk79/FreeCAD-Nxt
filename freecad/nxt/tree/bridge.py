@@ -1309,6 +1309,19 @@ class TreeBridge(QtCore.QObject):
             rows = [r for r in rows if r >= 0]
             here = (max(rows) if step > 0 else min(rows)) if rows else -1
         target = 0 if here < 0 else max(0, min(count - 1, here + step))
+        return self._select_row(target, extend)
+
+    @QtCore.Slot(bool, bool, result=int)
+    def jumpSelection(self, to_end: bool, extend: bool) -> int:  # noqa: N802
+        """Home/End: select the first or last row; with Shift, extend.
+
+        Returns the row, for the view to scroll to, or -1 with no rows.
+        """
+        return self._select_row(
+            self._tree.rowCount() - 1 if to_end else 0, extend)
+
+    def _select_row(self, target: int, extend: bool) -> int:
+        """Move the keyboard's place to a row. The row, or -1 if none."""
         name = self._tree.name_at(target)
         if name is None:
             return -1
@@ -1319,6 +1332,21 @@ class TreeBridge(QtCore.QObject):
             self._anchor = name
             self._push_selection([name], False)
         return target
+
+    @QtCore.Slot(int, result="QVariantList")
+    def breadcrumb(self, row: int) -> list[dict[str, Any]]:
+        """The containers a row is shown inside, outermost first.
+
+        For the strip pinned over the list once they have scrolled away
+        (Breadcrumb.qml): each with its own row, to scroll back to.
+        """
+        crumbs = []
+        for above in self._tree.ancestor_rows(row):
+            name = self._tree.name_at(above)
+            node = self._snapshot.nodes.get(name) if name else None
+            if node is not None:
+                crumbs.append({"row": above, "label": node.label})
+        return crumbs
 
     @QtCore.Slot(int, result=int)
     def stepBranch(self, step: int) -> int:

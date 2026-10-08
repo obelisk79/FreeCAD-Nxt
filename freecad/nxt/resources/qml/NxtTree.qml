@@ -52,6 +52,9 @@ Rectangle {
     function wantsPoint(x, y) {
         if (header.contains(header.mapFromItem(root, x, y)))
             return true;
+        if (breadcrumb.visible
+                && breadcrumb.contains(breadcrumb.mapFromItem(root, x, y)))
+            return true;
         var bar = tipLayer.childAt(x - tipLayer.x, y - treePane.y);
         if (bar !== null)
             return true;
@@ -394,6 +397,56 @@ Rectangle {
             onContentHeightChanged: if (theme.overlay) host.repaintBehind()
             onCountChanged: if (theme.overlay) host.repaintBehind()
             onHeightChanged: if (theme.overlay) host.repaintBehind()
+        }
+
+        // The containers the top of the list is inside, once their rows
+        // have scrolled away: pinned over the top of the list.
+        Breadcrumb {
+            id: breadcrumb
+            objectName: "breadcrumb"
+            z: 50
+            // Docked it spans the panel, as the header's divider does; in
+            // Nxt's overlay it is a pill the width of the header's.
+            width: theme.overlay ? header.width : parent.width
+
+            //: The row just under the strip, and every container of it.
+            property int under: -1
+            property var containers: []
+
+            // `changed`: the rows themselves did, so the same row number
+            // may be another object now.
+            function refresh(changed) {
+                var at = treeList.indexAt(0, treeList.contentY + height);
+                if (at === under && !changed)
+                    return;
+                under = at;
+                containers = (at >= 0 && nxt.breadcrumb(at)) || [];
+            }
+
+            // Only those out of sight: a container still on screen is
+            // its own heading. A row too far off to exist is out of sight.
+            crumbs: containers.filter(function (crumb) {
+                var item = treeList.itemAtIndex(crumb.row);
+                return item === null || item.y < treeList.contentY;
+            })
+            // Under the strip, not behind it.
+            onCrumbClicked: function (row) {
+                treeList.positionViewAtIndex(row, ListView.Beginning);
+                treeList.contentY = Math.max(treeList.originY,
+                                             treeList.contentY - height);
+            }
+
+            Connections {
+                target: treeList
+                function onContentYChanged() { breadcrumb.refresh(false); }
+            }
+            Connections {
+                target: nxt.treeModel
+                function onModelReset() { breadcrumb.refresh(true); }
+                function onRowsInserted() { breadcrumb.refresh(true); }
+                function onRowsRemoved() { breadcrumb.refresh(true); }
+                function onDataChanged() { breadcrumb.refresh(true); }
+            }
         }
 
         // Timeline bars, one per Body with a visible history. An overlay
@@ -766,8 +819,10 @@ Rectangle {
     // in place of the handler below, without the Part Design handling in
     // toggleSelectedVisibility. Claiming the key here keeps it for the
     // panel while the panel has the keyboard.
+    // Home and End likewise: Home is FreeCAD's "home view".
     Keys.onShortcutOverride: function (event) {
-        if (event.key === Qt.Key_Space
+        if ((event.key === Qt.Key_Space || event.key === Qt.Key_Home
+             || event.key === Qt.Key_End)
                 && !(event.modifiers & (Qt.ControlModifier | Qt.AltModifier
                                         | Qt.MetaModifier)))
             event.accepted = true;
@@ -804,6 +859,15 @@ Rectangle {
             if (target >= 0) {
                 treeList.currentIndex = target;
                 treeList.positionViewAtIndex(target, ListView.Contain);
+            }
+            event.accepted = true;
+        } else if (event.key === Qt.Key_Home || event.key === Qt.Key_End) {
+            var end = nxt.jumpSelection(
+                event.key === Qt.Key_End,
+                (event.modifiers & Qt.ShiftModifier) !== 0);
+            if (end >= 0) {
+                treeList.currentIndex = end;
+                treeList.positionViewAtIndex(end, ListView.Contain);
             }
             event.accepted = true;
         } else if (event.key === Qt.Key_Left || event.key === Qt.Key_Right) {
