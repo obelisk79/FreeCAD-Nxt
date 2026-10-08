@@ -44,9 +44,7 @@ def square(side: float = 100.0, gap: float = 0.0) -> list[Edge]:
 class ClosureTests(unittest.TestCase):
 
     def test_a_closed_profile_has_nothing_to_mend(self) -> None:
-        found = closure.inspect(square())
-        self.assertFalse(found.repairable())
-        self.assertEqual(found.open_ends, 0)
+        self.assertTrue(closure.inspect(square()).closed())
 
     def test_a_near_miss_is_a_gap_between_the_two_loose_ends(self) -> None:
         found = closure.inspect(square(gap=0.5))
@@ -55,8 +53,7 @@ class ClosureTests(unittest.TestCase):
 
     def test_a_wide_opening_is_left_alone(self) -> None:
         found = closure.inspect(square(gap=20.0))
-        self.assertFalse(found.repairable())
-        self.assertEqual(found.open_ends, 2)
+        self.assertEqual((found.gaps, found.open_ends), ([], 2))
 
     def test_near_is_relative_to_the_sketch(self) -> None:
         self.assertTrue(closure.inspect(square(1000.0, gap=5.0)).gaps)
@@ -83,8 +80,7 @@ class ClosureTests(unittest.TestCase):
 
     def test_a_stray_edge_is_counted_not_touched(self) -> None:
         found = closure.inspect(square() + [line(4, (0, 0), (-40, -40))])
-        self.assertFalse(found.repairable())
-        self.assertEqual(found.open_ends, 1)
+        self.assertEqual((found.gaps, found.open_ends), ([], 1))
 
     def test_each_loose_end_joins_its_nearest_only(self) -> None:
         edges = [line(0, (0, 0), (100, 0)), line(1, (100.2, 0), (100, 100)),
@@ -105,7 +101,7 @@ class ClosureTests(unittest.TestCase):
         self.assertFalse(found.closed())
 
     def test_nothing_at_all(self) -> None:
-        self.assertFalse(closure.inspect([]).repairable())
+        self.assertTrue(closure.inspect([]).closed())
 
 
 class OverlapTests(unittest.TestCase):
@@ -113,32 +109,24 @@ class OverlapTests(unittest.TestCase):
     def test_a_closed_profile_is_not_searched(self) -> None:
         self.assertTrue(closure.inspect(square()).closed())
 
-    def test_a_short_line_on_a_side_can_be_removed(self) -> None:
+    def test_a_short_line_on_a_side(self) -> None:
         found = closure.inspect(square() + [line(4, (20, 0), (60, 0))])
-        self.assertEqual((found.overlaps, found.removable), ([(0, 4)], [4]))
-        self.assertEqual(found.open_ends, 2)
-        self.assertFalse(found.repairable())
+        self.assertEqual((found.overlaps, found.open_ends), ([(0, 4)], 2))
 
-    def test_so_can_one_drawn_from_the_corner(self) -> None:
+    def test_one_drawn_from_the_corner(self) -> None:
         found = closure.inspect(square() + [line(4, (0, 0), (60, 0))])
-        self.assertEqual((found.overlaps, found.removable), ([(0, 4)], [4]))
+        self.assertEqual(found.overlaps, [(0, 4)])
 
-    def test_a_long_line_over_a_side_in_two_pieces_is_the_extra(self) -> None:
+    def test_a_long_line_over_a_side_in_two_pieces(self) -> None:
         edges = [line(0, (0, 0), (40, 0)), line(5, (40, 0), (100, 0))]
         edges += square()[1:] + [line(4, (0, 0), (100, 0))]
         found = closure.inspect(edges)
         self.assertEqual(sorted(found.overlaps), [(0, 4), (5, 4)])
-        self.assertEqual(found.removable, [4])
 
-    def test_lines_part_way_over_each_other_are_not_removable(self) -> None:
+    def test_lines_part_way_over_each_other(self) -> None:
         edges = [line(0, (0, 0), (60, 0)), line(4, (40, 0), (100, 0))]
         found = closure.inspect(edges + square()[1:])
-        self.assertEqual((found.overlaps, found.removable), ([(0, 4)], []))
-
-    def test_removal_is_offered_only_if_it_closes_the_profile(self) -> None:
-        edges = square(gap=30.0) + [line(4, (20, 0), (60, 0))]
-        found = closure.inspect(edges)
-        self.assertEqual((found.overlaps, found.removable), ([(0, 4)], []))
+        self.assertEqual(found.overlaps, [(0, 4)])
 
     def test_lines_end_to_end_do_not_overlap(self) -> None:
         edges = [line(0, (0, 0), (40, 0)), line(4, (40, 0), (100, 0))]
@@ -154,20 +142,18 @@ class OverlapTests(unittest.TestCase):
         found = closure.inspect(square() + [line(4, (50, -20), (50, 20))])
         self.assertEqual(found.overlaps, [])
 
-    def test_an_arc_inside_another_can_be_removed(self) -> None:
+    def test_an_arc_inside_another(self) -> None:
         ring = [arc(0, 0, 180), arc(1, 180, 360), arc(2, 30, 90)]
-        found = closure.inspect(ring)
-        self.assertEqual((found.overlaps, found.removable), ([(0, 2)], [2]))
+        self.assertEqual(closure.inspect(ring).overlaps, [(0, 2)])
 
     def test_whichever_way_round_they_were_drawn(self) -> None:
         ring = [arc(0, 180, 0), arc(1, 180, 360), arc(2, 90, 30)]
-        self.assertEqual(closure.inspect(ring).removable, [2])
+        self.assertEqual(closure.inspect(ring).overlaps, [(0, 2)])
 
     def test_an_arc_across_where_another_begins(self) -> None:
         ring = [arc(0, 0, 180), arc(1, 180, 360), arc(2, -20, 40)]
         found = closure.inspect(ring)
         self.assertEqual(sorted(found.overlaps), [(0, 2), (1, 2)])
-        self.assertEqual(found.removable, [])
 
     def test_arcs_of_other_circles_do_not_overlap(self) -> None:
         ring = [arc(0, 0, 180), arc(1, 180, 360), arc(2, 30, 90, radius=49),

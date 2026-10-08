@@ -20,6 +20,7 @@ Tick items off as they land; add notes under an item as decisions are made.
 ## 3D drag handles (FreeCAD 26.3 gizmos)
 
 - [x] Step settings on the Nxt Preferences page (tree/gizmos.py): plain drag fine or coarse, the switch key, fine step, coarse multipliers; Nxt default on first run: fine on a plain drag, Ctrl for coarse
+- [x] FreeCAD's own values for the two preferences the first-run default changes are kept, and put back on uninstall (`uninstall.py`, run by the Addon Manager) or at the quit after Nxt is disabled or removed; a value the user changed since is left (`restore_freecads` in tree/gizmos.py)
 - [x] Floating value field beside the visible arrow, typing into the task's own field (tree/float_input.py; Pad/Pocket `lengthEdit`)
 - [x] Floating fields for a second arrow (two-length pads) and the taper/rotation handles: a box per handle, paired with its task field by the order FreeCAD makes them in (`HANDLES`, `pair` in tree/float_input.py)
 - [ ] Confirm that pairing in FreeCAD (`probe.draggers()` with a two-length, tapered Pad open): the rotation handle's node type and the order of the handles are taken from FreeCAD's source, not seen
@@ -47,7 +48,7 @@ Tick items off as they land; add notes under an item as decisions are made.
 - [ ] **S** Step the tip from the keyboard: Ctrl+Up/Down on a focused Body row scrubs the rollback
 - [ ] **M** Drag a feature onto another Body to move it there, with the same up-front check as reorder
 - [x] Undo toast after a reorder, a move between containers, a tip move or a rename ("Moved Pocket after Pad · Undo"); its Undo acts only while that change is still the document's last (toast.py, UndoToast.qml; raised through `services.toast`, shown over the 3D view with the panel open or closed)
-- [x] Sketch profiles that all but close are closed without asking: near-miss gaps joined, duplicate and zero-length edges deleted, one undo step, said in the toast; wide openings, branch points and overlapping lines or arcs reported once when the feature fails, in a toast that stays, with Edit and (where deleting the overlap closes the profile) Repair (sketch_closure.py, sketch_repair.py; `RepairProfiles`). **Untested inside FreeCAD.**
+- [x] Profiles that will not close are mended without asking: near-miss gaps joined with coincident constraints; for stray, duplicate or overlapping edges the failing feature is pointed at the sketch's closed regions (MakeInternals faces, holes kept) instead of the whole sketch, geometry untouched; also when a sketch is picked during a task (inside the task's undo step); what cannot be mended is reported once, in a toast that stays, with Edit (sketch_closure.py, sketch_repair.py; `RepairProfiles`). **Untested inside FreeCAD.**
 - [x] New Sketch with three points, or a straight edge and a point, preselected attaches as "Plane by 3 points" and opens the sketch, answering FreeCAD's attachment dialog; Shift or PartDesign's `NewSketchUseAttachmentDialog` keeps the dialog (sketch_attach.py; `AttachSketchByPoints`). **Untested inside FreeCAD.**
 - [ ] **S** Inline rename: Tab moves to the next row's name, Escape restores the old one
 

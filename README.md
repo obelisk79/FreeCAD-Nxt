@@ -7,6 +7,14 @@ A revolutionary take for the FreeCAD user interface based on QtQuick and establi
 [![Checks](https://github.com/obelisk79/FreeCAD-Nxt/actions/workflows/checks.yml/badge.svg)](https://github.com/obelisk79/FreeCAD-Nxt/actions/workflows/checks.yml)
 [![Support me on Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/K4H827QS0N)
 
+> [!WARNING]
+> **Experimental: Nxt is under heavy development.** Expect bugs, rough
+> edges, and features that change or disappear between updates without
+> notice. Some of it changes your documents for you (for example, the
+> automatic repair of sketches whose profile will not close), so keep
+> backups of models you care about, and report problems on the
+> [issue tracker](https://github.com/obelisk79/FreeCAD-Nxt/issues).
+
 
 ## Install
 

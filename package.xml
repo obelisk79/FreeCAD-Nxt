@@ -7,7 +7,7 @@
   <maintainer email="obelisk79@gmail.com">Joe</maintainer>
   <author email="obelisk79@gmail.com">Joe</author>
   <license file="LICENSE">LGPL-2.1-or-later</license>
-  <url type="readme">https://github.com/obelisk79/FreeCAD-Nxt/blob/main/README.md</url>
+  <url type="readme">https://raw.githubusercontent.com/obelisk79/FreeCAD-Nxt/refs/heads/main/README.md</url>
   <url type="repository" branch="main">https://github.com/obelisk79/FreeCAD-Nxt</url>
   <url type="bugtracker">https://github.com/obelisk79/FreeCAD-Nxt/issues</url>
   <icon>freecad/nxt/resources/icons/FreeCAD-Nxt.svg</icon>
