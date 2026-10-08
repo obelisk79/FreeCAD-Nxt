@@ -22,11 +22,11 @@ A modern, fluid UI/UX replacement for FreeCAD built on QtQuick/QML.
 
 ## Key Highlights & Intent
 
-* **Visual Design Clarity**: Replaces dense nested trees with clean, collapsible model panels and floating overlay labels aligned with modern CAD standards.
-* **Proactive Geometry Diagnostics**: Automatically catches common parametric modeling errors—like unclosed sketch wires—and offers one-click fixes before feature generation fails.
-* **Direct Viewport Interaction**: Edit feature properties, adjust placement values, and interact with drag-handle gizmos directly in 3D space.
-* **Modernized Feature Hierarchy**: Clarifies complex parametric dependencies (e.g., PartDesign Bodies, Sketches, Pads, and Pockets) by clearly displaying consumed geometry and operational order.
-* **Fluid Workspace Flexibility**: Dock the Nxt Model Panel alongside the standard FreeCAD Combo View for direct side-by-side comparison or custom layout setup.
+* **Visual Design Clarity**: Replaces deeply nested trees with clean, collapsible model structures
+* **Proactive Geometry Diagnostics**: Automatically catches common "Wire not closed" errors and auto-applies fixes before feature generation fails.
+* **Direct Viewport Interaction**: Edit feature properties, and modify values with input fields directly in 3D space
+* **Modernized Feature Hierarchy**: Adds new methods for displaying feature hierarchy and relationships visually within the tree view
+* **Improved error indicators**: Adds error 'chips' to tree objects which can be interacted with to initiate corrective edits
 
 ---
 
@@ -34,9 +34,9 @@ A modern, fluid UI/UX replacement for FreeCAD built on QtQuick/QML.
 ## Features
 
 ### Smart Geometry & Auto-Repair
-* **"Wire Not Closed" Auto-Repair**: Heuristics automatically detect open endpoints or gaps in a sketch when creating 3D features (Pads, Pockets, Revolves) and offer quick-fix repair options.
+* **"Wire Not Closed" Auto-Repair**: Heuristics automatically detect open endpoints or tiny gaps in a sketch when creating 3D features (Pads, Pockets, Revolves) and offers transparent repair options.
 * **Improved Attachment Handling**: Streamlined `PartDesign_Sketch` attachment workflows for cleaner face-reattachment and positioning.
-* **Toast Feedback & Undo**: Non-destructive actions display interactive toast notifications with single-click **Undo** capabilities.
+* **Feedback & Undo**: Non-destructive actions display interactive toast notifications with single-click **Undo** capabilities.
 
 ### Modern Model Panel & Tree Hierarchy
 * **Intuitive Feature Flow**: Displays model elements in their chronological creation order while maintaining clear logical grouping.
