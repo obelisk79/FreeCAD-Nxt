@@ -6,6 +6,7 @@ Row {
     id: entry
 
     property var spec: ({})             // one entry from properties.describe
+    property string owner: ""           // the object, for expressions
     signal edited(var value)
 
     spacing: 6
@@ -20,6 +21,7 @@ Row {
 
     ValueEditor {
         spec: entry.spec
+        owner: entry.owner
         width: entry.spec.kind === "quantity" || entry.spec.kind === "number"
                ? Math.max(64, Math.min(160, valueMetrics.advanceWidth + 30))
                : implicitWidth

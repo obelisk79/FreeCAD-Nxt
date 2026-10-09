@@ -17,6 +17,9 @@ Item {
     property alias text: input.text
     property alias input: input
     property string placeholder: ""
+    //: The object whose property this edits, "Document#Name" or "Name":
+    //: given one, "=" opens expression help (ExpressionAssist).
+    property string owner: ""
 
     signal edited(string value)
     signal accepted()
@@ -67,11 +70,35 @@ Item {
 
         onTextChanged: field.edited(text)
 
-        Keys.onReturnPressed: field.accepted()
-        Keys.onEnterPressed: field.accepted()
-        Keys.onEscapePressed: field.dismissed()
-        Keys.onUpPressed: field.upPressed()
-        Keys.onDownPressed: field.downPressed()
+        // The expression list, while one is being typed, has first say on
+        // the keys it uses (ExpressionAssist.handleKey); what it leaves is
+        // the field's. Asked in each key's own handler: Qt calls those
+        // before Keys.onPressed, which would never see them.
+        Keys.onPressed: function (event) {
+            if (assist.handleKey(event))
+                event.accepted = true;
+        }
+        Keys.onReturnPressed: function (event) {
+            if (!assist.handleKey(event)) field.accepted();
+        }
+        Keys.onEnterPressed: function (event) {
+            if (!assist.handleKey(event)) field.accepted();
+        }
+        Keys.onEscapePressed: function (event) {
+            if (!assist.handleKey(event)) field.dismissed();
+        }
+        Keys.onUpPressed: function (event) {
+            if (!assist.handleKey(event)) field.upPressed();
+        }
+        Keys.onDownPressed: function (event) {
+            if (!assist.handleKey(event)) field.downPressed();
+        }
+    }
+
+    ExpressionAssist {
+        id: assist
+        input: input
+        owner: field.owner
     }
 
     // A way out that does not require knowing about Escape.

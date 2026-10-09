@@ -14,6 +14,7 @@ Column {
     property bool isProfile: false
     property bool isLifted: false
     property var keyProps: []           // see properties.describe
+    property string owner: ""           // the row's object, for expressions
     property int propertyCount: 0
 
     // Chips in here behave exactly as chips on a row do: click to go
@@ -67,6 +68,7 @@ Column {
             KeyValue {
                 required property int index
                 spec: strip.keyProps[index]
+                owner: strip.owner
                 onEdited: function (value) {
                     strip.keyEdited(spec.name, value);
                 }

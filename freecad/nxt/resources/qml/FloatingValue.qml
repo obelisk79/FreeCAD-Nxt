@@ -1,4 +1,5 @@
 import QtQuick
+import Nxt
 
 // A value field floating in the 3D view beside a feature's drag arrow.
 //
@@ -139,10 +140,14 @@ Rectangle {
         // The panel's own formatting of the value is shown back first
         // ("75" becomes "75.00 mm"), so losing the keyboard next finds
         // nothing changed.
-        Keys.onReturnPressed: {
+        Keys.onReturnPressed: function (event) {
+            if (assist.handleKey(event))
+                return;
             field.finish(text); text = field.text; field.release();
         }
-        Keys.onEnterPressed: {
+        Keys.onEnterPressed: function (event) {
+            if (assist.handleKey(event))
+                return;
             field.finish(text); text = field.text; field.release();
         }
         // Tab and Shift+Tab move between the boxes of a feature with
@@ -160,10 +165,28 @@ Rectangle {
         Keys.onBacktabPressed: tabOn(true)
         // Escape puts the value back first, so losing the keyboard next
         // has nothing to commit.
-        Keys.onEscapePressed: { text = field.text; field.release(); }
+        Keys.onEscapePressed: function (event) {
+            if (assist.handleKey(event))
+                return;
+            text = field.text; field.release();
+        }
         // Each keystroke goes through, as it does in the panel: the model
         // previews while typing.
         onTextEdited: field.preview(text)
+        // An expression being typed ("=") has its list first: the arrows
+        // here, Return and Escape in their own handlers above
+        // (ExpressionAssist). Tab stays the boxes': the widget takes it
+        // before QML sees it (float_input.py).
+        Keys.onPressed: function (event) {
+            if (assist.handleKey(event))
+                event.accepted = true;
+        }
+    }
+
+    ExpressionAssist {
+        id: assist
+        input: input
+        owner: field.owner
     }
 
     Accessible.role: Accessible.EditableText

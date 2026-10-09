@@ -61,7 +61,7 @@ Not planned (decided 2026-10-09): stepping the tip from the keyboard, dragging a
 
 - [ ] **M** Part Design and Sketch templates (after the three card cases are confirmed)
 - [ ] **S** Drag to change numbers: horizontal drag on a field's label, Shift fine / Ctrl coarse
-- [ ] **M** Expression editing with autocomplete: `=` opens an inline editor with suggestions and a live result
+- [x] Expression editing with autocomplete: `=` in a value field lists the document's objects, the properties after a dot, the owner's own properties and FreeCAD's functions, with the live result under them; in the inspector, the detail strip and the floating fields (freecad/nxt/expressions.py, Nxt/ExpressionAssist.qml; independent of the tree)
 - [ ] **M** Compare mode for multi-select: "— mixed" lists each object's value; pick one to apply to all
 
 ## Possible future: structured Report view

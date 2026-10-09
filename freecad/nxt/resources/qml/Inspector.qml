@@ -165,6 +165,7 @@ Rectangle {
                             ValueEditor {
                                 width: item.width
                                 spec: item.spec
+                                owner: inspector.owner
                                 onEdited: function (value) {
                                     inspector.setValue(item.spec.name, value,
                                                   item.spec.unit);
