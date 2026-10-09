@@ -260,6 +260,12 @@ class PreferencesPage:
             "Nxt", "Double-clicking a feature's row opens it without the "
                    "handles.\nA new feature still gets them."))
         layout.addRow(self._no_handles)
+        self._snap = QtWidgets.QCheckBox(translate(
+            "Nxt", "Snap a dragged length to parallel faces"), drag)
+        self._snap.setToolTip(translate(
+            "Nxt", "Pad and Pocket lengths stop on a face square to the "
+                   "arrow.\nHold Alt while dragging to pass through."))
+        layout.addRow(self._snap)
         for signal in (self._step.valueChanged, self._linear.valueChanged):
             signal.connect(self._update_note)
         self._coarse.toggled.connect(self._linear.setEnabled)
@@ -297,6 +303,7 @@ class PreferencesPage:
         self._floating.setChecked(bool(settings.get("FloatingValues")))
         self._no_handles.setChecked(
             bool(settings.get("TreeEditHidesHandles")))
+        self._snap.setChecked(bool(settings.get("SnapToFaces")))
 
     def saveSettings(self) -> None:  # noqa: N802
         for key, box in self._choices.items():
@@ -316,6 +323,7 @@ class PreferencesPage:
         settings.put("InspectorPinned", self._pinned.isChecked())
         settings.put("FloatingValues", self._floating.isChecked())
         settings.put("TreeEditHidesHandles", self._no_handles.isChecked())
+        settings.put("SnapToFaces", self._snap.isChecked())
         gizmos.write({
             "plain": self._plain.currentData(),
             "key": self._key.currentData(),
@@ -354,6 +362,7 @@ class PreferencesPage:
         self._floating.setChecked(bool(settings.DEFAULTS["FloatingValues"]))
         self._no_handles.setChecked(
             bool(settings.DEFAULTS["TreeEditHidesHandles"]))
+        self._snap.setChecked(bool(settings.DEFAULTS["SnapToFaces"]))
 
     def _show_drag(self, values: dict[str, Any]) -> None:
         self._plain.setCurrentIndex(

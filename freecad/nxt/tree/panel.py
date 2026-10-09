@@ -263,6 +263,12 @@ class ModelPanel(QtWidgets.QDockWidget):
 
         self.setWidget(self._build_body())
         self._observers.install()
+        # The overlay ink follows the 3D view's background as soon as it
+        # changes, not at the next refresh (theme.ViewBackgroundWatch).
+        # Deferred: the parameter's observers run inside whatever set it.
+        self._background_watch = theme_mod.ViewBackgroundWatch(
+            self._restyle_timer.start)
+        self._background_watch.attach()
 
         self._title_bar = PanelTitleBar(self)
         self.setTitleBarWidget(
@@ -796,6 +802,7 @@ class ModelPanel(QtWidgets.QDockWidget):
             except Exception:
                 pass
 
+        self._background_watch.detach()
         try:
             self._observers.remove()
         except Exception:

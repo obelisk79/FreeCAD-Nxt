@@ -118,6 +118,48 @@ def _token(name: str) -> str | int | None:
     return None
 
 
+#: The keys in TOKEN_GROUP that say what the 3D view's background is.
+VIEW_BACKGROUND_KEYS = frozenset({
+    "Simple", "Gradient", "RadialGradient", "BackgroundColor",
+    "BackgroundColor2", "BackgroundColor3", "BackgroundColor4",
+})
+
+
+class ViewBackgroundWatch:
+    """Calls back when the 3D view's background preference changes.
+
+    Overlay ink (expand arrows, the tip bar, tree lines) is chosen to show
+    against that background, which used to be read only when the theme
+    next refreshed: change the background in FreeCAD's preferences and the
+    ink stayed tuned to the old one until a Reload. A parameter observer
+    on FreeCAD's View group, kept attached while the panel lives.
+    """
+
+    def __init__(self, callback: Any) -> None:
+        self._callback = callback
+        self._group: Any = None
+
+    def attach(self) -> None:
+        try:
+            import FreeCAD as App
+            self._group = App.ParamGet(TOKEN_GROUP)
+            self._group.Attach(self)
+        except Exception:  # noqa: BLE001 - no FreeCAD, or no observers
+            self._group = None
+
+    def detach(self) -> None:
+        if self._group is not None:
+            try:
+                self._group.Detach(self)
+            except Exception:  # noqa: BLE001
+                pass
+            self._group = None
+
+    def OnChange(self, _group: Any, key: str) -> None:  # noqa: N802
+        if key in VIEW_BACKGROUND_KEYS:
+            self._callback()
+
+
 def _view_background() -> QtGui.QColor | None:
     """The 3D view's background, averaged down its gradient.
 
