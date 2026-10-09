@@ -56,6 +56,41 @@ def double_click(button: Any = QtCore.Qt.MouseButton.LeftButton) -> Any:
         QtCore.Qt.KeyboardModifier.NoModifier)
 
 
+class PickedDatumTests(unittest.TestCase):
+    """A datum picked whole, with no element named, is still the answer."""
+
+    def setUp(self) -> None:
+        self.saved = {k: getattr(App, k, None) for k in ("ActiveDocument",)}
+        self.saved_sel = getattr(Gui, "Selection", None)
+        App.ActiveDocument = types.SimpleNamespace(Name="Doc")
+        self.entries: list[Any] = []
+        Gui.Selection = types.SimpleNamespace(
+            getSelectionEx=lambda _d, _r: self.entries)
+
+    def tearDown(self) -> None:
+        for key, value in self.saved.items():
+            setattr(App, key, value)
+        Gui.Selection = self.saved_sel
+
+    @staticmethod
+    def obj(name: str, *bases: str) -> Any:
+        return types.SimpleNamespace(
+            Name=name, MapMode="FlatFace",
+            isDerivedFrom=lambda base: base in bases)
+
+    def test_a_datum_without_an_element(self) -> None:
+        self.entries = [types.SimpleNamespace(
+            Object=self.obj("DatumPlane", "Part::Datum"),
+            SubElementNames=[])]
+        self.assertEqual(face_edit.picked_feature(), ("Doc", "DatumPlane"))
+
+    def test_anything_else_without_an_element_is_not(self) -> None:
+        self.entries = [types.SimpleNamespace(
+            Object=self.obj("Body", "PartDesign::Body"),
+            SubElementNames=[])]
+        self.assertIsNone(face_edit.picked_feature())
+
+
 class DoubleClickTests(unittest.TestCase):
 
     def setUp(self) -> None:

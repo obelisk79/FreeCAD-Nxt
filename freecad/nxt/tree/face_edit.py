@@ -4,7 +4,8 @@ FreeCAD's own double-click on a Part Design solid edits whatever it takes
 the picked object to be - the Body's tip, whichever feature made the
 face. This catches the double-click first and opens the feature the face
 is traced to instead (see picking.py): the Pad for a Pad's face, even
-with three Pockets after it.
+with three Pockets after it. A datum plane, line or point double-clicked
+opens its attachment instead, as it does from the tree (editing.py).
 
 It steps aside, and FreeCAD's double-click happens as it always did,
 whenever:
@@ -73,6 +74,10 @@ def picked_feature() -> tuple[str, str] | None:
     for entry in reversed(list(selection)):
         subs = list(entry.SubElementNames or [])
         if not subs:
+            # A datum can be picked whole, with no element named: it is
+            # still what was double-clicked, and opens its attachment.
+            if editing.is_datum(entry.Object):
+                return (doc.Name, entry.Object.Name)
             continue
         sub = subs[-1]
         name = picking.target(doc, entry.Object.Name, sub)

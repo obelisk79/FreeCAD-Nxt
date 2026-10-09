@@ -1190,6 +1190,64 @@ class TimelineTests(unittest.TestCase):
         self.assertEqual(list(snap.retip("Nope", "Pad")), [])
 
 
+class CamJobTests(unittest.TestCase):
+    """A CAM Job keeps the tree FreeCAD gives it.
+
+    The Job claims its folders and its stock, and links to each of them;
+    claiming and linking is what lifts a Part Design input out of its
+    feature, but a Job is not a modelling step and its folders are
+    folders. Lifted, the folders went flat and their contents spilled
+    out of the Job.
+    """
+
+    def _doc(self):
+        def group(name, *members):
+            g = FakeObject(name, "App::DocumentObjectGroup",
+                           ["App::DocumentObjectGroup"])
+            g.claims(*members)
+            g.Group = list(members)
+            return g
+
+        clone = FakeObject("Clone", "Part::FeaturePython", ["Part::Feature"])
+        profile = FakeObject("Profile", "Path::FeaturePython",
+                             ["Path::Feature"])
+        pocket = FakeObject("Pocket", "Path::FeaturePython",
+                            ["Path::Feature"])
+        tool = FakeObject("TC", "Path::FeaturePython", ["Path::Feature"])
+        model = group("Model", clone)
+        operations = group("Operations", profile, pocket)
+        tools = group("Tools", tool)
+        stock = FakeObject("Stock", "Part::FeaturePython", ["Part::Feature"])
+        sheet = FakeObject("SetupSheet", "App::FeaturePython", [])
+        job = FakeObject("Job", "Path::FeaturePython", ["Path::Feature"])
+        job.claims(model, stock, operations, sheet, tools)
+        job.link("Model", model).link("Stock", stock)
+        job.link("Operations", operations).link("SetupSheet", sheet)
+        job.link("Tools", tools)
+        profile.link("ToolController", tool)
+        objects = [job, model, clone, stock, operations, profile, pocket,
+                   sheet, tools, tool]
+        return FakeDocument("Doc", objects)
+
+    def check(self, layout):
+        snap = scene.Snapshot(self._doc(), part_layout=layout)
+        self.assertEqual(snap.roots, ["Job"])
+        self.assertEqual(snap.nodes["Job"].children,
+                         ["Model", "Stock", "Operations", "SetupSheet",
+                          "Tools"])
+        self.assertEqual(snap.nodes["Operations"].children,
+                         ["Profile", "Pocket"])
+        self.assertEqual(snap.nodes["Model"].children, ["Clone"])
+        self.assertEqual(snap.nodes["Tools"].children, ["TC"])
+        self.assertFalse(any(node.is_lifted for node in snap.nodes.values()))
+
+    def test_expression_rows(self):
+        self.check(scene.EXPRESSION)
+
+    def test_nested(self):
+        self.check(scene.NESTED)
+
+
 class PartNestingTests(unittest.TestCase):
     """Part workbench CSG.
 

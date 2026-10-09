@@ -88,7 +88,8 @@ for line in (QML / "Nxt" / "qmldir").read_text().splitlines():
         registered.add(parts[0])
 builtin = {"Item", "Rectangle", "Text", "TextInput", "Image", "Row", "Column",
            "Flow", "Canvas", "ListView", "Repeater", "MouseArea", "DropArea",
-           "HoverHandler", "TapHandler", "WheelHandler", "Connections",
+           "HoverHandler", "TapHandler", "WheelHandler", "DragHandler",
+           "Connections", "Gradient", "GradientStop",
            "NumberAnimation",
            "ColorAnimation", "Behavior", "Timer", "Component", "Drag",
            "ListModel", "Keys", "Qt", "Math", "PropertyChanges", "State",

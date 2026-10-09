@@ -84,6 +84,11 @@ def natural_key(text: str) -> list[int | str]:
 
 
 #: Container types we resolve a profile's "home" against.
+#: Whose claims can be inputs to lift: the modelling workbenches. What
+#: anything else claims - a CAM Job its folders, stock and setup sheet -
+#: stays as FreeCAD's tree has it, linked or not.
+LIFTING_PREFIXES = ("PartDesign::", "Part::", "Sketcher::")
+
 CONTAINER_BASES = (
     "PartDesign::Body",
     "App::Part",
@@ -537,13 +542,24 @@ class Snapshot:
     def _lift_consumed(self, claims: dict[str, list[str]],
                        by_name: dict[str, DocObject],
                        links: _LinkCache) -> None:
-        """Anything a non-container claims *and* links to is a reference."""
+        """Anything a modelling step claims *and* links to is a reference.
+
+        Not a folder, whoever holds it: a folder is somewhere to put
+        things, never an input, and lifting it out left its contents
+        with nowhere to go.
+        """
         classic = self.part_layout == NESTED
         for child_name, parents in claims.items():
             node = self.nodes[child_name]
             claimer = by_name.get(parents[0])
             if claimer is None or is_container(claimer):
                 continue        # holding something is not using it
+            child = by_name.get(child_name)
+            if child is not None and is_container(child):
+                continue
+            if not self.nodes[parents[0]].type_id.startswith(
+                    LIFTING_PREFIXES):
+                continue        # not a modelling step: FreeCAD's tree
             if classic and self.nodes[parents[0]].type_id.startswith(
                     "PartDesign::"):
                 # The classic tree: what a Part Design feature claims

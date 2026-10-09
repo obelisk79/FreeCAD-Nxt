@@ -1567,12 +1567,7 @@ class TreeBridge(QtCore.QObject):
 
     def _enter_edit(self, doc_name: str, name: str) -> None:
         """Edit an object inside an undo step of its own (editing.py)."""
-        if editing.is_datum(editing.object_in(doc_name, name)):
-            # A datum's double-click edits where it is attached, which
-            # is all there is to it.
-            editing.edit_attachment(doc_name, name)
-            return
-        editing.enter_edit(
+        editing.open_for_edit(
             doc_name, name,
             handles=not settings.get("TreeEditHidesHandles"))
 
