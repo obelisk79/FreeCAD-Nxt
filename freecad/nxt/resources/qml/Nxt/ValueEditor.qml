@@ -22,6 +22,9 @@ Item {
 
     property var spec: ({})
     property bool editable: true        // false where "Edit..." is wanted
+    //: The object the property belongs to ("Document#Name" or "Name"),
+    //: for help writing an expression; empty where none can be bound.
+    property string owner: ""
 
     signal edited(var value)
     signal partEdited(string path, string text)
@@ -98,6 +101,7 @@ Item {
 
             TextField {
                 id: field
+                owner: editor.kind === "text" ? "" : editor.owner
                 width: parent.width - (unitLabel.visible
                                        ? unitLabel.width + 4 : 0)
                 placeholder: editor.spec.mixed ? qsTr("— mixed") : ""

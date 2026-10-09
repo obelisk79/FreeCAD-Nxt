@@ -64,7 +64,7 @@ from typing import Any
 import FreeCAD as App
 import FreeCADGui as Gui
 
-from .. import qtquick, resources
+from .. import expressions, qtquick, resources
 from ..i18n import translate
 from ..qt import QtCore, QtGui, QtWidgets
 from . import placement, settings
@@ -325,6 +325,7 @@ class Field(QtCore.QObject):
 
     textChanged = QtCore.Signal()
     labelChanged = QtCore.Signal()
+    ownerChanged = QtCore.Signal()
     #: The QML box wants the keyboard (it was clicked).
     grabbed = QtCore.Signal()
     #: Give the box the keyboard; True also selects the whole value.
@@ -343,12 +344,19 @@ class Field(QtCore.QObject):
         self._closing = False
         self._text = ""
         self._label = ""
+        self._owner = ""
         self.released = False
 
     def bind(self, spin: Any, label: str, obj: Any = None) -> None:
         self._spin = spin
         self._obj = obj
         self._closing = False
+        doc = getattr(getattr(obj, "Document", None), "Name", "")
+        name = getattr(obj, "Name", "")
+        owner = "%s#%s" % (doc, name) if doc and name else name
+        if owner != self._owner:
+            self._owner = owner
+            self.ownerChanged.emit()
         if label != self._label:
             self._label = label
             self.labelChanged.emit()
@@ -391,6 +399,11 @@ class Field(QtCore.QObject):
     def label(self) -> str:
         return self._label
 
+    @QtCore.Property(str, notify=ownerChanged)
+    def owner(self) -> str:
+        """The feature being edited, for expressions: "Document#Name"."""
+        return self._owner
+
     def _type(self, text: str) -> bool:
         """Set the task field, and through it the feature, from `text`.
 
@@ -399,6 +412,8 @@ class Field(QtCore.QObject):
         spin = self._live_spin()
         if spin is None or self._closing:
             return False
+        if text.strip().startswith("="):
+            return self._bind_expression(spin, text)
         value = parse_quantity(text)
         if value is None:
             App.Console.PrintWarning(
@@ -409,6 +424,30 @@ class Field(QtCore.QObject):
             self._set_property(spin.objectName(), value)
         except RuntimeError:            # deleted under us after all
             self._spin = None
+            return False
+        return True
+
+    def _bind_expression(self, spin: Any, text: str) -> bool:
+        """"=..." binds an expression to the property the field sets.
+
+        Bound on the feature itself (the task panel's field shows the
+        value it gives), and the field is given that value, so the panel
+        and the model agree when the task closes.
+        """
+        from .. import expressions
+        prop = PROPERTIES.get(spin.objectName())
+        obj = self._obj
+        expression = expressions.strip_marker(text)
+        if obj is None or prop is None or not expression:
+            return False
+        try:
+            obj.setExpression(prop, expression)
+            value = obj.evalExpression(expression)
+            spin.setProperty("rawValue",
+                             float(getattr(value, "Value", value)))
+        except Exception as exc:
+            App.Console.PrintWarning("Nxt: could not bind %s to %r: %s\n"
+                                     % (prop, expression, exc))
             return False
         return True
 
@@ -708,7 +747,9 @@ class FloatingInput(QtCore.QObject):
         widget.setFocusPolicy(QtCore.Qt.FocusPolicy.ClickFocus)
         widget.installEventFilter(self)
         widget.setClearColor(QtGui.QColor(0, 0, 0, 0))
+        widget.engine().addImportPath(str(resources.QML))
         context = widget.rootContext()
+        expressions.register(context)
         context.setContextProperty("field", box.field)
         context.setContextProperty("theme", self._theme())
         widget.setSource(QtCore.QUrl.fromLocalFile(

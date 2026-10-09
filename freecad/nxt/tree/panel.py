@@ -13,7 +13,7 @@ from typing import Any
 import FreeCAD as App
 import FreeCADGui as Gui
 
-from .. import fc, qtquick, resources
+from .. import expressions, fc, qtquick, resources
 from ..i18n import QT_TRANSLATE_NOOP, translate
 from ..qt import QtCompat, QtCore, QtGui, QtWidgets
 from . import bridge as bridge_mod
@@ -315,6 +315,7 @@ class ModelPanel(QtWidgets.QDockWidget):
         engine.addImageProvider(icons_mod.PROVIDER_ID, self._provider)
 
         context = view.rootContext()
+        expressions.register(context)
         context.setContextProperty("nxt", self._bridge)
         context.setContextProperty("theme", self._theme)
         context.setContextProperty("host", self)

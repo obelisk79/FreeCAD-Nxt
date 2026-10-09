@@ -29,6 +29,7 @@ from typing import Any, cast
 import FreeCAD as App
 import FreeCADGui as Gui
 
+from . import expressions
 from .i18n import translate
 from .qt import QtCore, QtGui, QtWidgets
 from .tree import settings
@@ -720,6 +721,7 @@ def _make_inspector(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
     theme = services.theme() or Theme(view)
     view.engine().addImportPath(str(resources.QML))
     context = view.rootContext()
+    expressions.register(context)
     context.setContextProperty("inspector", bridge)
     context.setContextProperty("theme", theme)
     view.setSource(QtCore.QUrl.fromLocalFile(

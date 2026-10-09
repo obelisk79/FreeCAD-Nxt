@@ -93,9 +93,19 @@ def spin_box(value: float = 50) -> QuantitySpin:
 
 class Pad:
     Name = "Pad"
+    Document = types.SimpleNamespace(Name="Doc")
 
     def __init__(self) -> None:
         self.Length = types.SimpleNamespace(Value=50.0)
+        self.expressions: dict[str, Any] = {}
+
+    def setExpression(self, prop: str, text: Any) -> None:  # noqa: N802
+        self.expressions[prop] = text
+
+    def evalExpression(self, text: str) -> Any:  # noqa: N802
+        if text == "Params.Height * 2":
+            return types.SimpleNamespace(Value=30.0)
+        raise ValueError("Unknown name")
 
 
 class FieldTests(unittest.TestCase):
@@ -110,6 +120,22 @@ class FieldTests(unittest.TestCase):
         self.field.commit("75")
         self.assertEqual(self.spin.value(), 75)
         self.assertEqual(self.pad.Length, 75)
+
+    def test_it_names_its_feature_for_expressions(self) -> None:
+        self.assertEqual(self.field.owner, "Doc#Pad")
+
+    def test_an_expression_is_bound_and_its_value_shown(self) -> None:
+        committed: list[bool] = []
+        self.field.committed.connect(lambda: committed.append(True))
+        self.field.commit("= Params.Height * 2")
+        self.assertEqual(self.pad.expressions,
+                         {"Length": "Params.Height * 2"})
+        self.assertEqual(self.spin.value(), 30)
+        self.assertEqual(committed, [True])
+
+    def test_a_bad_expression_changes_nothing(self) -> None:
+        self.field.commit("=Nope * 2")
+        self.assertEqual(self.spin.value(), 50)
 
     def test_units_are_converted(self) -> None:
         self.field.commit("2 in")
@@ -383,6 +409,7 @@ class QmlTests(unittest.TestCase):
         self.field.bind(self.spin, "Length")
         self.problems: list[str] = []
         self.view = QtQuick.QQuickView()
+        self.view.engine().addImportPath(str(QML.parent))   # Nxt
         self.view.rootContext().setContextProperty("field", self.field)
         self.theme = Theme()
         self.view.rootContext().setContextProperty("theme", self.theme)

@@ -64,6 +64,10 @@ class Bridge(QtCore.QObject):
         return self._groups
 
     @QtCore.Property(str, notify=changed)
+    def owner(self) -> str:
+        return "Doc#Helix"
+
+    @QtCore.Property(str, notify=changed)
     def title(self) -> str:
         return "Helix"
 

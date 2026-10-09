@@ -89,6 +89,20 @@ class InspectorBridge(QtCore.QObject):
     def tab(self) -> str:
         return self._tab
 
+    @QtCore.Property(str, notify=changed)
+    def owner(self) -> str:
+        """The object expressions are written for: "Document#Name".
+
+        The first selected object's, on the Data tab, where expressions
+        bind; none on the View tab, whose properties are the view
+        provider's.
+        """
+        objects = self._objects()
+        if not objects or self._tab != inspector.DATA:
+            return ""
+        obj = objects[0]
+        return "%s#%s" % (obj.Document.Name, obj.Name)
+
     @QtCore.Property(bool, notify=changed)
     def several(self) -> bool:
         return len(self._objects()) > 1

@@ -1112,6 +1112,7 @@ Item {
 
         DetailStrip {
             id: content
+            owner: row.name             // in the active document
             x: row.detailLeft + 8
             width: Math.max(40, parent.width - x - 14 - closeButton.width
                                 - pinButton.width)
