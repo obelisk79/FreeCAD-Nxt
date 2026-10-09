@@ -36,6 +36,9 @@ def run() -> None:
 
         step("selection")
         doc = App.ActiveDocument
+        if doc is None:
+            step("  no document")
+            return
         objects = Gui.Selection.getSelection(doc.Name)
         step("  %s" % [o.Name for o in objects])
         bridge = panel.bridge()

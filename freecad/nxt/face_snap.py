@@ -42,6 +42,7 @@ from typing import Any
 import FreeCAD as App
 import FreeCADGui as Gui
 
+from . import fc
 from .qt import QtCore, QtWidgets
 from .tree import settings
 
@@ -341,7 +342,9 @@ class FaceSnap(QtCore.QObject):
     def _tolerance(self, value: float, name: str) -> float:
         """SNAP_PIXELS on screen, as a length along the extrusion."""
         try:
-            view = Gui.ActiveDocument.ActiveView
+            view = fc.active_view()
+            if view is None:
+                return 0.5
             sign = -1.0 if name == BACKWARD else 1.0
             here = self._origin + self._direction * (sign * value)
             there = self._origin + self._direction * (sign * (value + 1.0))

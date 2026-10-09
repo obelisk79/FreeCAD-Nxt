@@ -13,9 +13,8 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
 import FreeCAD as App
-import FreeCADGui as Gui
 
-from .. import menus
+from .. import fc, menus
 from ..i18n import translate
 from ..menus import facts, present, runner
 
@@ -107,6 +106,8 @@ def _rename(bridge: TreeBridge, objects: list[Any]) -> None:
 
 def _recompute(bridge: TreeBridge, objects: list[Any]) -> None:
     doc = App.ActiveDocument
+    if doc is None:
+        return
     for obj in objects:
         obj.touch()
     try:
@@ -162,12 +163,35 @@ def _set_tip(bridge: TreeBridge, objects: list[Any]) -> None:
 
 
 def _make_active(bridge: TreeBridge, objects: list[Any]) -> None:
-    view = Gui.ActiveDocument.ActiveView
+    view = fc.active_view()
+    if view is None:
+        return
     current = view.getActiveObject("pdbody")
     if isinstance(current, tuple):
         current = current[0] if current else None
     body = objects[0]
     view.setActiveObject("pdbody", None if current is body else body)
+
+
+def _select_same_type(bridge: TreeBridge, objects: list[Any]) -> None:
+    """Every member of the object's Body of the object's own type.
+
+    "Every Pocket", "every sketch": by TypeId, so a Pad does not bring the
+    Pockets with it. In the Body's order, the object itself included.
+    """
+    obj = objects[0]
+    body = None
+    try:
+        parent = obj.getParentGeoFeatureGroup()
+        if parent is not None and parent.TypeId == "PartDesign::Body":
+            body = parent
+    except Exception:
+        pass
+    if body is None:
+        return
+    kind = obj.TypeId
+    _select(bridge, [member.Name for member in body.Group
+                     if getattr(member, "TypeId", None) == kind])
 
 
 def _select_group_contents(bridge: TreeBridge, objects: list[Any]) -> None:
@@ -255,8 +279,8 @@ def _copy_document(bridge: TreeBridge, objects: list[Any]) -> None:
 
 
 def _copy_all(bridge: TreeBridge, objects: list[Any]) -> None:
-    _copy_expressions([o for doc in App.listDocuments().values()
-                       for o in doc.Objects])
+    documents: list[Any] = list(App.listDocuments().values())
+    _copy_expressions([o for doc in documents for o in doc.Objects])
 
 
 def _paste_expressions(bridge: TreeBridge, objects: list[Any]) -> None:
@@ -272,7 +296,7 @@ def _paste_expressions(bridge: TreeBridge, objects: list[Any]) -> None:
         end = found[index + 1].start() if index + 1 < len(found) else None
         path, doc_name, obj_name, prop = match.group(1, 2, 3, 4)
         expression = text[match.end():end].strip()
-        doc = App.listDocuments().get(doc_name)
+        doc: Any = App.listDocuments().get(doc_name)
         obj = doc.getObject(obj_name) if doc is not None else None
         if obj is None or prop != "ExpressionEngine":
             App.Console.PrintWarning("Nxt: skipped %s#%s.%s\n"
@@ -306,6 +330,7 @@ _ACTIONS: dict[str, Action] = {
     "roll_forward": _set_tip,
     "make_active": _make_active,
     "select_group_contents": _select_group_contents,
+    "select_same_type": _select_same_type,
     "expand_all": _expand_all,
     "collapse_all": _collapse_all,
     "synchronize_binder": _synchronize,

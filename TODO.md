@@ -45,18 +45,17 @@ Tick items off as they land; add notes under an item as decisions are made.
 
 ## Tree — acting on objects
 
-- [ ] **S** Step the tip from the keyboard: Ctrl+Up/Down on a focused Body row scrubs the rollback
-- [ ] **M** Drag a feature onto another Body to move it there, with the same up-front check as reorder
+Not planned (decided 2026-10-09): stepping the tip from the keyboard, dragging a feature into another Body, Tab between inline renames.
+
 - [x] Undo toast after a reorder, a move between containers, a tip move or a rename ("Moved Pocket after Pad · Undo"); its Undo acts only while that change is still the document's last (toast.py, UndoToast.qml; raised through `services.toast`, shown over the 3D view with the panel open or closed)
 - [x] Profiles that will not close are mended without asking: near-miss gaps joined with coincident constraints; for stray, duplicate or overlapping edges the failing feature is pointed at the sketch's closed regions (MakeInternals faces, holes kept) instead of the whole sketch, geometry untouched; also when a sketch is picked during a task (inside the task's undo step); what cannot be mended is reported once, in a toast that stays, with Edit (sketch_closure.py, sketch_repair.py; `RepairProfiles`). **Untested inside FreeCAD.**
 - [x] New Sketch with three points, or a straight edge and a point, preselected attaches as "Plane by 3 points" and opens the sketch, answering FreeCAD's attachment dialog; Shift or PartDesign's `NewSketchUseAttachmentDialog` keeps the dialog (sketch_attach.py; `AttachSketchByPoints`). **Untested inside FreeCAD.**
-- [ ] **S** Inline rename: Tab moves to the next row's name, Escape restores the old one
 
 ## Context menu
 
 - [ ] **S** Recently used: the two commands last run on this object type, after the lead action (with a setting to turn it off)
 - [ ] **M** Prove the addon definition format with one real addon (e.g. Fasteners or Assembly4)
-- [ ] **S** Multi-select polish: counts on bar and rows ("Hide 3", "Delete 3"); "Select all of this type in the Body"
+- [x] Multi-select polish: with several selected, actions that apply to each say how many ("Delete 3", "Isolate 3" on the bar; `labels.COUNTED`); "Select all of this type in the Body" for one object in a Body
 
 ## Property Inspector
 
@@ -73,10 +72,10 @@ Tick items off as they land; add notes under an item as decisions are made.
 ## Housekeeping
 
 - [x] Preferences: gear quick panel in the tree header (Part layout, row density, reference chips, under-constrained marks) and Edit › Preferences › FreeCAD-Nxt page; `NxtSwitch` and `Segmented` controls
-- [ ] Preferences still to add as their features land: context-menu Recent, replace vs. beside the native tree
+- [x] Preferences for every feature that has landed: the Preferences page now also has "Attach a new sketch to three picked points without asking". Still waiting on their features, which are not built: context-menu Recent, and replacing the native tree rather than sitting beside it
 - [x] On quit the QML view is destroyed first, so its bindings do not fire against null (`_on_quit` in tree/panel.py)
 - [x] GitHub workflow (`.github/workflows/checks.yml`): ruff, pycodestyle, mypy and the offscreen tests on every push
-- [ ] **S** Type-check against `freecad-stubs` too: with them installed mypy reports 36 errors, mostly unchecked `None` from `ActiveDocument`/`ActiveView`
+- [x] Type-check against `freecad-stubs`: clean with and without them (CI installs them). Unchecked `None` from `ActiveDocument` is now guarded; the calls the stubs do not cover go through `freecad/nxt/fc.py`
 
 ## Suggested first picks
 

@@ -33,6 +33,8 @@ ACTIONS: dict[str, str] = {
     "nxt:make_active": QT_TRANSLATE_NOOP("NxtMenu", "Make active"),
     "nxt:select_group_contents": QT_TRANSLATE_NOOP(
         "NxtMenu", "Select group contents"),
+    "nxt:select_same_type": QT_TRANSLATE_NOOP(
+        "NxtMenu", "Select all of this type in the Body"),
     "nxt:expand_all": QT_TRANSLATE_NOOP("NxtMenu", "Expand all"),
     "nxt:collapse_all": QT_TRANSLATE_NOOP("NxtMenu", "Collapse all"),
     "nxt:synchronize_binder": QT_TRANSLATE_NOOP("NxtMenu", "Synchronize"),
@@ -58,6 +60,20 @@ BAR: dict[str, str] = {
     "Std_SetAppearance": QT_TRANSLATE_NOOP("NxtMenu", "Appearance"),
     "nxt:inspector": QT_TRANSLATE_NOOP("NxtMenu", "Inspect"),
 }
+
+#: What acts on every selected object, and says how many when there are
+#: several: "Delete 3", and "Isolate 3" on the bar. Commands that act on
+#: one object, or on the selection as a whole (Fit), do not count.
+COUNTED: frozenset[str] = frozenset({
+    "Std_Delete", "Std_DuplicateSelection", "Std_Cut", "Std_Copy",
+    "Std_ToggleVisibility", "Std_ToggleSuppress", "Std_ToggleFreeze",
+    "Std_ToggleTransparency", "Std_ToggleSelectability",
+    "Std_SetAppearance", "Std_SetMaterial", "Std_RandomColor",
+    "Std_MarkToRecompute", "nxt:isolate", "nxt:recompute_object",
+})
+
+#: How a count is added to a label; %1 the label, %2 how many.
+COUNTED_LABEL = QT_TRANSLATE_NOOP("NxtMenu", "%1 %2")
 
 #: FreeCAD commands whose icons Nxt's actions borrow, so the bar matches
 #: the rest of FreeCAD. An action with no entry is drawn without one.

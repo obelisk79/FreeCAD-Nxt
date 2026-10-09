@@ -22,7 +22,7 @@ from typing import Any
 import FreeCAD as App
 import FreeCADGui as Gui
 
-from .. import services
+from .. import fc, services
 from ..i18n import translate
 from ..qt import QtCore
 from . import (
@@ -182,8 +182,10 @@ class TreeBridge(QtCore.QObject):
 
     def _read_active(self) -> str:
         try:
-            view = Gui.ActiveDocument.ActiveView
+            view = fc.active_view()
         except Exception:
+            return ""
+        if view is None:
             return ""
         for key in self.ACTIVE_KEYS:
             try:
@@ -548,7 +550,7 @@ class TreeBridge(QtCore.QObject):
             self._auto_timer.start()
         if additive:
             try:
-                doc = App.ActiveDocument
+                doc: Any = App.ActiveDocument
                 already = {o.Name for o
                            in Gui.Selection.getSelection(doc.Name)}
                 if name in already:
@@ -1269,6 +1271,8 @@ class TreeBridge(QtCore.QObject):
     def _selected_names(self) -> list[str]:
         try:
             doc = App.ActiveDocument
+            if doc is None:
+                return []
             return [o.Name for o in Gui.Selection.getSelection(doc.Name)]
         except Exception:
             return []
@@ -1531,8 +1535,9 @@ class TreeBridge(QtCore.QObject):
         except Exception:
             pass
         try:
-            if self._read_active() != name:
-                Gui.ActiveDocument.ActiveView.setActiveObject(key, obj)
+            view = fc.active_view()
+            if self._read_active() != name and view is not None:
+                view.setActiveObject(key, obj)
         except Exception:
             _err("could not make %s active" % name)
         self._sync_active()
@@ -1670,6 +1675,8 @@ class TreeBridge(QtCore.QObject):
         if not self.canDropOn(sources, target_name):
             return False
         doc = App.ActiveDocument
+        if doc is None:
+            return False
         target = doc.getObject(target_name)
         tvo = target.ViewObject
         moved = False
@@ -1786,6 +1793,8 @@ class TreeBridge(QtCore.QObject):
         if not self.canDropOnRoot(sources):
             return False
         doc = App.ActiveDocument
+        if doc is None:
+            return False
         moved = False
         try:
             doc.openTransaction("Move to top level")
@@ -1821,6 +1830,8 @@ class TreeBridge(QtCore.QObject):
                       target_name: str) -> tuple[Any, reorder.Plan]:
         """The Body and plan when this drop reorders a Body, else None."""
         doc = App.ActiveDocument
+        if doc is None:
+            return None, reorder.Plan()
         objects = [doc.getObject(str(n)) for n in sources]
         target = doc.getObject(target_name)
         if target is None or any(o is None for o in objects):

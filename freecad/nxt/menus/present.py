@@ -118,8 +118,16 @@ def _entry(item: Item, subject: Subject,
         label = label or info.label
         shortcut, enabled, icon = info.shortcut, info.active, info.icon
 
-    return {"command": command, "label": label, "shortcut": shortcut,
-            "enabled": enabled, "icon": icon}
+    return {"command": command, "label": _counted(label, command, subject),
+            "shortcut": shortcut, "enabled": enabled, "icon": icon}
+
+
+def _counted(label: str, command: str, subject: Subject) -> str:
+    """The label, with how many it acts on when that is several."""
+    if subject.count < 2 or command not in labels.COUNTED or not label:
+        return label
+    return translate(CONTEXT, labels.COUNTED_LABEL).replace(
+        "%1", label).replace("%2", str(subject.count))
 
 
 def _isolating() -> bool:
@@ -138,7 +146,7 @@ def _bar_label(command: str, subject: Subject) -> str:
         text = labels.BAR["nxt:isolate_exit"]
     else:
         text = labels.BAR.get(command, "")
-    return translate(CONTEXT, text)
+    return _counted(translate(CONTEXT, text), command, subject)
 
 
 def _native_entry() -> dict[str, Any]:

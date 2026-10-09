@@ -618,7 +618,7 @@ class FloatingInput(QtCore.QObject):
     def _update(self) -> bool:
         if not settings.get("FloatingValues"):
             return False
-        gui_doc = Gui.ActiveDocument
+        gui_doc: Any = Gui.ActiveDocument
         edit = gui_doc.getInEdit() if gui_doc is not None else None
         obj = getattr(edit, "Object", None)
         if obj is None:

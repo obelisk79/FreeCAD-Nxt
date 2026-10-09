@@ -177,6 +177,14 @@ class PreferencesPage:
         self._repair = QtWidgets.QCheckBox(translate(
             "Nxt", "Auto repair 'Wire not closed' errors"), tree)
         layout.addRow(self._repair)
+        self._attach = QtWidgets.QCheckBox(translate(
+            "Nxt", "Attach a new sketch to three picked points without "
+                   "asking"), tree)
+        self._attach.setToolTip(translate(
+            "Nxt", "Three points, or a straight edge and a point, give "
+                   "the sketch's plane.\nHold Shift to get the attachment "
+                   "dialog anyway."))
+        layout.addRow(self._attach)
         self._arrows = QtWidgets.QCheckBox(translate(
             "Nxt", "Show the selection's dependencies as arrows"), tree)
         layout.addRow(self._arrows)
@@ -291,6 +299,7 @@ class PreferencesPage:
         self._follow.setChecked(bool(settings.get("FollowSelection")))
         self._dbl.setChecked(bool(settings.get("EditOnDoubleClick")))
         self._repair.setChecked(bool(settings.get("RepairProfiles")))
+        self._attach.setChecked(bool(settings.get("AttachSketchByPoints")))
         self._arrows.setChecked(bool(settings.get("DependencyArrows")))
         self._related.setChecked(bool(settings.get("HighlightRelated")))
         self._auto_detail.setChecked(bool(settings.get("DetailAutoShow")))
@@ -313,6 +322,7 @@ class PreferencesPage:
         settings.put("FollowSelection", self._follow.isChecked())
         settings.put("EditOnDoubleClick", self._dbl.isChecked())
         settings.put("RepairProfiles", self._repair.isChecked())
+        settings.put("AttachSketchByPoints", self._attach.isChecked())
         settings.put("DependencyArrows", self._arrows.isChecked())
         settings.put("HighlightRelated", self._related.isChecked())
         settings.put("DetailAutoShow", self._auto_detail.isChecked())
@@ -348,6 +358,8 @@ class PreferencesPage:
         self._follow.setChecked(bool(settings.DEFAULTS["FollowSelection"]))
         self._dbl.setChecked(bool(settings.DEFAULTS["EditOnDoubleClick"]))
         self._repair.setChecked(bool(settings.DEFAULTS["RepairProfiles"]))
+        self._attach.setChecked(
+            bool(settings.DEFAULTS["AttachSketchByPoints"]))
         self._arrows.setChecked(bool(settings.DEFAULTS["DependencyArrows"]))
         self._related.setChecked(
             bool(settings.DEFAULTS["HighlightRelated"]))

@@ -101,7 +101,7 @@ def _placement_editable(obj: Any) -> bool:
 def _editing(obj: Any) -> bool:
     import FreeCADGui as Gui
     doc = Gui.getDocument(obj.Document.Name)
-    editing = doc.getInEdit() if doc is not None else None
+    editing: Any = doc.getInEdit() if doc is not None else None
     return editing is not None and editing.Object is obj
 
 

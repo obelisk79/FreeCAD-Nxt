@@ -319,7 +319,7 @@ class SketchRepair(QtCore.QObject):
 
     def _find(self, key: Key) -> tuple[Any, Any]:
         """(document, sketch), either None if it has gone."""
-        doc = App.listDocuments().get(key[0])
+        doc: Any = App.listDocuments().get(key[0])
         return doc, doc.getObject(key[1]) if doc is not None else None
 
     @staticmethod
