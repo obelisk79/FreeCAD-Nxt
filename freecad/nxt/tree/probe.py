@@ -25,7 +25,7 @@ from typing import Any
 import FreeCAD as App
 import FreeCADGui as Gui
 
-from .. import qtquick
+from .. import fc, qtquick
 from ..qt import QtCompat
 from . import health, scene
 
@@ -187,8 +187,10 @@ def active() -> dict[str, str]:
     App.Console.PrintMessage("\n=== active object ===\n")
 
     try:
-        view = Gui.ActiveDocument.ActiveView
+        view = fc.active_view()
     except Exception:
+        view = None
+    if view is None:
         App.Console.PrintError("  no active view\n")
         return {}
 
@@ -331,7 +333,7 @@ def overlay() -> tuple[list[str], list[str]]:
     App.Console.PrintMessage("\n=== overlay support ===\n")
 
     try:
-        commands = sorted(c for c in Gui.listCommands()
+        commands = sorted(c for c in fc.list_commands()
                           if "overlay" in c.lower())
     except Exception:
         commands = []
@@ -495,7 +497,8 @@ def _native_tree() -> Any:
         QtWidgets.QTreeWidget)
         if w.metaObject().className() == "Gui::TreeWidget"]
     shown = [w for w in trees if w.isVisible()]
-    return (shown or trees or [None])[0]
+    found: list[Any] = shown or trees
+    return found[0] if found else None
 
 
 def _menu_entries(menu: Any) -> list[dict[str, Any]]:

@@ -13,7 +13,7 @@ from typing import Any
 import FreeCAD as App
 import FreeCADGui as Gui
 
-from .. import qtquick, resources
+from .. import fc, qtquick, resources
 from ..i18n import QT_TRANSLATE_NOOP, translate
 from ..qt import QtCompat, QtCore, QtGui, QtWidgets
 from . import bridge as bridge_mod
@@ -479,7 +479,7 @@ class ModelPanel(QtWidgets.QDockWidget):
     def request_host_overlay(self) -> bool:
         """Run FreeCAD's overlay command on this dock. False if unavailable."""
         try:
-            if HOST_OVERLAY_COMMAND not in Gui.listCommands():
+            if HOST_OVERLAY_COMMAND not in fc.list_commands():
                 return False
         except Exception:
             return False

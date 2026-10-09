@@ -123,8 +123,11 @@ def run_command(name: str) -> bool:
 def run_edit(obj: Any, command: str) -> bool:
     """Start one of an object's edit modes, as its own menu entry would."""
     mode = EDIT_MODES.get(command.split(":", 1)[1], 0)
+    gui_doc = Gui.ActiveDocument
+    if gui_doc is None:
+        return False
     try:
-        Gui.ActiveDocument.setEdit(obj, mode)
+        gui_doc.setEdit(obj, mode)
         return True
     except Exception as exc:
         App.Console.PrintError("Nxt menu: could not edit %s: %s\n"

@@ -164,6 +164,7 @@ id = "in-body"
 when = { in_body = true }
 
 [menu.section]
+Relations = [{ command = "nxt:select_same_type", count = 1 }]
 Organize = [
     { command = "PartDesign_MoveFeature", label = "Move to another Body" },
     { command = "PartDesign_MoveFeatureInTree", label = "Move after another feature" },

@@ -287,7 +287,8 @@ class Isolation(QtCore.QObject):
         if self._was_modified is not False or self._doc is None:
             return
         try:
-            Gui.getDocument(self._doc).Modified = False
+            gui_doc: Any = Gui.getDocument(self._doc)   # stubs: read-only
+            gui_doc.Modified = False
         except Exception:
             pass                        # read-only in this build: harmless
 

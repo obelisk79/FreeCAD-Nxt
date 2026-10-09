@@ -33,6 +33,7 @@ from typing import TYPE_CHECKING, Any
 import FreeCAD as App
 import FreeCADGui as Gui
 
+from .. import fc
 from ..qt import QtCore, QtWidgets
 from . import editing, picking, settings
 
@@ -129,14 +130,15 @@ class DoubleClickEditor(QtCore.QObject):
         if gui_doc is None or gui_doc.getInEdit() is not None:
             return False
         try:
-            view = gui_doc.ActiveView
+            view = fc.active_view()
             if view.getObjectInfo(view.getCursorPos()) is None:
                 return False            # empty space: FreeCAD's
         except Exception:
             pass
         found = picked_feature()
-        if found is None or editing.is_reference_pick(
-                App.ActiveDocument.getObject(found[1])):
+        doc = App.ActiveDocument
+        if found is None or doc is None or editing.is_reference_pick(
+                doc.getObject(found[1])):
             return False
         App.Console.PrintLog("Nxt double-click: edit %s\n" % found[1])
         self._editor.edit_feature(*found)

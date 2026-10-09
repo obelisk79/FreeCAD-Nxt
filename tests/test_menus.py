@@ -218,6 +218,39 @@ class PresentTests(unittest.TestCase):
         bar = self.show(obj(*SKETCH, flags=SHAPED))["bar"]
         self.assertNotIn("Std_ToggleVisibility", [b["command"] for b in bar])
 
+    def show_many(self, count: int, *objects: d.ObjectFacts) -> dict:
+        from freecad.nxt.menus import present
+        resolved = d.resolve(d.load(DEFAULT), list(objects))
+        return present.present(
+            resolved, present.Subject(title="%d objects" % count,
+                                      count=count), self.lookup)
+
+    def test_one_in_a_body_can_select_its_kind(self) -> None:
+        def relations(*objects: d.ObjectFacts) -> list[str]:
+            menu = d.resolve(d.load(DEFAULT), list(objects))
+            return [i.command for n, items in menu.sections
+                    if n == "Relations" for i in items]
+        inside = obj(*SKETCH, flags=SHAPED, in_body=True)
+        self.assertIn("nxt:select_same_type", relations(inside))
+        self.assertNotIn("nxt:select_same_type", relations(inside, inside))
+        self.assertNotIn("nxt:select_same_type",
+                         relations(obj(*SKETCH, flags=SHAPED)))
+
+    def test_several_say_how_many(self) -> None:
+        sketch = obj(*SKETCH, flags=SHAPED)
+        menu = self.show_many(3, sketch, sketch, sketch)
+        self.assertEqual(menu["delete"]["label"], "Delete 3")
+        self.assertEqual(menu["bar"][0]["short"], "Isolate 3")
+        fit = [b for b in menu["bar"]
+               if b["command"] == "Std_ViewFitSelection"][0]
+        self.assertEqual(fit["short"], "Fit")      # acts on them as one
+
+    def test_one_says_nothing(self) -> None:
+        sketch = obj(*SKETCH, flags=SHAPED)
+        menu = self.show(sketch)
+        self.assertEqual(menu["delete"]["label"], "Delete")
+        self.assertEqual(menu["bar"][0]["short"], "Isolate")
+
     def test_isolate_says_exit_while_isolating(self) -> None:
         from freecad.nxt.menus import present
         sketch = obj(*SKETCH, flags=SHAPED)
