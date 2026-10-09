@@ -28,7 +28,10 @@ jobs:
       - name: Python tools
         # freecad-stubs types FreeCAD's API, so mypy sees an unchecked
         # None from ActiveDocument; the code runs without them too.
-        run: pip install "pyside6>=6.8" ruff pycodestyle mypy freecad-stubs
+        # PySide6 6.12.0 over-releases None on Python 3.11 (any Python
+        # callback from Qt aborts with "none_dealloc"); 3.12+ is immune.
+        # Lift the cap once a fixed 6.12.x is out.
+        run: pip install "pyside6>=6.8,<6.12" ruff pycodestyle mypy freecad-stubs
 
       - name: Lint (ruff)
         run: ruff check .
