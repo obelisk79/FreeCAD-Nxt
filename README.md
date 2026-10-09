@@ -9,9 +9,7 @@ A modern, fluid UI/UX replacement for FreeCAD built on QtQuick/QML.
 > [!WARNING]
 > **Experimental: Nxt is under heavy development.** Expect bugs, rough
 > edges, and features that change or disappear between updates without
-> notice. Some of it changes your documents for you (for example, the
-> automatic repair of sketches whose profile will not close), so keep
-> backups of models you care about, and report problems on the
+> notice. Report problems on the
 > [issue tracker](https://github.com/obelisk79/FreeCAD-Nxt/issues).
 
 
