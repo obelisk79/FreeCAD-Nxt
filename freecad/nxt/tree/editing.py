@@ -15,6 +15,61 @@ import FreeCADGui as Gui
 
 ORIGIN = "App::Origin"
 ORIGIN_FEATURE = "App::OriginFeature"
+#: Datum planes, lines and points: Part Design's (Part::Datum) and the
+#: Part workbench's (App::DatumElement). The origin's own planes, axes
+#: and point are DatumElements too, and are not attached to anything.
+DATUMS = ("Part::Datum", "App::DatumElement")
+
+
+def object_in(doc_name: str, name: str) -> Any:
+    """The named object of an open document, or None."""
+    try:
+        return Gui.getDocument(doc_name).Document.getObject(name)
+    except Exception:
+        return None
+
+
+def is_datum(obj: Any) -> bool:
+    """A datum plane, line or point that can be attached."""
+    try:
+        return (any(obj.isDerivedFrom(t) for t in DATUMS)
+                and not obj.isDerivedFrom(ORIGIN_FEATURE)
+                and hasattr(obj, "MapMode"))
+    except Exception:
+        return False
+
+
+def edit_attachment(doc_name: str, name: str) -> None:
+    """Open the attachment dialog for a datum.
+
+    FreeCAD's own Attachment editor (Part's AttachmentEditor), which
+    opens its own undo step and closes it on OK or Cancel. Failing that,
+    the Part workbench's command, on the datum as the selection.
+
+    Call it deferred, as enter_edit: it opens a task dialog.
+    """
+    gui_doc = Gui.getDocument(doc_name)
+    obj = gui_doc.Document.getObject(name) if gui_doc else None
+    if obj is None:
+        return
+    if gui_doc.getInEdit() is not None:
+        gui_doc.resetEdit()
+    try:
+        from AttachmentEditor import Commands
+        Commands.editAttachment(obj, take_selection=False,
+                                create_transaction=True)
+        return
+    except Exception:
+        App.Console.PrintLog("Nxt: AttachmentEditor not usable: %s\n"
+                             % traceback.format_exc())
+    try:
+        Gui.Selection.clearSelection()
+        Gui.Selection.addSelection(doc_name, name)
+        Gui.runCommand("Part_EditAttachment", 0)
+    except Exception:
+        App.Console.PrintError("Nxt: could not open the attachment of %s\n"
+                               % name)
+        App.Console.PrintError(traceback.format_exc())
 
 
 def is_reference_pick(obj: Any) -> bool:
