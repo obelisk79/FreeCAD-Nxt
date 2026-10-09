@@ -103,6 +103,20 @@ def open_edit_transaction(obj: Any) -> bool:
         return False
 
 
+def open_for_edit(doc_name: str, name: str, handles: bool = True) -> None:
+    """A double-click's edit, from the tree or the 3D view.
+
+    A datum's is where it is attached, which is all there is to it; for
+    anything else, the object's own edit (enter_edit).
+    """
+    if is_datum(object_in(doc_name, name)):
+        edit_attachment(doc_name, name)
+    elif handles:
+        enter_edit(doc_name, name)
+    else:
+        enter_edit(doc_name, name, handles=False)
+
+
 def enter_edit(doc_name: str, name: str, handles: bool = True) -> None:
     """Edit an object, inside an undo step of its own.
 

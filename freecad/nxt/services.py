@@ -232,7 +232,7 @@ class Services(QtCore.QObject):
         pending, self._pending_edit = self._pending_edit, None
         if pending is not None:
             from .tree import editing
-            editing.enter_edit(*pending)
+            editing.open_for_edit(*pending)
 
 
 _services: Services | None = None

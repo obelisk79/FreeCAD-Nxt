@@ -75,6 +75,12 @@ Rectangle {
     // wheel elsewhere zooms the model). `angle` is in eighths of a degree,
     // as Qt reports a wheel; `pixel` is a touchpad's own distance, if any.
     function scrollWheel(angle, pixel) {
+        // Over a breadcrumb too long for its strip, the wheel scrolls the
+        // trail, as it does docked.
+        if (breadcrumb.visible && breadcrumb.hovered && breadcrumb.overflows) {
+            breadcrumb.scrollBy(pixel !== 0 ? pixel : angle / 120 * 40);
+            return;
+        }
         var step = pixel !== 0 ? pixel
                                : angle / 120 * theme.rowHeight * 3;
         var top = treeList.originY;
