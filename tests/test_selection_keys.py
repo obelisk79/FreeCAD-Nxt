@@ -32,7 +32,9 @@ class Selection:
         return [DOC.getObject(n) for n in self.names]
 
     def getSelectionEx(self, *_args: Any) -> list[Any]:
-        return []
+        return [types.SimpleNamespace(Object=DOC.getObject(n),
+                                      SubElementNames=())
+                for n in self.names]
 
     def clearSelection(self) -> None:
         self.names = []

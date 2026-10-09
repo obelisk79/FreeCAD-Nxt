@@ -57,6 +57,7 @@ _RELOAD_ORDER = (
     "freecad.nxt.face_snap",
     "freecad.nxt.fc",
     "freecad.nxt.expressions",
+    "freecad.nxt.visibility",
     "freecad.nxt.services",
 )
 
