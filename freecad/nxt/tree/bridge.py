@@ -22,7 +22,7 @@ from typing import Any
 import FreeCAD as App
 import FreeCADGui as Gui
 
-from .. import fc, services
+from .. import fc, services, visibility
 from ..i18n import translate
 from ..qt import QtCore
 from . import (
@@ -1249,23 +1249,10 @@ class TreeBridge(QtCore.QObject):
         doc = App.ActiveDocument
         if doc is None:
             return
-        names = self._selected_names()
-        found = (getattr(doc.getObject(name), "ViewObject", None)
-                 for name in names)
-        views: list[Any] = [vo for vo in found if vo is not None]
-        if not views:
-            return
-        show = not any(bool(vo.Visibility) for vo in views)
-        try:
-            doc.openTransaction("Toggle visibility")
-            for vo in views:
-                vo.Visibility = show
-            if show:
-                self._show_alone(doc, names)
-            doc.commitTransaction()
-        except Exception:
-            doc.abortTransaction()
-            _err("visibility toggle failed")
+        # FreeCAD files a feature picked in a Body under the Body, so the
+        # selection is read through visibility.targets: the feature, not
+        # its container.
+        visibility.toggle(doc, visibility.targets(doc), self._show_alone)
         self.invalidate()
 
     def _selected_names(self) -> list[str]:
