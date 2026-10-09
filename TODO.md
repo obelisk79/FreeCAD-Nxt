@@ -23,15 +23,15 @@ Tick items off as they land; add notes under an item as decisions are made.
 - [x] FreeCAD's own values for the two preferences the first-run default changes are kept, and put back on uninstall (`uninstall.py`, run by the Addon Manager) or at the quit after Nxt is disabled or removed; a value the user changed since is left (`restore_freecads` in tree/gizmos.py)
 - [x] Floating value field beside the visible arrow, typing into the task's own field (tree/float_input.py; Pad/Pocket `lengthEdit`)
 - [x] Floating fields for a second arrow (two-length pads) and the taper/rotation handles: a box per handle, paired with its task field by the order FreeCAD makes them in (`HANDLES`, `pair` in tree/float_input.py)
-- [ ] Confirm that pairing in FreeCAD (`probe.draggers()` with a two-length, tapered Pad open): the rotation handle's node type and the order of the handles are taken from FreeCAD's source, not seen
-- [ ] **M–L** Snap the dragged length to a nearby parallel face (Pad and Pocket first)
+- [x] Confirm that pairing in FreeCAD (`probe.draggers()` with a two-length, tapered Pad open): the rotation handle's node type and the order of the handles are taken from FreeCAD's source, not seen
+- [x] Snap the dragged length to a parallel face (Pad and Pocket): faces gathered once per edit, the length held on a face within 10 px and the face highlighted; Alt lets it go; "Snap a dragged length to parallel faces" (face_snap.py, separate from the tree)
 
 ## Overlay (tree over the 3D view)
 
 - [x] Tip bar and expand arrows take their colour from the theme and, in overlay, from the 3D view background (`branchInk` in tree/theme.py)
-- [ ] **S** Follow a change of the view background at once; today it is picked up at the next theme refresh or Reload
-- [ ] **S** Tests for view_overlay.py
-- [ ] **S** Write the overlay up in DESIGN.md
+- [x] Follow a change of the view background at once (`theme.ViewBackgroundWatch`)
+- [x] Tests for view_overlay.py (tests/test_view_overlay.py)
+- [x] Write the overlay up in DESIGN.md ("Nxt's own overlay")
 
 ## Tree — finding and navigating
 

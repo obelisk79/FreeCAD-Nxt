@@ -223,7 +223,25 @@ Pill colours come from the palette like everything else (`pill`, `pillHover`, `p
 
 The title bar is ours now, carrying an overlay toggle. Replacing it costs the dock's stock float and close buttons, so those are rebuilt rather than quietly lost.
 
-Known gap: the panel still captures mouse events across its whole rectangle, including the transparent gaps between pills, so there is no click-through to the 3D view the way FreeCAD's own transparent overlay mode offers. Fixing it properly means masking the widget to the union of the visible pill rectangles and updating that mask on every scroll and relayout.
+Over FreeCAD's overlay the panel still captures the mouse across its whole rectangle, transparent gaps included. Nxt's own overlay, below, is the answer to that: it is the default (`OverlayMode` = `nxt`), and FreeCAD's remains a choice.
+
+### Nxt's own overlay (`view_overlay.py`)
+
+**The panel goes into the 3D view, not over it.** The panel's `QQuickWidget` is taken out of its dock and made a child of the active 3D view's GL widget, see-through and stacked on top, spanning the view. The dock is hidden while it is there - and kept hidden, because a workbench switch re-shows docks it remembers as open. Floating a separate window over the view was the alternative, and it brings the window manager into it: stacking against the Coin3D viewport, focus, and on Wayland no say at all in where a window goes. A child widget moves, resizes and stacks with the view for free. The panel follows whichever MDI window is active, and waits on a hidden shelf while no 3D view is showing, so closing the last view does not take the panel with it.
+
+**Clicks pass through without a mask.** Every press on the panel is first put to the QML: does it draw anything at this point (`NxtTree.qml` `wantsPoint`, which asks the header, the breadcrumb, the tip bars, the toast and the row under the point)? If so the press is the panel's, delivered to it alone and kept from the view. If not, it is handed to the 3D view in the view's coordinates. Either way, the moves and the release that follow go with the press: Qt sends them to the widget that took the press, so a press handed on would otherwise orbit the model until the pointer crossed a pill. A mask was the obvious design and is the wrong one: it has to be rebuilt on every scroll, expand and relayout, and it lags them.
+
+*Asked, not inferred.* The first version passed a press on when the scene did not accept it. A tap handler - on a chip, on the eye - takes part in a press without accepting it, so the press went on to the model too and the tap's effect was undone by a click on whatever was behind.
+
+**Off the pills, the mouse falls through natively.** Hit-testing covers presses, but not what Qt routes by itself: hover, preselection, the wheel. So while the pointer is over nothing the panel draws, the panel is made transparent to the mouse outright (`WA_TransparentForMouseEvents`) and the 3D view gets everything first-hand; the view's own mouse moves say when the pointer is back over a pill. A move with no button down also clears any press still marked as in progress - one whose release went elsewhere, to a dialog the click opened - which otherwise left every row lit up for a pointer anywhere across the view.
+
+**The wheel is decided the same way.** Over a pill it scrolls the list (or the breadcrumb, when the pointer is over one too long for its strip); elsewhere it is handed to the 3D view, which zooms. Handed, not left to propagate: the panel's scene can accept a wheel nothing in it used, and the view would never see it.
+
+**The keyboard has to be asked for.** The view, not the panel, normally holds the keyboard; a field in the panel can have focus inside the scene and still receive no keys. Anything that edits in place - a rename - calls `host.takeKeyboard()` first. Before it did, a rename box opened, took nothing typed, and never closed.
+
+**Ink follows the view's background.** Expand arrows, the tip bar and tree lines are drawn on bare transparency, so their colour (`theme.branchInk`) is chosen against the 3D view's background, averaged down its gradient, rather than against the panel's. A parameter observer on FreeCAD's View group (`theme.ViewBackgroundWatch`) re-tunes it as soon as that background changes. Marks that would otherwise float on transparency - the spine, the active bar - move inside the pill in overlay, where they read as part of the label rather than the model.
+
+**Tests.** `tests/test_view_overlay.py` drives the event filter with real Qt events and a panel whose "drawing" is a rectangle: where presses, their moves and releases, the wheel and hover end up, the stale-press reset, parking when the view hides, and the background watch.
 
 ## Startup and persistence
 

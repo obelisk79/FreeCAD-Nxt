@@ -63,6 +63,9 @@ DEFAULTS: dict[str, bool | int | float | str] = {
     # A new sketch made with three points, or an edge and a point,
     # selected is attached to their plane unasked (sketch_attach.py).
     "AttachSketchByPoints": True,
+    # A dragged Pad or Pocket length snaps to a parallel face of the
+    # model (face_snap.py); Alt held while dragging lets it go.
+    "SnapToFaces": True,
     # A profile sketch that all but closes is closed (sketch_repair.py).
     "RepairProfiles": True,
     # Set once Nxt has put its drag-handle defaults in place (gizmos.py).

@@ -50,6 +50,7 @@ class Services(QtCore.QObject):
         self._floating: Any = None
         self._sketch_repair: Any = None
         self._sketch_attach: Any = None
+        self._face_snap: Any = None
         self._isolation: Any = None
         self._isolation_observer: Any = None
         self._notice: Any = None
@@ -98,6 +99,13 @@ class Services(QtCore.QObject):
         except Exception:
             _err("could not install the new sketch attachment")
             self._sketch_attach = None
+        try:
+            from .face_snap import FaceSnap
+            self._face_snap = FaceSnap(self)
+            self._face_snap.install()
+        except Exception:
+            _err("could not install the face snapping")
+            self._face_snap = None
 
     def remove(self) -> None:
         self._remove_isolation()
@@ -110,7 +118,8 @@ class Services(QtCore.QObject):
         self._edit_timer.stop()
         self._restyle_timer.stop()
         for part in (self._double_click, self._floating,
-                     self._sketch_repair, self._sketch_attach):
+                     self._sketch_repair, self._sketch_attach,
+                     self._face_snap):
             if part is not None:
                 try:
                     part.remove()
@@ -118,6 +127,7 @@ class Services(QtCore.QObject):
                     _err("could not remove %s" % type(part).__name__)
         self._double_click = self._floating = None
         self._sketch_repair = self._sketch_attach = None
+        self._face_snap = None
         try:
             self._main_window.removeEventFilter(self)
         except RuntimeError:
