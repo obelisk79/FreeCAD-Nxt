@@ -73,9 +73,14 @@ def from_selection() -> Plane | None:
                 return datum
             try:
                 shape = root.getSubObject(sub)
+                # An empty sketch, or anything else with no geometry yet,
+                # has a null shape: it says nothing about a plane.
+                if shape is None or (hasattr(shape, "isNull")
+                                     and shape.isNull()):
+                    continue
+                kind = getattr(shape, "ShapeType", "")
             except Exception:
                 continue
-            kind = getattr(shape, "ShapeType", "")
             if kind == "Vertex":
                 points.append(shape.Point)
             elif kind == "Face":

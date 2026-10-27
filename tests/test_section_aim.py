@@ -77,5 +77,38 @@ class AimTests(unittest.TestCase):
                          (0.0, 0.0, -1.0))
 
 
+class NullShape:
+    """An empty sketch's shape: asking its type raises, as FreeCAD's."""
+
+    def isNull(self) -> bool:  # noqa: N802 - Part's name
+        return True
+
+    @property
+    def ShapeType(self) -> str:  # noqa: N802 - Part's name
+        raise RuntimeError("cannot determine type of null shape")
+
+
+class EmptySketch:
+    TypeId = "Sketcher::SketchObject"
+
+    def getSubObject(self, *_args: object, **_kw: object) -> object:  # noqa: N802
+        return NullShape()
+
+
+class SelectionTests(unittest.TestCase):
+
+    def test_an_empty_sketch_selected_gives_no_plane(self) -> None:
+        import types
+        picked = types.SimpleNamespace(Object=EmptySketch(),
+                                       SubElementNames=())
+        saved = getattr(Gui, "Selection", None)
+        Gui.Selection = types.SimpleNamespace(
+            getSelectionEx=lambda *_args: [picked])
+        try:
+            self.assertIsNone(section_aim.from_selection())
+        finally:
+            Gui.Selection = saved
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
