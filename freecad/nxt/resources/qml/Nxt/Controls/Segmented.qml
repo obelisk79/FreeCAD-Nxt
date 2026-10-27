@@ -117,7 +117,6 @@ FocusScope {
                     anchors.fill: parent
                     enabled: control.enabled
                     hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
                     onClicked: {
                         control.forceActiveFocus();
                         control.choose(option.modelData.value);

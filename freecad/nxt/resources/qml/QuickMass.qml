@@ -53,7 +53,6 @@ Rectangle {
             id: pickerMouse
             anchors.fill: parent
             hoverEnabled: true
-            cursorShape: Qt.PointingHandCursor
             onClicked: list.opened ? list.close() : picker.openList()
         }
 
@@ -180,7 +179,6 @@ Rectangle {
                             id: optionMouse
                             anchors.fill: parent
                             hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
                             onClicked: {
                                 picker.picked(option.modelData);
                                 list.close();

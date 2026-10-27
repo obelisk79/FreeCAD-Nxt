@@ -213,7 +213,7 @@ Item {
             }
         }
 
-        HoverHandler { id: clearHover; cursorShape: Qt.PointingHandCursor }
+        HoverHandler { id: clearHover }
         TapHandler {
             onTapped: {
                 input.text = "";

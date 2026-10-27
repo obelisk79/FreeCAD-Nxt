@@ -162,7 +162,7 @@ Item {
                     }
                 }
 
-                HoverHandler { id: rowHover; cursorShape: Qt.PointingHandCursor }
+                HoverHandler { id: rowHover }
                 TapHandler {
                     onTapped: {
                         box.current = index;

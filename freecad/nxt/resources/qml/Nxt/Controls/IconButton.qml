@@ -49,7 +49,6 @@ Item {
     // does not carry them.
     HoverHandler {
         id: hover
-        cursorShape: Qt.PointingHandCursor
         onHoveredChanged: if (!hovered) button.tipDismissed = false
     }
 

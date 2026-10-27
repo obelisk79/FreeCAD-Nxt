@@ -107,7 +107,6 @@ Item {
                         readonly property bool hovered: containsMouse
                         anchors.fill: parent
                         hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
                         onClicked: {
                             // Dismiss first: choosing can destroy the
                             // field, and this context with it.

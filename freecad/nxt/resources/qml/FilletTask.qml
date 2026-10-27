@@ -176,7 +176,6 @@ Item {
                             MouseArea {
                                 anchors.fill: parent
                                 anchors.margins: -4
-                                cursorShape: Qt.PointingHandCursor
                                 onClicked: task.remove(modelData.name)
                             }
                         }

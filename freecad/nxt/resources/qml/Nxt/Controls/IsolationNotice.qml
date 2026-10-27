@@ -52,7 +52,6 @@ Rectangle {
                 id: exitMouse
                 anchors.fill: parent
                 hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
                 onClicked: notice.exitRequested()
             }
 

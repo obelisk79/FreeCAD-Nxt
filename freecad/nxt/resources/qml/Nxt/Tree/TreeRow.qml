@@ -327,24 +327,56 @@ Item {
                  : Math.max(0, parent.width - 4)
             radius: 4
 
-            color: row.selected ? theme.accent
-                 : row.pickOrigin ? theme.hover
-                 : !theme.overlay ? theme.hover
-                 : hover.hovered ? theme.pillHover
-                 : theme.pill
-            opacity: theme.overlay ? 1.0
-                   : (row.selected || hover.hovered || row.dropTarget
-                      || row.slideInto || row.pickOrigin) ? 1.0
-                   : row.highlighted ? 0.5
-                   : row.isActive ? 0.28
-                   : row.isActivePart ? 0.18
-                   : 0.0
+            readonly property color wantColor:
+                row.selected ? theme.accent
+                : row.pickOrigin ? theme.hover
+                : !theme.overlay ? theme.hover
+                : hover.hovered ? theme.pillHover
+                : theme.pill
+            readonly property real want:
+                theme.overlay ? 1.0
+                : (row.selected || hover.hovered || row.dropTarget
+                   || row.slideInto || row.pickOrigin) ? 1.0
+                : row.highlighted ? 0.5
+                : row.isActive ? 0.28
+                : row.isActivePart ? 0.18
+                : 0.0
             border.width: row.pickOrigin && !row.selected ? 2
                         : theme.overlay && !row.selected ? 1 : 0
             border.color: row.pickOrigin ? theme.accent : theme.pillBorder
 
-            Behavior on opacity { NumberAnimation { duration: 70 } }
-            Behavior on color { ColorAnimation { duration: 70 } }
+            // Lit at once, let go gently: a pointer swept across the tree
+            // answers instantly and leaves a short trail, not a flicker.
+            // Set by hand, not by Behaviors, so lighting never waits on
+            // which binding Qt happens to update first.
+            function settle() {
+                fadeOut.stop();
+                var lighting = hover.hovered || row.selected
+                               || fill.want >= fill.opacity;
+                if (lighting) {
+                    fill.opacity = fill.want;
+                    fill.color = fill.wantColor;
+                } else {
+                    fadeOut.restart();
+                }
+            }
+            onWantChanged: settle()
+            onWantColorChanged: settle()
+            Component.onCompleted: {
+                fill.opacity = fill.want;
+                fill.color = fill.wantColor;
+            }
+            ParallelAnimation {
+                id: fadeOut
+                NumberAnimation {
+                    target: fill; property: "opacity"; to: fill.want
+                    duration: 140; easing.type: Easing.OutQuad
+                }
+                ColorAnimation {
+                    target: fill; property: "color"; to: fill.wantColor
+                    duration: 140; easing.type: Easing.OutQuad
+                }
+            }
         }
 
         // Glow after a 3D pick scrolls the row into view; overlaid so the
@@ -959,7 +991,6 @@ Item {
                         id: closeMouse
                         anchors.fill: parent
                         hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
                         onClicked: nxt.toggleDetail(row.name)
                     }
                     Accessible.role: Accessible.Button
@@ -1006,7 +1037,6 @@ Item {
                         id: pinMouse
                         anchors.fill: parent
                         hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
                         onClicked: nxt.toggleDetailPin(row.name)
                     }
                     NxtToolTip {

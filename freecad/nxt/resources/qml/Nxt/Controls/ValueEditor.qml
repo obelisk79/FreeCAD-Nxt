@@ -270,7 +270,6 @@ Item {
             HoverHandler {
                 id: checkHover
                 enabled: !editor.locked
-                cursorShape: Qt.PointingHandCursor
             }
             TapHandler {
                 id: checkTap
@@ -368,7 +367,6 @@ Item {
             HoverHandler {
                 id: colourHover
                 enabled: !editor.locked
-                cursorShape: Qt.PointingHandCursor
             }
             TapHandler {
                 enabled: !editor.locked
@@ -528,7 +526,6 @@ Item {
 
                 HoverHandler {
                     id: editHover
-                    cursorShape: Qt.PointingHandCursor
                 }
                 TapHandler { onTapped: editor.nativeRequested() }
             }

@@ -100,7 +100,7 @@ Item {
         }
     }
 
-    HoverHandler { id: hover; cursorShape: Qt.PointingHandCursor }
+    HoverHandler { id: hover }
     TapHandler {
         onTapped: {
             if (point.modifiers & Qt.ControlModifier)

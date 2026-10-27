@@ -102,7 +102,6 @@ Item {
             color: theme.textDim
         }
 
-        HoverHandler { cursorShape: Qt.PointingHandCursor }
         TapHandler { onTapped: nxt.revealFirstProblem() }
     }
 

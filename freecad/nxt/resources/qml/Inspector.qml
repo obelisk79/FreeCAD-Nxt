@@ -125,7 +125,6 @@ Rectangle {
                     color: theme.textDim
                     HoverHandler {
                         id: restHover
-                        cursorShape: Qt.PointingHandCursor
                     }
                     TapHandler { onTapped: root.restOpened = !root.restOpened }
                 }
@@ -179,7 +178,6 @@ Rectangle {
                         color: theme.text
                         HoverHandler {
                             id: titleHover
-                            cursorShape: Qt.PointingHandCursor
                         }
                         TapHandler {
                             onTapped: {

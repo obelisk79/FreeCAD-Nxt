@@ -337,8 +337,6 @@ Menu {
                             id: buttonMouse
                             anchors.fill: parent
                             hoverEnabled: true
-                            cursorShape: button.usable
-                                ? Qt.PointingHandCursor : Qt.ArrowCursor
                             onClicked: {
                                 if (!button.usable)
                                     return;

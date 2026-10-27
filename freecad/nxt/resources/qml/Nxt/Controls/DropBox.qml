@@ -55,7 +55,6 @@ Rectangle {
     HoverHandler {
         id: hover
         enabled: box.enabled
-        cursorShape: Qt.PointingHandCursor
     }
     TapHandler {
         id: tap

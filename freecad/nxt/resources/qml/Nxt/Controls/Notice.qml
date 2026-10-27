@@ -54,7 +54,6 @@ Rectangle {
                 id: area
                 anchors.fill: parent
                 hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
                 onClicked: notice.acted()
             }
         }

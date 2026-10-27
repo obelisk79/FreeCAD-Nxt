@@ -101,8 +101,6 @@ Rectangle {
     HoverHandler {
         id: hover
         enabled: chip.interactive || chip.tip.length > 0
-        cursorShape: chip.interactive ? Qt.PointingHandCursor
-                                      : Qt.ArrowCursor
         onHoveredChanged: if (chip.interactive)
                               chip.hoveredChanged(hovered)
     }

@@ -70,6 +70,6 @@ Item {
         }
     }
 
-    HoverHandler { id: hover; enabled: root.shown; cursorShape: Qt.PointingHandCursor }
+    HoverHandler { id: hover; enabled: root.shown }
     TapHandler { id: tap; enabled: root.shown; onTapped: root.toggled() }
 }

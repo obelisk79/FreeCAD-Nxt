@@ -119,7 +119,6 @@ Rectangle {
             anchors.fill: parent
             anchors.margins: -4
             hoverEnabled: true
-            cursorShape: Qt.PointingHandCursor
             onClicked: toast.dismiss()
         }
         Accessible.role: Accessible.Button

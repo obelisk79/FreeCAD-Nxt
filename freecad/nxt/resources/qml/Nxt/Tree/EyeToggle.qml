@@ -79,6 +79,5 @@ Item {
         }
     }
 
-    HoverHandler { cursorShape: Qt.PointingHandCursor }
     TapHandler { id: eyeTap; onTapped: root.toggled() }
 }

@@ -33,8 +33,6 @@ Flow {
 
             HoverHandler {
                 id: chipHover
-                cursorShape: chip.modelData.sketch ? Qt.PointingHandCursor
-                                                   : Qt.ArrowCursor
             }
             TapHandler {
                 id: chipTap
@@ -78,7 +76,7 @@ Flow {
                         font.pixelSize: theme.fontRow
                         color: removeHover.hovered ? theme.text : theme.textDim
                     }
-                    HoverHandler { id: removeHover; cursorShape: Qt.PointingHandCursor }
+                    HoverHandler { id: removeHover }
                     TapHandler {
                         id: removeTap
                         onTapped: chips.removed(chip.modelData.key)
@@ -123,7 +121,7 @@ Flow {
             font.pixelSize: theme.fontRow
             color: chips.picking ? theme.accentText : theme.text
         }
-        HoverHandler { id: plusHover; cursorShape: Qt.PointingHandCursor }
+        HoverHandler { id: plusHover }
         TapHandler { id: plusTap; onTapped: chips.pickRequested() }
         Keys.onSpacePressed: chips.pickRequested()
         Keys.onEscapePressed: if (chips.picking) chips.pickRequested()
