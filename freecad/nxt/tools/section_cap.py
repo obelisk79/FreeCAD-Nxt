@@ -11,7 +11,7 @@ mesh; the faces follow once it rests.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 import FreeCAD as App
@@ -21,7 +21,12 @@ from ..core import log
 #: Tessellation tolerance of the cap, as a share of the part's diagonal.
 CAP_TOLERANCE = 2e-4
 #: Tessellation tolerance of the mesh the moving outline is cut from.
-OUTLINE_TOLERANCE = 1e-3
+#: FreeCAD's own mesh rule: deflection = the box's sides / 300 x Deviation.
+DEVIATION_SPAN = 300.0
+VIEW_DEVIATION = 0.5
+#: A touch coarser than the view asks, so the view's own mesh is reused.
+MESH_REUSE = 1.25
+EDGES = ((0, 1), (1, 2), (2, 0))
 #: The hatch tile's texture, square, in texels.
 TILE = 32
 #: The cap is drawn this far toward the viewer (polygon offset units),
@@ -137,7 +142,7 @@ class CapPiece:
     material: Any
     coords: Any
     diffuse: tuple[float, float, float]
-    points: list[Any] = field(default_factory=list)
+    points: Any = None
 
 
 class Clips:
@@ -174,63 +179,141 @@ class Clips:
         self.items = []
 
 
+def view_deflection(solid: Any) -> float:
+    """The deflection the view meshed `solid` with, give or take."""
+    view = getattr(solid.obj, "ViewObject", None)
+    deviation = getattr(view, "Deviation", VIEW_DEVIATION)
+    box = solid.shape.BoundBox
+    sides = box.XLength + box.YLength + box.ZLength
+    return max(sides / DEVIATION_SPAN * deviation * MESH_REUSE, 1e-6)
+
+
+def _mesh_of(solid: Any, numpy: Any) -> tuple[Any, Any] | None:
+    points, triangles = solid.shape.tessellate(view_deflection(solid))
+    if not triangles:
+        return None
+    return (numpy.array([(p.x, p.y, p.z) for p in points], dtype=float),
+            numpy.array(triangles, dtype=int))
+
+
+def _key(solid: Any) -> Any:
+    try:
+        return (solid.name, solid.shape.hashCode(), view_deflection(solid))
+    except Exception:  # noqa: BLE001 - not cached
+        return None
+
+
+def _segments(points: Any, triangles: Any, n: Any, distance: float) -> Any:
+    """Where the plane at `distance` along `n` crosses the triangles."""
+    numpy = _numpy()
+    heights = (points @ n - distance)[triangles]
+    above = heights > 0
+    crossed = above.any(axis=1) & ~above.all(axis=1)
+    heights, above = heights[crossed], above[crossed]
+    corners = points[triangles[crossed]]
+    ends = []
+    for a, b in EDGES:
+        cross = above[:, a] != above[:, b]
+        t = heights[:, a] / numpy.where(cross, heights[:, a] - heights[:, b],
+                                        1)
+        where = corners[:, a] + (corners[:, b] - corners[:, a]) * t[:, None]
+        ends.append(numpy.where(cross[:, None], where, numpy.nan))
+    stacked = numpy.stack(ends, axis=1)                 # (k, 3, 3)
+    # Each triangle's two crossings, in edge order.
+    order = numpy.argsort(numpy.isnan(stacked[:, :, 0]), axis=1,
+                          kind="stable")[:, :2]
+    pairs = numpy.take_along_axis(stacked, order[:, :, None], axis=1)
+    return pairs.reshape(-1, 3)
+
+
 class Meshes:
-    """Each solid's triangles, for cutting the outline as the plane moves."""
+    """Each solid's triangles, meshed the first time the plane crosses it.
+
+    The view's own triangulation is reused, so the outline lies on the
+    surfaces as drawn; unchanged solids keep their meshes across reads.
+    """
 
     def __init__(self) -> None:
-        #: (solid, points, triangles), for each solid meshed.
-        self.items: list[tuple[Any, Any, Any]] = []
+        self.solids: list[Any] = []
+        self._keys: list[Any] = []
+        self._cache: dict[Any, tuple[Any, Any] | None] = {}
+        #: Meshes of solids with no cache key, by index; dropped on read.
+        self._loose: dict[int, tuple[Any, Any] | None] = {}
+        #: Per solid, for one normal: its triangles sorted by their lowest
+        #: height along it, those heights, and the tallest triangle.
+        self._bands: dict[int, tuple[Any, Any, Any, float]] = {}
+        self._centres: Any = None
+        self._halves: Any = None
 
     def read(self, solids: list[Any]) -> None:
         numpy = _numpy()
-        self.items = []
-        for solid in solids:
+        self.solids = list(solids)
+        self._keys = [_key(s) for s in self.solids]
+        old, self._loose, self._bands = self._cache, {}, {}
+        self._cache = {k: old[k] for k in self._keys if k in old}
+        boxes = [s.shape.BoundBox for s in self.solids]
+        low = numpy.array([(b.XMin, b.YMin, b.ZMin) for b in boxes],
+                          dtype=float).reshape(-1, 3)
+        high = numpy.array([(b.XMax, b.YMax, b.ZMax) for b in boxes],
+                           dtype=float).reshape(-1, 3)
+        self._centres, self._halves = (low + high) / 2, (high - low) / 2
+
+    def mesh(self, index: int) -> tuple[Any, Any] | None:
+        """Solid `index`'s (points, triangles), or None if it has none."""
+        key = self._keys[index]
+        store: dict[Any, tuple[Any, Any] | None] = (
+            self._cache if key is not None else self._loose)
+        slot = key if key is not None else index
+        if slot not in store:
             try:
-                size = max(solid.shape.BoundBox.DiagonalLength, 1e-6)
-                points, triangles = solid.shape.tessellate(
-                    size * OUTLINE_TOLERANCE)
-            except Exception:  # noqa: BLE001 - no outline for it
-                continue
-            if not triangles:
-                continue
-            self.items.append((
-                solid,
-                numpy.array([(p.x, p.y, p.z) for p in points], dtype=float),
-                numpy.array(triangles, dtype=int)))
+                store[slot] = _mesh_of(self.solids[index], _numpy())
+            except Exception:  # noqa: BLE001 - no outline or fill for it
+                store[slot] = None
+        return store[slot]
+
+    def _band(self, index: int, mesh: tuple[Any, Any], n: Any
+              ) -> tuple[Any, Any, float]:
+        """Solid `index`'s triangles in height order along `n`."""
+        numpy = _numpy()
+        band = self._bands.get(index)
+        if band is None or not numpy.array_equal(band[0], n):
+            points, triangles = mesh
+            heights = (points @ n)[triangles]
+            low = heights.min(axis=1)
+            order = numpy.argsort(low, kind="stable")
+            reach = float((heights.max(axis=1) - low).max(initial=0.0))
+            band = (n.copy(), low[order], triangles[order], reach)
+            self._bands[index] = band
+        return band[1], band[2], band[3]
+
+    def crossing(self, normal: App.Vector, distance: float,
+                 margin: float = 0.0) -> Any:
+        """Per solid: whether the plane passes through its box."""
+        numpy = _numpy()
+        if self._centres is None:
+            return numpy.zeros(0, dtype=bool)
+        n = numpy.array((normal.x, normal.y, normal.z))
+        return abs(self._centres @ n - distance) \
+            <= self._halves @ abs(n) + margin
 
     def outline(self, normal: App.Vector, distance: float
                 ) -> list[tuple[float, float, float]]:
         """Where the plane crosses the triangles: segment end pairs."""
         numpy = _numpy()
         n = numpy.array((normal.x, normal.y, normal.z))
-        out: list[tuple[float, float, float]] = []
-        for _solid, points, triangles in self.items:
-            level = points @ n - distance
-            corners = points[triangles]                 # (m, 3, 3)
-            heights = level[triangles]                  # (m, 3)
-            crossings = []
-            for a, b in ((0, 1), (1, 2), (2, 0)):
-                ha, hb = heights[:, a], heights[:, b]
-                cross = (ha > 0) != (hb > 0)
-                t = numpy.where(cross, ha / numpy.where(cross, ha - hb, 1),
-                                0.0)
-                where = corners[:, a] + (corners[:, b] - corners[:, a]) \
-                    * t[:, None]
-                crossings.append((cross, where))
-            count = sum(c.astype(int) for c, _w in crossings)
-            two = count == 2
-            if not two.any():
+        parts = []
+        for i in numpy.flatnonzero(self.crossing(normal, distance)):
+            mesh = self.mesh(int(i))
+            if mesh is None:
                 continue
-            ends = []
-            for cross, where in crossings:
-                ends.append(numpy.where(cross[:, None], where, numpy.nan))
-            stacked = numpy.stack(ends, axis=1)[two]    # (k, 3, 3)
-            # The two crossings of each triangle first, in edge order.
-            order = numpy.argsort(numpy.isnan(stacked[:, :, 0]), axis=1,
-                                  kind="stable")[:, :2]
-            pairs = numpy.take_along_axis(stacked, order[:, :, None], axis=1)
-            out.extend(map(tuple, pairs.reshape(-1, 3).tolist()))
-        return out
+            low, triangles, reach = self._band(int(i), mesh, n)
+            first = numpy.searchsorted(low, distance - reach, "left")
+            last = numpy.searchsorted(low, distance, "right")
+            parts.append(_segments(mesh[0], triangles[first:last], n,
+                                   distance))
+        if not parts:
+            return []
+        return list(map(tuple, numpy.concatenate(parts).tolist()))
 
 
 class Cap:
@@ -302,7 +385,8 @@ class Cap:
     def build(self, solids: list[Any], faces: list[list[Any]],
               image_of: Any, look_for: Any, tile: float, u: App.Vector,
               v: App.Vector, normal: App.Vector,
-              trims_of: Any = None) -> None:
+              trims_of: Any = None, meshes: list[Any] | None = None
+              ) -> None:
         """One textured mesh per solid's cut faces, in the outline's place.
 
         `trims_of(solid)`: the other sections' clips that cut that solid,
@@ -310,12 +394,12 @@ class Cap:
         """
         self.pieces_node.removeAllChildren()
         self.pieces = []
-        for solid, cut in zip(solids, faces):
+        for k, (solid, cut) in enumerate(zip(solids, faces)):
             if not cut:
                 continue
             try:
                 piece = _piece(solid, cut, image_of(solid), look_for(solid),
-                               normal)
+                               normal, meshes[k] if meshes else None)
                 for clip in (trims_of(solid) if trims_of else ()):
                     piece.node.insertChild(clip, 0)
             except Exception as exc:  # noqa: BLE001 - that cap is left out
@@ -333,8 +417,9 @@ class Cap:
 
     def map(self, tile: float, u: App.Vector, v: App.Vector) -> None:
         """Lay the hatch tile on the plane at this size."""
+        axes = _numpy().array(((u.x, v.x), (u.y, v.y), (u.z, v.z))) / tile
         for piece in self.pieces:
-            uv = [(p.dot(u) / tile, p.dot(v) / tile) for p in piece.points]
+            uv = (piece.points @ axes).tolist()
             piece.coords.point.setValues(0, len(uv), uv)
 
     def paint(self) -> None:
@@ -347,13 +432,18 @@ class Cap:
             piece.material.diffuseColor = colour
 
 
-def _piece(solid: Any, cut: list[Any], image: bytes, look: Look,
-           normal: App.Vector) -> CapPiece:
+def cap_mesh(cut: list[Any]) -> Any:
+    """The cut faces' (points, triangles)."""
     import Part
-    from pivy import coin
     compound = Part.makeCompound(cut)
     size = max(compound.BoundBox.DiagonalLength, 1e-6)
-    points, triangles = compound.tessellate(size * CAP_TOLERANCE)
+    return compound.tessellate(size * CAP_TOLERANCE)
+
+
+def _piece(solid: Any, cut: list[Any], image: bytes, look: Look,
+           normal: App.Vector, mesh: Any = None) -> CapPiece:
+    from pivy import coin
+    points, triangles = mesh if mesh is not None else cap_mesh(cut)
     node = coin.SoSeparator()
     material = coin.SoMaterial()
     material.diffuseColor = look.diffuse
@@ -376,19 +466,43 @@ def _piece(solid: Any, cut: list[Any], image: bytes, look: Look,
     binding = coin.SoNormalBinding()
     binding.value = coin.SoNormalBinding.OVERALL
     node.addChild(binding)
+    numpy = _numpy()
+    corners = numpy.array([(p.x, p.y, p.z) for p in points], dtype=float)
     vertices = coin.SoCoordinate3()
-    vertices.point.setValues(0, len(points),
-                             [(p.x, p.y, p.z) for p in points])
+    vertices.point.setValues(0, len(corners), corners.tolist())
     node.addChild(vertices)
     mesh = coin.SoIndexedFaceSet()
-    index: list[int] = []
-    for a, b, c in triangles:
-        index += [a, b, c, -1]
+    index = face_index(facing_winding(corners, triangles, normal))
     mesh.coordIndex.setValues(0, len(index), index)
     mesh.textureCoordIndex.setValues(0, len(index), index)
     node.addChild(mesh)
     return CapPiece(solid.name, node, material, coords, look.diffuse,
-                    [App.Vector(p) for p in points])
+                    corners)
+
+
+def facing_winding(points: Any, triangles: Any, normal: App.Vector) -> Any:
+    """Triangles wound counter-clockwise about `normal`.
+
+    With two-sided lighting GL picks the lit side by winding, not by the
+    normal given; the kernel's winding follows each face's orientation.
+    """
+    numpy = _numpy()
+    rows = numpy.asarray(triangles, dtype=int).reshape(-1, 3).copy()
+    if not len(rows):
+        return rows
+    a, b, c = (points[rows[:, k]] for k in range(3))
+    n = numpy.array((normal.x, normal.y, normal.z))
+    backwards = numpy.cross(b - a, c - a) @ n < 0
+    rows[backwards] = rows[backwards][:, ::-1]
+    return rows
+
+
+def face_index(triangles: Any) -> list[int]:
+    """Coin's face index: each triangle's corners, then -1."""
+    numpy = _numpy()
+    rows = numpy.asarray(triangles, dtype=int).reshape(-1, 3)
+    ends = numpy.full((len(rows), 1), -1, dtype=int)
+    return numpy.hstack((rows, ends)).ravel().tolist()
 
 
 class Highlight:
