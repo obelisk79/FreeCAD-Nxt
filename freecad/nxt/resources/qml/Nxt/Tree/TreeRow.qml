@@ -42,6 +42,7 @@ Item {
     //: "Total Cycle Time:" under an Operations group: no object behind it.
     required property bool isTotal
     required property bool isCam
+    required property string typeId
 
     // Feature that made the face picked in the 3D view; outlined, not selected.
     readonly property bool pickOrigin: nxt.pickOrigins.indexOf(row.name) >= 0
@@ -1063,6 +1064,8 @@ Item {
                     isProfile: row.isProfile
                     isLifted: row.isLifted
                     keyProps: row.keyProps
+                    objectKey: row.name
+                    isVarSet: row.typeId === "App::VarSet"
                     propertyCount: row.propertyCount
                     onKeyEdited: function (prop, value) {
                         nxt.setKeyProperty(row.name, prop, value);

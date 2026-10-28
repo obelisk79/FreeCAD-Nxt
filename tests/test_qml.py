@@ -77,7 +77,7 @@ SIZES = {"rowHeight": 20, "rowPad": 6, "indent": 12, "tipGutter": 14,
          "scrollBarWidth": 10,
          "iconSize": 14, "markSize": 12, "markSizeSmall": 10,
          "fontRow": 10, "fontSmall": 9, "fontAside": 8,
-         "chipHeight": 14, "fieldHeight": 17,
+         "chipHeight": 14, "fieldHeight": 17, "valueWidth": 88,
          # A generous cap, so the offscreen screen (800 px) leaves the
          # header full width and the name-truncation check below still
          # means what it did; the cap itself is checked against these.
@@ -180,6 +180,24 @@ ROWS = [
               "checked": True, "options": [], "expression": "",
               "readOnly": False}],
          propertyCount=31),
+    # A VarSet: one variable per row, a name too long for the strip, and
+    # the add-variable form at the foot.
+    dict(name="VarSet", label="VarSet", depth=0, typeId="App::VarSet",
+         detailOpen=True, propertyCount=4,
+         keyProps=[
+             {"name": "BaseLength", "kind": "quantity", "text": "250 mm",
+              "checked": False, "options": [], "expression": "",
+              "readOnly": False, "tip": "", "variable": True,
+              "typeLabel": "Length"},
+             {"name": "SpindleClearanceHeightAboveTheSpoilboard",
+              "kind": "quantity", "text": "85 mm", "checked": False,
+              "options": [], "expression": "", "readOnly": False,
+              "tip": "Gap under the gantry", "variable": True,
+              "typeLabel": "Length"},
+             {"name": "RailCount", "kind": "number", "text": "2",
+              "checked": False, "options": [], "expression": "",
+              "readOnly": False, "tip": "", "variable": True,
+              "typeLabel": "Integer"}]),
     # A flagged reference whose name is too long to show: 29 characters,
     # so the chip has to fall back to its icon rather than elide.
     dict(name="Fillet", label="Fillet", depth=1, isFeature=True,
@@ -198,7 +216,7 @@ DEFAULTS = dict(name="", label="", depth=0, hasChildren=False, expanded=False,
                 isLifted=False, isActive=False, keyProps=[],
                 propertyCount=0, branches=[], activeFrom=-1,
                 isActivePart=False, cycleTime="", isTotal=False,
-                isCam=False)
+                isCam=False, typeId="")
 # refs entries must carry every key the delegate reads; a missing one shows
 # up as undefined rather than as an error, so it is worth being strict.
 REF_KEYS = {"name", "label", "severity", "sub", "iconUrl"}
@@ -247,6 +265,8 @@ def bridge_slots():
 
 
 ROWS_MODEL = Rows()
+#: Tall enough that the open detail strips leave empty panel below.
+VIEW_HEIGHT = 720
 BARS = [{"body": "Body", "label": "Body", "pos": 2, "minPos": 2, "maxPos": 4,
          "depth": 1, "step": 1, "steps": 2}]
 
@@ -291,6 +311,21 @@ def make_bridge():
     def breadcrumb(self, row):
         return [{"row": 0, "label": "Body"}] if row > 0 else []
     ns["breadcrumb"] = QtCore.Slot(int, result="QVariantList")(breadcrumb)
+    # PySide names a slot after its function, so these are not lambdas.
+    def variableTypes(self):
+        return [{"id": "App::PropertyLength", "label": "Length"},
+                {"id": "App::PropertyBool", "label": "Yes/no"}]
+    ns["variableTypes"] = QtCore.Slot(result="QVariantList")(variableTypes)
+
+    def editVariable(self, name, prop, new_name, tip):
+        return ""
+    ns["editVariable"] = QtCore.Slot(str, str, str, str, result=str)(
+        editVariable)
+
+    def addVariable(self, name, type_id, var_name, tip):
+        return ""
+    ns["addVariable"] = QtCore.Slot(str, str, str, str, result=str)(
+        addVariable)
     for name, types in bridge_slots().items():
         if name in ns:
             continue
@@ -392,7 +427,7 @@ def run(overlay):
     ctx.setContextProperty("isolation", isolation)
     view.isolation = isolation      # kept alive as long as the view
     view.setResizeMode(QtQuick.QQuickView.ResizeMode.SizeRootObjectToView)
-    view.resize(320, 480)
+    view.resize(320, VIEW_HEIGHT)
     view.setSource(QtCore.QUrl.fromLocalFile(str(QML / "NxtTree.qml")))
 
     if view.status() == QtQuick.QQuickView.Status.Error:
@@ -441,9 +476,10 @@ def run(overlay):
                             "through" % overlay)
     else:
         problems.append("overlay=%s: no expand arrow found" % overlay)
-    if wants(10, 10) is not True or wants(300, 470) is not False:
+    empty = VIEW_HEIGHT - 10
+    if wants(10, 10) is not True or wants(300, empty) is not False:
         problems.append("overlay=%s: wantsPoint header %r, empty %r"
-                        % (overlay, wants(10, 10), wants(300, 470)))
+                        % (overlay, wants(10, 10), wants(300, empty)))
 
     # More than one ListView in the tree: the search results are a list too,
     # and an empty one sorts first in findChildren. Take the populated one.
@@ -479,12 +515,12 @@ def run(overlay):
             problems.append("overlay=%s: header width %.1f, expected %.1f"
                             % (overlay, got, want))
         # A panel wider than the cap: the header stops at the cap.
-        view.resize(700, 480)
+        view.resize(700, VIEW_HEIGHT)
         settle(0.1)
         capped = header[0].property("width")
         strips = [c.property("width") for c in visual_tree(root)
                   if c.objectName() == "detail" and c.property("visible")]
-        view.resize(320, 480)
+        view.resize(320, VIEW_HEIGHT)
         settle(0.1)
         cap = max(SIZES["headerMinWidth"],
                   screen_w * SIZES["headerMaxPercent"] / 100)
@@ -552,6 +588,45 @@ def run(overlay):
         problems.append("overlay=%s: a data refresh recreated key value "
                         "fields (%d of %d kept)"
                         % (overlay, kept, len(before)))
+
+    # VarSet variables: every value the same fixed width, lined up, so the
+    # names take the slack; a name too long for its room is shortened.
+    var_rows = [c for c in visual_tree(root)
+                if c.metaObject().className().startswith("VarRow")
+                and not c.property("adding")]
+    editors = []
+    for var_row in var_rows:
+        editors += [c for c in visual_tree(var_row)
+                    if c.metaObject().className().startswith("ValueEditor")
+                    and c.property("visible")
+                    and c.property("spec").get("variable")]
+    width = SIZES["valueWidth"]
+    lefts = {round(e.mapToScene(QtCore.QPointF(0, 0)).x()) for e in editors}
+    print("     variables: %d rows, %d values, x %s" % (
+        len(var_rows), len(editors), sorted(lefts)))
+    if len(editors) != 3:
+        problems.append("overlay=%s: %d VarSet values shown, not 3"
+                        % (overlay, len(editors)))
+    if any(e.property("width") != width for e in editors) or len(lefts) > 1:
+        problems.append("overlay=%s: VarSet values not fixed width and "
+                        "aligned" % overlay)
+    if not any(r.property("truncated") for r in var_rows):
+        problems.append("overlay=%s: the long variable name was not "
+                        "shortened" % overlay)
+    adders = [c for c in visual_tree(root)
+              if c.metaObject().className().startswith("VarRow")
+              and c.property("adding")]
+    if len(adders) != 1:
+        problems.append("overlay=%s: %d add-variable forms, not 1"
+                        % (overlay, len(adders)))
+    else:
+        QtCore.QMetaObject.invokeMethod(adders[0], "open")
+        settle(0.05)
+        if not adders[0].property("expanded"):
+            problems.append("overlay=%s: the add-variable form did not open"
+                            % overlay)
+        QtCore.QMetaObject.invokeMethod(adders[0], "close")
+        settle(0.05)
 
     # The choice opens a drop-down above the whole panel, and a press
     # outside it closes it.

@@ -67,6 +67,8 @@ FONT_SMALL_RATIO = 0.44
 FONT_ASIDE_RATIO = 0.40
 CHIP_RATIO = 0.68
 FIELD_RATIO = 0.86
+#: A variable's value field: fixed, so the names take the slack.
+VALUE_WIDTH_RATIO = 4.4
 
 
 def _scaled(row_height: int, ratio: float) -> int:
@@ -401,6 +403,7 @@ class Theme(QtCore.QObject):
         self._fontAside = _scaled(self._rowHeight, FONT_ASIDE_RATIO)
         self._chipHeight = _scaled(self._rowHeight, CHIP_RATIO)
         self._fieldHeight = _scaled(self._rowHeight, FIELD_RATIO)
+        self._valueWidth = _scaled(self._rowHeight, VALUE_WIDTH_RATIO)
 
     def _measure_row_height(self) -> int:
         widget = self._reference
@@ -568,6 +571,10 @@ class Theme(QtCore.QObject):
     @QtCore.Property(int, notify=changed)
     def fieldHeight(self) -> int:
         return self._fieldHeight
+
+    @QtCore.Property(int, notify=changed)
+    def valueWidth(self) -> int:
+        return self._valueWidth
 
     @QtCore.Property(int, notify=changed)
     def headerMaxPercent(self) -> int:
