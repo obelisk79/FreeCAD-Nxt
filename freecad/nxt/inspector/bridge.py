@@ -27,6 +27,18 @@ def _in_edit() -> Any:
         return None
 
 
+def _alive(obj: Any) -> bool:
+    """Not deleted.
+
+    A closing document takes its objects before its views and panels,
+    which may still ask after them.
+    """
+    try:
+        return bool(obj.Name)
+    except Exception:
+        return False
+
+
 class InspectorBridge(QtCore.QObject):
     """Serves `inspector.describe` for the selection, and applies edits."""
 
@@ -82,6 +94,9 @@ class InspectorBridge(QtCore.QObject):
         self._timer.stop()
 
     def _objects(self) -> list[Any]:
+        return [o for o in self._wanted() if _alive(o)]
+
+    def _wanted(self) -> list[Any]:
         if self._picking:
             return list(self._pick_for)
         if self._task:

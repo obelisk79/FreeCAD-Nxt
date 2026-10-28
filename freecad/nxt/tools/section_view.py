@@ -1372,9 +1372,15 @@ class _Recompute:
                 QtCore.QTimer.singleShot(0, lambda s=section: drop(s))
 
     def slotDeletedDocument(self, doc: Any) -> None:  # noqa: N802
+        from . import section_task
         for key, section in list(_sections.items()):
             if section.doc is doc:
                 del _sections[key]
+                # Its view goes with the document; its task panel does
+                # not, and would go on asking after the deleted section.
+                section.obj = None
+                section._cap_timer.stop()
+                section_task.close_for(section)
 
 
 _sections: dict[str, Section] = {}
