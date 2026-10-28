@@ -113,6 +113,21 @@ class Bridge(QtCore.QObject):
     def pickLinks(self, prop: str) -> None:
         self.calls.append(("pick", prop))
 
+    @QtCore.Slot(str, str, str, result=str)
+    def editVariable(self, prop: str, name: str, tip: str) -> str:
+        self.calls.append(("rename", prop, name, tip))
+        return "" if name != "Taken" else "That name's already taken."
+
+    @QtCore.Slot(str, str, str, result=str)
+    def addVariable(self, type_id: str, name: str, tip: str) -> str:
+        self.calls.append(("add", type_id, name, tip))
+        return ""
+
+    @QtCore.Slot(result="QVariantList")
+    def variableTypes(self) -> list[dict[str, str]]:
+        return [{"id": "App::PropertyLength", "label": "Length"},
+                {"id": "App::PropertyBool", "label": "Yes/no"}]
+
 
 app = QtWidgets.QApplication(sys.argv)
 theme = Theme()
@@ -331,6 +346,55 @@ check("the list closed though its field was rebuilt",
 check("the panel still takes clicks",
       any(i.property("text") == "Offset"
           for i in items_of(root, "QQuickText")))
+finish(view, bridge)
+
+# --- a VarSet: its variables by name, edited in place -------------------- #
+print("template: a VarSet's variables")
+bridge = Bridge(inspector.describe([pads.varset()]))
+view, root = load(bridge)
+fields = [f for f in items_of(root, "VariableField")
+          if not f.property("adding")]
+values = [e for f in fields for e in items_of(f, "ValueEditor")
+          if e.property("visible")]
+lefts = {round(e.mapToScene(QtCore.QPointF(0, 0)).x()) for e in values}
+check("three variables, each value the same width",
+      len(values) == 3
+      and {e.property("width") for e in values} == {theme.valueWidth})
+check("the values line up", len(lefts) == 1)
+long_label = next(t for f in fields for t in items_of(f, "QQuickText")
+                  if (t.property("text") or "").startswith("Spindle"))
+check("a long name is shortened, not the value", long_label.property(
+    "truncated"))
+check("its tooltip names it in full", next(
+    f for f in fields if f.property("spec")["name"].startswith("Spindle")
+).property("tipText") == ("SpindleClearanceHeightAboveTheSpoilboard\n"
+                          "Gap under the gantry"))
+first = next(f for f in fields if f.property("spec")["name"] == "BaseLength")
+QtCore.QMetaObject.invokeMethod(first, "open")
+settle()
+check("edit opens the name and tooltip in place",
+      first.property("expanded"))
+QtCore.QMetaObject.invokeMethod(first, "save")
+settle()
+check("save renames through the bridge",
+      ("rename", "BaseLength", "BaseLength", "Across the frame")
+      in bridge.calls and not first.property("expanded"))
+adders = [f for f in items_of(root, "VariableField") if f.property("adding")]
+check("one add-variable form", len(adders) == 1)
+if adders:
+    QtCore.QMetaObject.invokeMethod(adders[0], "open")
+    settle()
+    check("the add form opens with a type chosen",
+          adders[0].property("expanded")
+          and adders[0].property("typeId") == "App::PropertyLength")
+    QtCore.QMetaObject.invokeMethod(adders[0], "close")
+finish(view, bridge)
+
+bridge = Bridge(inspector.describe([pads.varset("A"), pads.varset("B")]))
+view, root = load(bridge)
+fields = items_of(root, "VariableField")
+check("two VarSets: values only, no edit or add",
+      len(fields) == 3 and not any(f.property("editable") for f in fields))
 finish(view, bridge)
 
 print("PROBLEMS: %d" % len(problems))

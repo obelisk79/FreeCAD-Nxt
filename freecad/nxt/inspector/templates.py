@@ -16,6 +16,7 @@ from typing import Any
 import FreeCAD as App
 
 from ..core import units
+from . import variables
 
 #: Editors a template may request for a property.
 EDITORS = frozenset({"", "dropdown", "segmented", "switch"})
@@ -68,6 +69,9 @@ class Card:
     heading: bool = True
     #: Closed, with a summary, while every one of these tests holds.
     closed_when: tuple[tuple[str, tuple[Any, ...]], ...] = ()
+    #: Every property the object added (a VarSet's variables), whatever
+    #: their names; editable, and more can be added, for one object.
+    variables: bool = False
 
     def all_items(self) -> list[Item]:
         return [*self.items, *(i for c in self.columns for i in c.items),
@@ -166,7 +170,8 @@ def parse(data: dict[str, Any]) -> list[Template]:
                        for col in card.get("column", ())),
                  tuple(_item(item) for item in card.get("after", ())),
                  bool(card.get("heading", True)),
-                 _tests(card.get("closed_when")))
+                 _tests(card.get("closed_when")),
+                 bool(card.get("variables", False)))
             for card in raw.get("card", ()))
         hide_if = tuple((str(hidden), str(by)) for hidden, by
                         in dict(raw.get("hide_if", {})).items())
@@ -267,7 +272,11 @@ def apply(template: Template, objects: list[Any],
     for name, entries in groups.items():
         for entry in entries:
             found[entry["name"]] = entry
-    placed = template.names() | {
+    own = (
+        [n for n in variables.added(objects[0]) if n in found]
+        if objects and any(card.variables for card in template.cards)
+        else [])
+    placed = template.names() | set(own) | {
         hidden for hidden, by in template.hide_if
         if all(hasattr(o, by) for o in objects)}
     moved = dict(template.group_as)
@@ -308,6 +317,10 @@ def apply(template: Template, objects: list[Any],
 
     cards = []
     for card in template.cards:
+        if card.variables:
+            cards.append(_variables_card(card, template, objects,
+                                         [found[n] for n in own]))
+            continue
         items = laid_out(card.items)
         columns: list[dict[str, Any]] = [
             {"title": column.title, "items": laid_out(column.items)}
@@ -330,6 +343,24 @@ def apply(template: Template, objects: list[Any],
                           "summary": summary(every) if closed else "",
                           "template": template.id})
     return cards
+
+
+def _variables_card(card: Card, template: Template, objects: list[Any],
+                    entries: list[dict[str, Any]]) -> dict[str, Any]:
+    """The variables, by their own names; shown even with none."""
+    def type_of(prop: str) -> str:
+        try:
+            return str(objects[0].getTypeIdOfProperty(prop))
+        except Exception:
+            return ""
+    rows = [dict(entry, label=entry["name"], variable=True,
+                 typeLabel=variables.type_label(type_of(entry["name"])))
+            for entry in entries]
+    return {"name": card.title, "open": True, "heading": card.heading,
+            "items": [], "columns": [], "after": [], "variables": rows,
+            "editable": len(objects) == 1, "count": len(rows),
+            "first": True, "hint": card.hint, "summary": "",
+            "template": template.id}
 
 
 def _said(entry: dict[str, Any]) -> str:

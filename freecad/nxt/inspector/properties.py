@@ -9,6 +9,7 @@ import FreeCAD as App
 
 from ..core import property_kinds
 from ..core.transaction import transaction
+from . import variables
 
 #: TypeId -> the properties that define it, in the order to show them.
 KEY_PROPERTIES: dict[str, tuple[str, ...]] = {
@@ -36,20 +37,6 @@ KEY_PROPERTIES: dict[str, tuple[str, ...]] = {
 STRIP_KINDS = frozenset({"quantity", "number", "bool", "enum", "text"})
 #: A variable set: its key properties are the variables added to it.
 VARSET = "App::VarSet"
-#: In getPropertyStatus: a property added to the object, not built in.
-DYNAMIC_STATUS = 21
-
-
-def _added(obj: Any) -> tuple[str, ...]:
-    """The properties added to an object (a VarSet's variables)."""
-    found = []
-    for prop in getattr(obj, "PropertiesList", ()) or ():
-        try:
-            if DYNAMIC_STATUS in obj.getPropertyStatus(prop):
-                found.append(prop)
-        except Exception:
-            continue
-    return tuple(found)
 
 
 def _expression(obj: Any, prop: str) -> str | None:
@@ -69,7 +56,8 @@ def describe(obj: Any) -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = []
     type_id = getattr(obj, "TypeId", "")
     varset = type_id == VARSET
-    names = _added(obj) if varset else KEY_PROPERTIES.get(type_id, ())
+    names = (variables.added(obj) if varset
+             else KEY_PROPERTIES.get(type_id, ()))
     present = set(getattr(obj, "PropertiesList", ()) or ())
     for prop in names:
         if prop not in present or property_kinds.is_hidden(obj, prop):

@@ -217,6 +217,34 @@ Rectangle {
                     }
                 }
 
+                // A VarSet's variables (a template's variables card), and
+                // a way to add one when a single VarSet is selected.
+                Column {
+                    visible: group.opened && !!group.modelData.variables
+                    width: parent.width
+                    spacing: root.gap
+
+                    Repeater {
+                        model: group.opened && group.modelData.variables
+                               ? group.modelData.variables : []
+                        VariableField {
+                            required property var modelData
+                            spec: modelData
+                            width: groupBody.width
+                            editable: !!group.modelData.editable
+                        }
+                    }
+
+                    Repeater {
+                        model: group.opened && group.modelData.variables
+                               && group.modelData.editable ? 1 : 0
+                        VariableField {
+                            width: groupBody.width
+                            adding: true
+                        }
+                    }
+                }
+
                 // A template's columns, one per side of an extrusion,
                 // one under the other; headed when there are two.
                 Repeater {

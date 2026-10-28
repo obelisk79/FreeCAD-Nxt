@@ -354,5 +354,90 @@ class FilletTests(unittest.TestCase):
         self.assertEqual({i["editor"] for i in result["items"]}, {"switch"})
 
 
+class VarSet:
+    """An App::VarSet: built-in Label and Label2, then added variables."""
+
+    TypeId = "App::VarSet"
+
+    def __init__(self, name: str = "VarSet") -> None:
+        self.Name = self.Label = name
+        self.Label2 = ""
+        self.ExpressionEngine: list[tuple[str, str]] = []
+        self._props: dict[str, tuple[str, str, str]] = {
+            "Label": ("Base", "App::PropertyString", ""),
+            "Label2": ("Base", "App::PropertyString", "")}
+        self._added: set[str] = set()
+
+    @property
+    def PropertiesList(self) -> list[str]:  # noqa: N802 - FreeCAD API
+        return list(self._props)
+
+    def add(self, type_id: str, name: str, value: Any,
+            tip: str = "") -> "VarSet":
+        self._props[name] = ("Base", type_id, tip)
+        self._added.add(name)
+        setattr(self, name, value)
+        return self
+
+    def getPropertyStatus(self, prop: str) -> list[int]:  # noqa: N802
+        return [21] if prop in self._added else []
+
+    def getGroupOfProperty(self, prop: str) -> str:  # noqa: N802
+        return self._props[prop][0]
+
+    def getTypeIdOfProperty(self, prop: str) -> str:  # noqa: N802
+        return self._props[prop][1]
+
+    def getDocumentationOfProperty(self, prop: str) -> str:  # noqa: N802
+        return self._props[prop][2]
+
+    def getEditorMode(self, _prop: str) -> list[str]:  # noqa: N802
+        return []
+
+    def getEnumerationsOfProperty(self, _prop: str) -> list[str]:  # noqa: N802
+        return []
+
+
+def varset(name: str = "VarSet") -> VarSet:
+    return (VarSet(name)
+            .add("App::PropertyLength", "BaseLength", Quantity("250 mm"),
+                 "Across the frame")
+            .add("App::PropertyLength",
+                 "SpindleClearanceHeightAboveTheSpoilboard",
+                 Quantity("85 mm"), "Gap under the gantry")
+            .add("App::PropertyInteger", "RailCount", 2))
+
+
+class VarSetTests(unittest.TestCase):
+
+    def test_variables_get_a_card_of_their_own_by_their_names(self) -> None:
+        card = layout(varset())[0]
+        self.assertEqual([v["label"] for v in card["variables"]],
+                         ["BaseLength",
+                          "SpindleClearanceHeightAboveTheSpoilboard",
+                          "RailCount"])
+        self.assertEqual(card["items"], [])
+        self.assertTrue(card["editable"])
+
+    def test_each_variable_carries_its_tooltip_and_type(self) -> None:
+        first = layout(varset())[0]["variables"][0]
+        self.assertEqual((first["tip"], first["typeLabel"]),
+                         ("Across the frame", "Length"))
+
+    def test_built_in_properties_stay_under_everything_else(self) -> None:
+        rest = [g for g in layout(varset())[1:]]
+        shown = [i["name"] for g in rest for i in g["items"]]
+        self.assertEqual(sorted(shown), ["Label", "Label2"])
+
+    def test_an_empty_varset_still_offers_to_add(self) -> None:
+        card = layout(VarSet())[0]
+        self.assertEqual((card["variables"], card["editable"]), ([], True))
+
+    def test_two_varsets_share_values_but_not_names(self) -> None:
+        card = layout(varset("A"), varset("B"))[0]
+        self.assertEqual(len(card["variables"]), 3)
+        self.assertFalse(card["editable"])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
