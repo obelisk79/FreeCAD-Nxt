@@ -38,19 +38,6 @@ STRIP_KINDS = frozenset({"quantity", "number", "bool", "enum", "text"})
 VARSET = "App::VarSet"
 #: In getPropertyStatus: a property added to the object, not built in.
 DYNAMIC_STATUS = 21
-#: Types a new variable may have: (type id, label).
-VARIABLE_TYPES = (
-    ("App::PropertyLength", "Length"),
-    ("App::PropertyAngle", "Angle"),
-    ("App::PropertyArea", "Area"),
-    ("App::PropertyVolume", "Volume"),
-    ("App::PropertyFloat", "Number"),
-    ("App::PropertyInteger", "Integer"),
-    ("App::PropertyBool", "Yes/no"),
-    ("App::PropertyString", "Text"),
-)
-#: FreeCAD's group for a VarSet's variables.
-VARIABLE_GROUP = "Base"
 
 
 def _added(obj: Any) -> tuple[str, ...]:
@@ -63,19 +50,6 @@ def _added(obj: Any) -> tuple[str, ...]:
         except Exception:
             continue
     return tuple(found)
-
-
-def tip_of(obj: Any, prop: str) -> str:
-    """The property's tooltip: its documentation string."""
-    try:
-        return str(obj.getDocumentationOfProperty(prop) or "")
-    except Exception:
-        return ""
-
-
-def _type_label(type_id: str) -> str:
-    labels = dict(VARIABLE_TYPES)
-    return labels.get(type_id, type_id.replace("App::Property", ""))
 
 
 def _expression(obj: Any, prop: str) -> str | None:
@@ -101,8 +75,7 @@ def describe(obj: Any) -> list[dict[str, Any]]:
         if prop not in present or property_kinds.is_hidden(obj, prop):
             continue
         try:
-            type_id = obj.getTypeIdOfProperty(prop)
-            kind = _strip_kind(type_id)
+            kind = _strip_kind(obj.getTypeIdOfProperty(prop))
             value = getattr(obj, prop)
         except Exception:
             continue
@@ -112,10 +85,8 @@ def describe(obj: Any) -> list[dict[str, Any]]:
             "name": prop, "kind": kind, "text": "", "checked": False,
             "options": [], "expression": _expression(obj, prop) or "",
             "readOnly": property_kinds.is_read_only(obj, prop),
-            "tip": tip_of(obj, prop),
-            # Variables: one per row, name and tooltip editable.
-            "variable": varset,
-            "typeLabel": _type_label(type_id),
+            # Variables: two columns, each name over its value.
+            "stacked": varset,
         }
         if kind == "quantity":
             entry["text"] = getattr(value, "UserString", str(value))
@@ -128,63 +99,6 @@ def describe(obj: Any) -> list[dict[str, Any]]:
             entry["options"] = list(obj.getEnumerationsOfProperty(prop) or ())
         out.append(entry)
     return out
-
-
-def _why_not(exc: Exception) -> str:
-    text = str(exc)
-    if "already exists" in text:
-        return "That name's already taken. Try another."
-    if "Invalid property name" in text:
-        return "Start with a letter; use letters, digits and underscores."
-    return text
-
-
-def _changed(obj: Any, what: str, change: Any) -> str:
-    """Run `change` as one undo step; "" if it took, else why not."""
-    doc = getattr(obj, "Document", None)
-    if doc is None:
-        return "The object is gone."
-    try:
-        with transaction(doc, what):
-            change()
-    except NameError as exc:
-        return _why_not(exc)
-    except Exception as exc:
-        App.Console.PrintError(traceback.format_exc())
-        return str(exc)
-    doc.recompute()
-    return ""
-
-
-def edit_variable(obj: Any, prop: str, name: str, tip: str) -> str:
-    """Rename a variable and set its tooltip; "" or why not.
-
-    FreeCAD's rename updates expressions that use it, and undoes; a
-    tooltip change is not undone (FreeCAD keeps no history for it).
-    """
-    name = name.strip()
-    if not name:
-        return "Enter a name."
-
-    def change() -> None:
-        if name != prop:
-            obj.renameProperty(prop, name)
-        if tip != tip_of(obj, name):
-            obj.setDocumentationOfProperty(name, tip)
-    return _changed(obj, "Edit variable %s" % prop, change)
-
-
-def add_variable(obj: Any, type_id: str, name: str, tip: str) -> str:
-    """Add a variable to a VarSet, in its variables' group; "" or why not."""
-    name = name.strip()
-    if not name:
-        return "Enter a name."
-    if type_id not in dict(VARIABLE_TYPES):
-        return "Choose a type."
-    group = next((obj.getGroupOfProperty(p) for p in _added(obj)),
-                 VARIABLE_GROUP)
-    return _changed(obj, "Add variable %s" % name,
-                    lambda: obj.addProperty(type_id, name, group, tip))
 
 
 def visible_count(obj: Any) -> int:

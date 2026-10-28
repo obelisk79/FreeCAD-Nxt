@@ -6,7 +6,6 @@ TimelineBar 1.0 TimelineBar.qml
 SeverityMark 1.0 SeverityMark.qml
 DetailStrip 1.0 DetailStrip.qml
 KeyValue 1.0 KeyValue.qml
-VarRow 1.0 VarRow.qml
 TreeSettings 1.0 TreeSettings.qml
 TreeLines 1.0 TreeLines.qml
 DependencyArrows 1.0 DependencyArrows.qml

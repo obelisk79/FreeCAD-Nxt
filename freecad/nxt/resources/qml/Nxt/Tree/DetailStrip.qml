@@ -16,8 +16,6 @@ Column {
     property bool isLifted: false
     property var keyProps: []           // see properties.describe
     property string owner: ""           // the row's object, for expressions
-    property string objectKey: ""       // the row's object name, for edits
-    property bool isVarSet: false
     property int propertyCount: 0
 
     signal consumerClicked(string name)
@@ -44,50 +42,41 @@ Column {
                                     || hasValues || strip.propertyCount > 0
 
 
-    //: A VarSet's variables: one per row, editable, and a way to add one.
-    readonly property bool variables: strip.isVarSet
+    //: Variables (a VarSet's): two columns, each name over its value.
+    readonly property bool stackedValues: strip.hasValues
+                                          && !!strip.keyProps[0].stacked
 
-    Column {
-        visible: strip.variables
+    Grid {
+        visible: strip.stackedValues
         width: parent.width
-        spacing: 1
+        columns: 2
+        columnSpacing: 10
+        rowSpacing: 4
 
         Repeater {
-            model: strip.variables && strip.keyProps
-                   ? strip.keyProps.length : 0
+            model: strip.stackedValues ? strip.keyProps.length : 0
 
-            VarRow {
+            KeyValue {
                 required property int index
-                width: parent.width
-                spec: strip.keyProps[index] || ({})
+                spec: strip.keyProps[index]
                 owner: strip.owner
-                objectKey: strip.objectKey
+                cellWidth: Math.max(60, (strip.width - 10) / 2)
                 onEdited: function (value) {
                     strip.keyEdited(spec.name, value);
                 }
             }
         }
-
-        Repeater {
-            model: strip.variables ? 1 : 0
-
-            VarRow {
-                width: parent.width
-                adding: true
-                objectKey: strip.objectKey
-            }
-        }
     }
 
     Flow {
-        visible: (strip.hasValues && !strip.variables)
+        visible: (strip.hasValues && !strip.stackedValues)
                  || strip.propertyCount > 0
         width: parent.width
         spacing: 10
 
         // Counted, not the list: a new list would recreate delegates and drop focus.
         Repeater {
-            model: strip.keyProps && !strip.variables
+            model: strip.keyProps && !strip.stackedValues
                    ? strip.keyProps.length : 0
 
             KeyValue {

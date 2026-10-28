@@ -14,7 +14,6 @@ SearchBox 1.0 SearchBox.qml
 UndoToast 1.0 UndoToast.qml
 IsolationNotice 1.0 IsolationNotice.qml
 IconButton 1.0 IconButton.qml
-TextButton 1.0 TextButton.qml
 GlyphToggle 1.0 GlyphToggle.qml
 DropBox 1.0 DropBox.qml
 LinkChips 1.0 LinkChips.qml

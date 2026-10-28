@@ -569,38 +569,6 @@ class TreeBridge(QtCore.QObject):
         if obj is not None and properties.apply(obj, prop, value):
             self.invalidate()
 
-    @QtCore.Slot(str, str, str, str, result=str)
-    def editVariable(self, name: str, prop: str, new_name: str,
-                     tip: str) -> str:
-        """Rename a VarSet variable and set its tooltip; "" or why not."""
-        doc = App.ActiveDocument
-        obj = doc.getObject(name) if doc is not None else None
-        if obj is None:
-            return "The object is gone."
-        why = properties.edit_variable(obj, prop, new_name, tip)
-        if not why:
-            self.invalidate()
-        return why
-
-    @QtCore.Slot(str, str, str, str, result=str)
-    def addVariable(self, name: str, type_id: str, var_name: str,
-                    tip: str) -> str:
-        """Add a variable to a VarSet; "" or why not."""
-        doc = App.ActiveDocument
-        obj = doc.getObject(name) if doc is not None else None
-        if obj is None:
-            return "The object is gone."
-        why = properties.add_variable(obj, type_id, var_name, tip)
-        if not why:
-            self.invalidate()
-        return why
-
-    @QtCore.Slot(result="QVariantList")
-    def variableTypes(self) -> list[dict[str, str]]:
-        """The types a new variable may have, for the add form."""
-        return [{"id": t, "label": label}
-                for t, label in properties.VARIABLE_TYPES]
-
     @QtCore.Slot(str, float, float)
     def openPropertyInspector(self, name: str, left: float,
                               top: float) -> None:
