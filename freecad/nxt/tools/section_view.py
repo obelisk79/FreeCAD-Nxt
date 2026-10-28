@@ -12,8 +12,10 @@ neighbours read apart. Nxt keeps the cap lighter and its lines 2 px.
 
 from __future__ import annotations
 
+import functools
 import math
-from collections.abc import Callable, Iterable
+import time
+from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass
 from typing import Any
 
@@ -101,6 +103,8 @@ HEAD_ON = 0.25
 #: How long the plane must rest before the cap's faces replace its
 #: outline.
 CAP_MS = 400
+#: GUI time given to the cap's slicing per event-loop turn, in seconds.
+CAP_BUDGET_S = 0.03
 #: The clip sits this share of the diagonal behind the plane, so the
 #: exact cut lying on the plane is not clipped away with the rest.
 CLIP_SLACK = 1e-5
@@ -156,6 +160,17 @@ def seams(points: list[Vec3], planes: list[Plane],
     return out
 
 
+def misses(shape: Any, normal: Any, distance: float) -> bool:
+    """Whether the plane passes wholly clear of the shape's box."""
+    box = getattr(shape, "BoundBox", None)
+    if box is None:
+        return False
+    centre = box.Center
+    reach = (abs(normal.x) * box.XLength + abs(normal.y) * box.YLength
+             + abs(normal.z) * box.ZLength) / 2
+    return abs(normal.dot(centre) - distance) > reach
+
+
 def cut_faces(shapes: list[Any], normal: Any,
               distance: float) -> list[list[Any]]:
     """The faces a plane cuts through each solid, in order.
@@ -167,6 +182,9 @@ def cut_faces(shapes: list[Any], normal: Any,
     out: list[list[Any]] = []
     for shape in shapes:
         faces: list[Any] = []
+        if misses(shape, normal, distance):
+            out.append(faces)
+            continue
         try:
             wires = shape.slice(normal, distance)
             if wires:
@@ -207,6 +225,7 @@ PATTERNS: dict[str, bytes] = {
 }
 
 
+@functools.lru_cache(maxsize=None)
 def pattern_rgba(pattern: bytes) -> bytes:
     """A stipple as a 32x32 RGBA tile: white lines, clear between."""
     out = bytearray()
@@ -225,7 +244,7 @@ def snapped_tile(world_per_pixel: float) -> float:
     doubles or halves.
     """
     target = 32 * world_per_pixel
-    if target <= 0:
+    if not math.isfinite(target) or target <= 0:
         return 1.0
     return float(2.0 ** round(math.log2(target)))
 
@@ -450,12 +469,21 @@ def _walk(obj: Any, parent: Any, out: list[Instance],
         shape = shape_of(obj)
     except Exception:
         return
-    if shape is None or shape.isNull() or not shape.Solids:
+    if shape is None or shape.isNull() or not shape.Solids \
+            or not _finite(shape.BoundBox):
         return
-    shape = shape.copy()
+    # No copy: a copy drops the view's mesh, and remeshing is the slow part.
     shape.Placement = parent.multiply(shape.Placement)
     painted = obj if _own_colour(obj, target) else target
     out.append(Instance(obj.Name, shape, body_colour(painted), obj, parent))
+
+
+def _finite(box: Any) -> bool:
+    """Whether a box bounds anything: broken links give void or infinite."""
+    try:
+        return bool(box.isValid()) and math.isfinite(box.DiagonalLength)
+    except Exception:  # noqa: BLE001 - no usable box
+        return False
 
 
 def _is_render(action: Any) -> bool:
@@ -561,6 +589,12 @@ class Section:
         self._cap_timer.setSingleShot(True)
         self._cap_timer.setInterval(CAP_MS)
         self._cap_timer.timeout.connect(self._build_cap)
+        # The cap is sliced a little per event-loop turn, so the view stays
+        # live; the quick fill shows until it is done.
+        self._cap_work: Iterator[None] | None = None
+        self._cap_tick = QtCore.QTimer()
+        self._cap_tick.setInterval(0)
+        self._cap_tick.timeout.connect(self._cap_step)
         self._on_camera = self._camera_moved
         self._camera_sensor = coin.SoNodeSensor(self._on_camera, None)
 
@@ -659,19 +693,21 @@ class Section:
         self._solids = solids
         self._clips.attach(solids)
         self._meshes.read(solids)
-        meshes = [(points, triangles, self._cap_colour(solid),
-                   pattern_for(solid.name),
-                   pattern_rgba(PATTERNS[pattern_for(solid.name)]),
-                   solid.name)
-                  for solid, points, triangles in self._meshes.items]
-        self._fill.build(meshes, self._clip, INK_SHARE)
+        from . import section_cap
+        looks = [(section_cap.look_of(solid.obj, self._cap_colour(solid)),
+                  pattern_for(solid.name),
+                  pattern_rgba(PATTERNS[pattern_for(solid.name)]),
+                  solid.name)
+                 for solid in solids]
+        mesh_of = self._meshes.mesh
+        self._fill.build(looks, mesh_of, self._clip, INK_SHARE)
         if self.is_wedge():
             self._second.attach(self._clips.items)
-            self._fill_b.build(meshes, self._clip_b, INK_SHARE)
+            self._fill_b.build(looks, mesh_of, self._clip_b, INK_SHARE)
             self._wedge.whichChild = -3
         else:
             self._second.detach()
-            self._fill_b.build([], self._clip_b, INK_SHARE)
+            self._fill_b.build([], mesh_of, self._clip_b, INK_SHARE)
             self._wedge.whichChild = -1
         camera = self.view.getCameraNode()
         if self._camera_sensor.getAttachedNode() is not camera:
@@ -738,6 +774,8 @@ class Section:
                                         coin.SbVec3f(*behind))
         self._clips.place(n, behind)
         self._capper.moving(self._meshes.outline(n, n.dot(point)))
+        slack = self.span * CLIP_SLACK
+        self._fill.only(self._meshes.crossing(n, n.dot(point), slack))
         wedge = self.is_wedge()
         trims: list[Plane] = []
         wing = [point] * 4
@@ -749,6 +787,8 @@ class Section:
             section_wedge.set_world(self._not_b, nb * -1.0, behind_b)
             self._second.place(n, behind, nb, behind_b)
             self._capper_b.moving(self._meshes.outline(nb, nb.dot(point)))
+            self._fill_b.only(
+                self._meshes.crossing(nb, nb.dot(point), slack))
             self._fill_quad(self._fill_b, point, ub, self.v, nb,
                             [((-n.x, -n.y, -n.z), -n.dot(behind))])
             self._fill_b.show(True)
@@ -762,6 +802,7 @@ class Section:
             0, 4, [(p.x, p.y, p.z) for p in wing])
         self._fill_quad(self._fill, point, self.u, self.v, n, trims)
         self._fill.show(True)
+        self._stop_cap()
         self._cap_timer.start()
         corners = self._frame_corners(point)
         self._frame_points.point.setValues(
@@ -776,15 +817,55 @@ class Section:
             self._dragger.translation = (local, 0, 0)
 
     def _build_cap(self) -> None:
-        """Slice the solids where the plane is now, and hatch the cut."""
+        self._cap_work = self._cap_steps()
+        self._cap_tick.start()
+
+    def _stop_cap(self) -> None:
+        self._cap_tick.stop()
+        self._cap_work = None
+
+    def _cap_step(self) -> None:
+        work = self._cap_work
+        if work is None:
+            self._cap_tick.stop()
+            return
+        end = time.perf_counter() + CAP_BUDGET_S
+        try:
+            for _ in work:
+                if time.perf_counter() >= end:
+                    return
+        except Exception as exc:  # noqa: BLE001 - keep the quick fill
+            log.error("section: could not cap: %s" % exc)
+        self._stop_cap()
+
+    def _cap_steps(self) -> Iterator[None]:
+        """Slice the solids where the plane is now, and hatch the cut.
+
+        Yields between solids; a move drops it and starts again.
+        """
         from . import section_cap
         n = self.normal
         point = self.origin + n * self.offset
         shapes = [s.shape for s in self._solids]
-        faces = cut_faces(shapes, n, n.dot(point))
         wedge = self.is_wedge()
         nb = self.normal_b()
-        faces_b = cut_faces(shapes, nb, nb.dot(point)) if wedge else None
+
+        def sliced(normal: App.Vector) -> Iterator[None]:
+            faces: list[list[Any]] = []
+            meshes: list[Any] = []
+            for shape in shapes:
+                faces += cut_faces([shape], normal, normal.dot(point))
+                meshes.append(section_cap.cap_mesh(faces[-1])
+                              if faces[-1] else None)
+                yield
+            done.append((faces, meshes))
+
+        done: list[tuple[list[list[Any]], list[Any]]] = []
+        yield from sliced(n)
+        if wedge:
+            yield from sliced(nb)
+        faces, meshes = done[0]
+        faces_b, meshes_b = done[1] if wedge else (None, None)
         self.cut_exactly(faces, faces_b)
 
         def image_of(solid: Instance) -> bytes:
@@ -797,7 +878,7 @@ class Section:
         self._capper.trim_by([self._not_b] if wedge else [])
         self._capper.build(self._solids, faces, image_of, look_for,
                            self.hatch_tile, self.u, self.v, self._facing(),
-                           self.trims_of)
+                           self.trims_of, meshes)
         self._highlight.sync()
         self._fill.show(False)
         for other in self.others():
@@ -806,7 +887,7 @@ class Section:
             self._capper_b.trim_by([self._not_a])
             self._capper_b.build(self._solids, faces_b, image_of, look_for,
                                  self.hatch_tile, self.u_b(), self.v,
-                                 self._facing(nb), self.trims_of)
+                                 self._facing(nb), self.trims_of, meshes_b)
             self._highlight_b.sync()
             self._fill_b.show(False)
 
@@ -1255,6 +1336,7 @@ class Section:
         self.view.removeEventCallbackPivy(coin.SoEvent.getClassTypeId(),
                                           self._on_event)
         self._cap_timer.stop()
+        self._stop_cap()
         from . import section_task
         section_task.close_for(self)
         self._clips.detach()

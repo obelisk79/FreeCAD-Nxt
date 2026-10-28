@@ -12,6 +12,7 @@ from ..core.qt import QtCore, QtWidgets
 from ..tools import task_sync
 from . import layout as inspector
 from . import templates as inspector_templates
+from . import variables
 
 #: Selection and undo counts are polled; both are cheap to read.
 POLL_MS = 250
@@ -264,6 +265,44 @@ class InspectorBridge(QtCore.QObject):
                 objects, [(p, v, unit if p == prop else "")
                           for p, v in edits], self._tab):
             self.refresh()
+
+    # -- a VarSet's variables (templates: variables = true) --
+
+    def _refresh_later(self) -> None:
+        # Not while QML is still in the call: the rebuild would destroy
+        # the field that asked before it could close its form.
+        QtCore.QTimer.singleShot(0, self.refresh)
+
+    def _sole(self) -> Any:
+        objects = self._objects()
+        return objects[0] if len(objects) == 1 else None
+
+    @QtCore.Slot(str, str, str, result=str)
+    def editVariable(self, prop: str, name: str, tip: str) -> str:
+        """Rename a variable and set its tooltip; "" or why not."""
+        obj = self._sole()
+        if obj is None:
+            return "Select one variable set."
+        why = variables.edit(obj, prop, name, tip)
+        if not why:
+            self._refresh_later()
+        return why
+
+    @QtCore.Slot(str, str, str, result=str)
+    def addVariable(self, type_id: str, name: str, tip: str) -> str:
+        """Add a variable to the selected VarSet; "" or why not."""
+        obj = self._sole()
+        if obj is None:
+            return "Select one variable set."
+        why = variables.add(obj, type_id, name, tip)
+        if not why:
+            self._refresh_later()
+        return why
+
+    @QtCore.Slot(result="QVariantList")
+    def variableTypes(self) -> list[dict[str, str]]:
+        """The types a new variable may have."""
+        return [{"id": t, "label": label} for t, label in variables.TYPES]
 
     @QtCore.Slot(str, int, result=float)
     def wheelStep(self, unit: str, modifiers: int) -> float:  # noqa: N802

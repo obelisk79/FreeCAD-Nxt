@@ -1,0 +1,15 @@
+# Property Inspector template for variable sets. Keys: see partdesign.toml;
+# `variables = true` gathers every property the object added, whatever
+# their names, and lets one selected VarSet's be renamed, given tooltips,
+# and added to.
+
+version = 1
+
+[[template]]
+id = "varset"
+types = ["App::VarSet"]
+
+[[template.card]]
+title = "Variables"
+heading = false
+variables = true

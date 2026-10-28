@@ -57,9 +57,27 @@ def check(name: str, ok: bool) -> None:
         problems.append(name)
 
 
+class Expressions(QtCore.QObject):
+    """The offset a view with no `host` gives (the Property Inspector).
+
+    Recorded, so the tooltip is seen asking for it.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.asked = 0
+
+    @QtCore.Slot(QtCore.QObject, result=QtCore.QPointF)
+    def anchorOffset(self, _item: QtCore.QObject) -> QtCore.QPointF:
+        self.asked += 1
+        return QtCore.QPointF(30, 40)
+
+
+expressions = Expressions()
 view = QtQuick.QQuickView()
 view.engine().addImportPath(str(QML))
 view.rootContext().setContextProperty("theme", theme)
+view.rootContext().setContextProperty("expressions", expressions)
 host = ROOT / "tests" / "_tooltip_host.qml"
 host.write_text(HOST, encoding="utf-8")
 view.setSource(QtCore.QUrl.fromLocalFile(str(host)))
@@ -74,6 +92,8 @@ settle(40)
 check("nothing before the delay", windows() == 0)
 settle(200)
 check("a window of its own after it", windows() == 1)
+check("with no host, the offset comes from its own view",
+      expressions.asked == 1)
 root.setProperty("shown", False)
 settle(50)
 check("gone when the pointer leaves", windows() == 0)

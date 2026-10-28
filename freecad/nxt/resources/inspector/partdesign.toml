@@ -28,6 +28,8 @@
 #             what it is.
 #     closed_when  { Prop = value or [values] }: the card starts closed,
 #             its values summed up in its heading, while every test holds.
+#     variables = true  the card holds every property the object added
+#             (a VarSet's variables) instead of items; see varset.toml.
 #     items   a property name, an inline table, or an array of them laid
 #             on one line (the first labelled, the rest after its editor):
 #               { prop = "...", label = "...", wide = true/false,

@@ -23,7 +23,10 @@ Item {
     HoverHandler { id: pointer }
 
     // Opens from a 1px item at the spot: under Wayland the popup is placed
-    // against the anchor in the offscreen panel window (see host.menuAnchorOffset()).
+    // against the anchor in the offscreen panel window. The tree's host
+    // knows its offset (host.menuAnchorOffset()); other views, such as the
+    // Property Inspector, have no host, and the offset is found from this
+    // item's own view (expressions.anchorOffset, quick_host.popup_offset).
     Item {
         id: spot
         width: 1
@@ -31,8 +34,11 @@ Item {
     }
 
     function offset() {
-        return (typeof host !== "undefined" && host)
-               ? host.menuAnchorOffset() : Qt.point(0, 0);
+        if (typeof host !== "undefined" && host)
+            return host.menuAnchorOffset();
+        if (typeof expressions !== "undefined" && expressions)
+            return expressions.anchorOffset(root);
+        return Qt.point(0, 0);
     }
 
     onWantedChanged: {

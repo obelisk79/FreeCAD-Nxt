@@ -77,7 +77,7 @@ SIZES = {"rowHeight": 20, "rowPad": 6, "indent": 12, "tipGutter": 14,
          "scrollBarWidth": 10,
          "iconSize": 14, "markSize": 12, "markSizeSmall": 10,
          "fontRow": 10, "fontSmall": 9, "fontAside": 8,
-         "chipHeight": 14, "fieldHeight": 17,
+         "chipHeight": 14, "fieldHeight": 17, "valueWidth": 88,
          # A generous cap, so the offscreen screen (800 px) leaves the
          # header full width and the name-truncation check below still
          # means what it did; the cap itself is checked against these.
