@@ -23,6 +23,11 @@ import Part
 from ..resources import ICONS
 
 FEATURE_NAME = "NxtFillet"
+#: Part Design's Python feature that Mirrored and the patterns accept:
+#: it carries the material it adds or removes (AddSubShape).
+FEATURE_TYPE = "PartDesign::FeatureAddSubPython"
+#: What files from before 0.6 made, upgraded on opening (fillet_upgrade).
+OLD_FEATURE_TYPE = "PartDesign::FeaturePython"
 CHAMFER_NAME = "NxtChamfer"
 DEFAULT_RADIUS = 1.0
 #: Stations per radius of edge length on a curved edge, and their bounds.
@@ -2900,10 +2905,16 @@ class BlendFillet:
             obj.addProperty("App::PropertyBool", "Refine", self.GROUP,
                             "Merge faces left split by the booleans")
             obj.Refine = refine_by_default()
+        if hasattr(obj, "Operation"):
+            # Set from the result: whether it adds or removes material.
+            obj.setEditorMode("Operation", 2)
 
     def onDocumentRestored(self, obj: Any) -> None:  # noqa: N802
         self.complete(obj)
         _attach_view_provider(obj, self.FLAT)
+        if obj.TypeId == OLD_FEATURE_TYPE:
+            from . import fillet_upgrade
+            fillet_upgrade.later(obj)
 
     def names(self, obj: Any, shape: Any) -> list[str]:
         """The edges this feature rounds, as "EdgeN" of its base."""
@@ -2951,6 +2962,14 @@ class BlendFillet:
         if not result.isValid():
             result.fix(1e-7, 1e-7, 1e-7)
         obj.Shape = result
+        if not editing:
+            self.transform_problem = set_tool(obj, own, result)
+            if self.transform_problem and any(
+                    o.isDerivedFrom("PartDesign::Transformed")
+                    for o in obj.InList):
+                App.Console.PrintWarning(
+                    "%s cannot be mirrored or patterned: %s\n"
+                    % (obj.Label, self.transform_problem))
         if editing and hasattr(obj, "PreviewShape"):
             # Part Design's own preview shows this, as for its dress-ups.
             with timed("preview faces"):
@@ -3151,6 +3170,43 @@ def _usable(shape: Any) -> Any:
     return copy
 
 
+#: Less material than this, per the base's volume, is none at all.
+TOOL_SHARE = 1e-9
+
+
+def set_tool(obj: Any, base: Any, result: Any) -> str:
+    """Record the material this feature adds or removes, for patterns.
+
+    Mirrored and the patterns copy a feature by its AddSubShape, fused
+    or cut by Operation. Rounding convex edges removes material and
+    concave ones adds it; a feature doing both at once cannot be copied
+    that way, and is left without one. Returns why, if so.
+    """
+    if not hasattr(obj, "AddSubShape"):
+        return ""
+    plain = App.Placement()
+    start, end = base.copy(), result.copy()
+    start.Placement = end.Placement = plain
+    try:
+        removed, added = start.cut(end), end.cut(start)
+    except Exception as exc:  # noqa: BLE001 - patterns go without it
+        obj.AddSubShape = Part.Shape()
+        return "its material could not be worked out (%s)" % exc
+    least = max(abs(start.Volume), 1.0) * TOOL_SHARE
+    removes, adds = removed.Volume > least, added.Volume > least
+    if removes and adds:
+        obj.AddSubShape = Part.Shape()
+        return ("it both removes and adds material; mirror or pattern "
+                "its convex and concave edges as separate features")
+    if adds:
+        obj.Operation = "Union"
+        obj.AddSubShape = added
+    else:
+        obj.Operation = "Subtraction"
+        obj.AddSubShape = removed
+    return ""
+
+
 def new_fillet(base: Any, names: list[str], size: float,
                flat: bool = False) -> Any:
     """An Nxt fillet, or with `flat` a chamfer, on `base`.
@@ -3160,7 +3216,7 @@ def new_fillet(base: Any, names: list[str], size: float,
     body = _body_of(base)
     if body is None:
         raise ValueError("%s is not in a Part Design Body" % base.Label)
-    obj = body.newObject("PartDesign::FeaturePython",
+    obj = body.newObject(FEATURE_TYPE,
                          CHAMFER_NAME if flat else FEATURE_NAME)
     (BlendChamfer if flat else BlendFillet)(obj)
     _attach_view_provider(obj, flat)

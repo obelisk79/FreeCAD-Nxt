@@ -111,7 +111,7 @@ class VariableTests(unittest.TestCase):
     def test_a_rename_and_tooltip_are_one_undo_step(self) -> None:
         obj = self.varset()
         self.assertEqual(variables.edit(obj, "Width", "Span",
-                                                  "Side to side"), "")
+                                        "Side to side"), "")
         self.assertIn("Span", obj.PropertiesList)
         self.assertEqual(obj.getDocumentationOfProperty("Span"),
                          "Side to side")
@@ -126,8 +126,7 @@ class VariableTests(unittest.TestCase):
         self.assertEqual(obj.Document.log[-1], "abort")
 
     def test_a_bad_name_says_what_a_name_may_be(self) -> None:
-        why = variables.edit(self.varset(), "Width", "two words",
-                                       "")
+        why = variables.edit(self.varset(), "Width", "two words", "")
         self.assertIn("letters, digits and underscores", why)
 
     def test_an_empty_name_is_refused_before_freecad_sees_it(self) -> None:
