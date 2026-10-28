@@ -149,6 +149,45 @@ class ModeTests(unittest.TestCase):
         self.assertFalse(self.mode.active())
 
 
+class ShowsChildren:
+    """A group's view that shows what it holds when shown, as FreeCAD's."""
+
+    def __init__(self, owner: Obj, shown: bool) -> None:
+        self._owner, self._shown = owner, shown
+
+    @property
+    def Visibility(self) -> bool:  # noqa: N802 - FreeCAD's name
+        return self._shown
+
+    @Visibility.setter
+    def Visibility(self, shown: bool) -> None:  # noqa: N802
+        self._shown = shown
+        if shown:
+            for child in self._owner.Group:
+                child.ViewObject.Visibility = True
+
+
+class AssemblyTests(unittest.TestCase):
+
+    def test_hidden_joints_stay_hidden(self) -> None:
+        joint = Obj("Joint", shown=False)
+        joints = Obj("Joints", group=[joint])
+        joints.ViewObject = ShowsChildren(joints, True)
+        part = Obj("Part")
+        assembly = Obj("Assembly", group=[part, joints])
+        doc = Doc(assembly, part, joints, joint)
+        App.ActiveDocument = doc
+        App.getDocument = lambda _name: doc
+        Gui.getDocument = lambda _name: types.SimpleNamespace(  # type: ignore
+            Modified=False)
+        before = shown(doc)
+        mode = isolate.Isolation()
+        mode.isolate(["Part"])
+        self.assertNotIn("Joints", shown(doc))
+        mode.exit()
+        self.assertEqual(shown(doc), before)
+
+
 class EscapeTests(unittest.TestCase):
     """Escape leaves the mode unless it means something else."""
 

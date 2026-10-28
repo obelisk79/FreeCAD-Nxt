@@ -20,9 +20,8 @@ def _toolbar() -> QtWidgets.QToolBar:
     if toolbar is None:
         toolbar = window.addToolBar(TITLE)
         toolbar.setObjectName(NAME)
-        toolbar.setToolButtonStyle(
-            QtCore.Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
         for command, text, icon in COMMANDS:
+            # Icons only, as FreeCAD's toolbars: the name is the tooltip.
             action = QtGui.QAction(
                 QtGui.QIcon(str(ICONS / icon)), text, toolbar)
             action.setObjectName(command)

@@ -89,6 +89,10 @@ def plan(objects: Iterable[Any], targets: Iterable[Any]
 
 # -- the mode --
 
+#: Passes over the saved visibility; each settles what the last upset.
+RESTORE_ROUNDS = 4
+
+
 def _visibility(doc: Any) -> dict[str, bool]:
     """Every object's visibility, not only the changed ones.
 
@@ -234,17 +238,26 @@ class Isolation(QtCore.QObject):
             doc = None                  # closed
         if doc is None:
             return
-        # Hide first: showing a Body feature hides its siblings.
-        for name, shown in sorted(saved.items(), key=lambda kv: kv[1]):
-            obj = doc.getObject(name)
-            view = getattr(obj, "ViewObject", None)
-            if view is None:
-                continue                # deleted meanwhile
-            try:
-                if bool(view.Visibility) != shown:
-                    view.Visibility = shown
-            except Exception:
-                log.error("could not restore the visibility of %s" % name)
+        # Hide first: showing a Body feature hides its siblings. Showing
+        # one object can change others too (a group, such as an
+        # assembly's Joints, shows what it holds), so go round again
+        # until every object is as it was.
+        for _round in range(RESTORE_ROUNDS):
+            wrong = False
+            for name, shown in sorted(saved.items(), key=lambda kv: kv[1]):
+                obj = doc.getObject(name)
+                view = getattr(obj, "ViewObject", None)
+                if view is None:
+                    continue            # deleted meanwhile
+                try:
+                    if bool(view.Visibility) != shown:
+                        view.Visibility = shown
+                        wrong = True
+                except Exception:
+                    log.error("could not restore the visibility of %s"
+                              % name)
+            if not wrong:
+                return
 
     @staticmethod
     def _modified(doc_name: str) -> bool | None:
