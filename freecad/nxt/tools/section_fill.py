@@ -20,7 +20,7 @@ from collections.abc import Callable
 from typing import Any
 
 from ..core import opengl
-from .section_cap import CAP_FACTOR, CAP_UNITS
+from .section_cap import CAP_FACTOR, CAP_UNITS, face_index
 
 GL_DEPTH_TEST = 0x0B71
 GL_STENCIL_TEST = 0x0B90
@@ -35,7 +35,13 @@ GL_LESS = 0x0201
 GL_LEQUAL = 0x0203
 GL_COLOR_MATERIAL = 0x0B57
 GL_FRONT_AND_BACK = 0x0408
-GL_AMBIENT_AND_DIFFUSE = 0x1602
+GL_AMBIENT = 0x1200
+GL_DIFFUSE = 0x1201
+GL_SPECULAR = 0x1202
+GL_EMISSION = 0x1600
+GL_SHININESS = 0x1601
+#: Coin's shininess runs 0 to 1; GL's specular exponent 0 to 128.
+GL_SHININESS_SCALE = 128.0
 GL_LIGHTING = 0x0B50
 GL_TEXTURE_2D = 0x0DE1
 GL_POLYGON = 0x0009
@@ -137,12 +143,28 @@ def _count_begin(_data: Any, action: Any) -> None:
     g.glDisable(GL_CULL_FACE)
 
 
-def _drawer(fill: QuickFill, colour: Vec3, ink: float, hatch: str,
+def _rgba(rgb: Vec3, scale: float = 1.0) -> Any:
+    return (ctypes.c_float * 4)(*(c * scale for c in rgb), 1.0)
+
+
+def _drawer(fill: QuickFill, look: Any, ink: float, hatch: str,
             mask: bytes, name: str) -> Callable[[Any, Any], None]:
-    """A render callback filling one solid where its count is odd."""
-    diffuse = (ctypes.c_float * 4)(colour[0], colour[1], colour[2], 1.0)
-    darker = (ctypes.c_float * 4)(*(c * ink for c in colour), 1.0)
+    """A render callback filling one solid where its count is odd.
+
+    Lit with the same material as the cap that replaces it.
+    """
+    diffuse, darker = _rgba(look.diffuse), _rgba(look.diffuse, ink)
+    ambient, ambient_ink = _rgba(look.ambient), _rgba(look.ambient, ink)
+    specular, emissive = _rgba(look.specular), _rgba(look.emissive)
+    shininess = ctypes.c_float(look.shininess * GL_SHININESS_SCALE)
     f = ctypes.c_float
+
+    def material(g: Any, colour: Any, glow: Any) -> None:
+        g.glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, colour)
+        g.glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, glow)
+        g.glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, specular)
+        g.glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, emissive)
+        g.glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, shininess)
 
     def quad(g: Any, textured: bool) -> None:
         g.glBegin(GL_POLYGON)
@@ -173,8 +195,7 @@ def _drawer(fill: QuickFill, colour: Vec3, ink: float, hatch: str,
             g.glDisable(GL_TEXTURE_2D)
             g.glDisable(GL_COLOR_MATERIAL)
             g.glEnable(GL_LIGHTING)
-            g.glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE,
-                           diffuse)
+            material(g, diffuse, ambient)
             g.glNormal3f(*(f(c) for c in fill.normal))
             quad(g, False)
             if fill.hatched:
@@ -185,8 +206,7 @@ def _drawer(fill: QuickFill, colour: Vec3, ink: float, hatch: str,
                             GL_MODULATE)
                 g.glEnable(GL_ALPHA_TEST)
                 g.glAlphaFunc(GL_GREATER, f(0.5))
-                g.glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE,
-                               darker)
+                material(g, darker, ambient_ink)
                 quad(g, True)
                 g.glDisable(GL_ALPHA_TEST)
                 g.glBindTexture(GL_TEXTURE_2D, 0)
@@ -200,7 +220,8 @@ def _drawer(fill: QuickFill, colour: Vec3, ink: float, hatch: str,
         _restore_clips(g)
         g.glPopAttrib()
 
-    draw.kept = (diffuse, darker)  # type: ignore[attr-defined]
+    draw.kept = (diffuse, darker, ambient, ambient_ink,  # type: ignore[attr-defined]
+                 specular, emissive)
     return draw
 
 
@@ -218,7 +239,7 @@ def _mesh(points: Any, triangles: Any) -> Any:
     coords.point.setValues(0, len(points), points.tolist())
     node.addChild(coords)
     faces = coin.SoIndexedFaceSet()
-    index = [i for row in triangles.tolist() for i in (*row, -1)]
+    index = face_index(triangles)
     faces.coordIndex.setValues(0, len(index), index)
     node.addChild(faces)
     return node
@@ -256,35 +277,74 @@ class QuickFill:
         self.context = 0
         # pivy keeps callbacks by a borrowed reference.
         self._kept: list[Any] = []
+        self._switches: list[Any] = []
+        self._crossing: list[bool] | None = None
+        self._looks: list[tuple[Any, str, bytes, str]] = []
+        self._mesh_of: Callable[[int], Any] = lambda _i: None
+        self._clip: Any = None
+        self._ink = 1.0
 
     def hatch_at(self, p: Vec3) -> tuple[float, float]:
         u, v, t = self.u, self.v, self.tile
         return ((p[0] * u[0] + p[1] * u[1] + p[2] * u[2]) / t,
                 (p[0] * v[0] + p[1] * v[1] + p[2] * v[2]) / t)
 
-    def build(self, meshes: list[tuple[Any, Any, Vec3, str, bytes, str]],
-              clip: Any, ink: float) -> None:
-        """Count and fill each solid.
+    def build(self, looks: list[tuple[Any, str, bytes, str]],
+              mesh_of: Callable[[int], Any], clip: Any, ink: float) -> None:
+        """Get ready to count and fill each solid.
 
-        Each is (points, triangles, colour, hatch name, hatch mask, the
-        solid's name).
+        Each look is (cap material, hatch name, hatch mask, the solid's name);
+        `mesh_of(i)` gives solid i's (points, triangles) or None. A
+        solid's nodes are made the first time the plane crosses it.
         """
         from pivy import coin
         self.solids.removeAllChildren()
         self._kept = []
-        for points, triangles, colour, hatch, mask, name in meshes:
-            node = coin.SoSeparator()
-            node.renderCulling = coin.SoSeparator.OFF
-            count = coin.SoSeparator()
-            count.renderCulling = coin.SoSeparator.OFF
-            count.addChild(_callback(_count_begin))
-            count.addChild(clip)
-            count.addChild(_mesh(points, triangles))
-            node.addChild(count)
-            draw = _drawer(self, colour, ink, hatch, mask, name)
-            self._kept.append(draw)
-            node.addChild(_callback(draw))
-            self.solids.addChild(node)
+        self._switches = []
+        self._crossing = None
+        self._looks = looks
+        self._mesh_of = mesh_of
+        self._clip = clip
+        self._ink = ink
+        for _look in looks:
+            switch = coin.SoSwitch()
+            switch.whichChild = -1
+            self._switches.append(switch)
+            self.solids.addChild(switch)
+
+    def _make(self, index: int) -> None:
+        from pivy import coin
+        mesh = self._mesh_of(index)
+        if mesh is None:
+            return
+        look, hatch, mask, name = self._looks[index]
+        node = coin.SoSeparator()
+        node.renderCulling = coin.SoSeparator.OFF
+        count = coin.SoSeparator()
+        count.renderCulling = coin.SoSeparator.OFF
+        count.addChild(_callback(_count_begin))
+        count.addChild(self._clip)
+        count.addChild(_mesh(*mesh))
+        node.addChild(count)
+        draw = _drawer(self, look, self._ink, hatch, mask, name)
+        self._kept.append(draw)
+        node.addChild(_callback(draw))
+        self._switches[index].addChild(node)
+
+    def only(self, crossing: Any) -> None:
+        """Count and fill only the solids the plane crosses.
+
+        The rest can show no fill (their surfaces pair up in front of
+        the plane), so they are switched off, not counted every frame.
+        """
+        was = self._crossing
+        for i, (switch, on) in enumerate(zip(self._switches, crossing)):
+            if was is not None and bool(was[i]) == bool(on):
+                continue
+            if on and switch.getNumChildren() == 0:
+                self._make(i)
+            switch.whichChild = -3 if on else -1
+        self._crossing = [bool(c) for c in crossing]
 
     def show(self, on: bool) -> None:
         self.switch.whichChild = -3 if on else -1

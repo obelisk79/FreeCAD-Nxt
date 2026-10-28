@@ -162,9 +162,12 @@ App.Placement = Pl
 
 class Shape:
 
-    def __init__(self, solids: int = 1, x: float = 0.0) -> None:
+    def __init__(self, solids: int = 1, x: float = 0.0,
+                 length: float = 1.0) -> None:
         self.Solids = [0] * solids
         self.Placement = Pl(x)
+        self.BoundBox = types.SimpleNamespace(
+            isValid=lambda: True, DiagonalLength=length)
 
     def isNull(self) -> bool:
         return False
@@ -197,6 +200,12 @@ def instances(*objects: types.SimpleNamespace) -> list:
 
 
 class SolidsTests(unittest.TestCase):
+
+    def test_a_solid_with_no_usable_box_is_left_out(self) -> None:
+        broken = thing("Broken")
+        broken.shape = Shape(length=float("inf"))
+        found = instances(thing("Good"), broken)
+        self.assertEqual([i.name for i in found], ["Good"])
 
     def test_a_body_is_counted_once(self) -> None:
         body = thing("Body")
