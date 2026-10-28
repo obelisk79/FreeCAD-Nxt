@@ -45,16 +45,18 @@ Column {
         field.error = "";
     }
 
+    // Closed before the bridge is called: a successful edit lays the
+    // cards out again, and this field may not outlive the call.
     function save() {
-        var why = field.adding
-            ? inspector.addVariable(field.typeId, nameField.text,
-                                    tipField.text)
-            : inspector.editVariable(field.spec.name, nameField.text,
-                                     tipField.text);
-        if (why)
+        var name = nameField.text, tip = tipField.text;
+        var adding = field.adding, prop = field.spec.name;
+        field.close();
+        var why = adding ? inspector.addVariable(field.typeId, name, tip)
+                         : inspector.editVariable(prop, name, tip);
+        if (why) {
+            field.expanded = true;
             field.error = why;
-        else
-            field.close();
+        }
     }
 
     function labelOf(typeId) {

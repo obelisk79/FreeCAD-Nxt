@@ -253,6 +253,11 @@ class InspectorBridge(QtCore.QObject):
 
     # -- a VarSet's variables (templates: variables = true) --
 
+    def _refresh_later(self) -> None:
+        # Not while QML is still in the call: the rebuild would destroy
+        # the field that asked before it could close its form.
+        QtCore.QTimer.singleShot(0, self.refresh)
+
     def _sole(self) -> Any:
         objects = self._objects()
         return objects[0] if len(objects) == 1 else None
@@ -265,7 +270,7 @@ class InspectorBridge(QtCore.QObject):
             return "Select one variable set."
         why = variables.edit(obj, prop, name, tip)
         if not why:
-            self.refresh()
+            self._refresh_later()
         return why
 
     @QtCore.Slot(str, str, str, result=str)
@@ -276,7 +281,7 @@ class InspectorBridge(QtCore.QObject):
             return "Select one variable set."
         why = variables.add(obj, type_id, name, tip)
         if not why:
-            self.refresh()
+            self._refresh_later()
         return why
 
     @QtCore.Slot(result="QVariantList")

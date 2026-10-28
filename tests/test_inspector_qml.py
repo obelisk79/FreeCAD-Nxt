@@ -116,7 +116,15 @@ class Bridge(QtCore.QObject):
     @QtCore.Slot(str, str, str, result=str)
     def editVariable(self, prop: str, name: str, tip: str) -> str:
         self.calls.append(("rename", prop, name, tip))
-        return "" if name != "Taken" else "That name's already taken."
+        if name == "Taken":
+            return "That name's already taken."
+        # Rebuilt inside the call, the worst case: the field that asked
+        # is gone before the call returns.
+        varset = pads.varset()
+        varset._props[prop] = varset._props[prop][:2] + (tip + " ",)
+        self._groups = inspector.describe([varset])
+        self.changed.emit()
+        return ""
 
     @QtCore.Slot(str, str, str, result=str)
     def addVariable(self, type_id: str, name: str, tip: str) -> str:
@@ -379,6 +387,20 @@ settle()
 check("save renames through the bridge",
       ("rename", "BaseLength", "BaseLength", "Across the frame")
       in bridge.calls and not first.property("expanded"))
+second = next(f for f in items_of(root, "VariableField")
+              if not f.property("adding")
+              and f.property("spec")["name"] == "RailCount")
+QtCore.QMetaObject.invokeMethod(second, "open")
+settle()
+second.findChildren(QtCore.QObject)  # still alive before the clash
+for text_field in items_of(second, "TextField"):
+    if text_field.property("placeholder") == "FrameWidth":
+        text_field.setProperty("text", "Taken")
+QtCore.QMetaObject.invokeMethod(second, "save")
+settle()
+check("a refused name keeps the form open with why",
+      second.property("expanded")
+      and "taken" in second.property("error"))
 adders = [f for f in items_of(root, "VariableField") if f.property("adding")]
 check("one add-variable form", len(adders) == 1)
 if adders:
