@@ -87,29 +87,28 @@ class TargetTests(unittest.TestCase):
         self.assertTrue(self.pad.ViewObject.Visibility)
         self.assertTrue(self.body.ViewObject.Visibility)
 
-    def test_a_face_named_through_its_feature_is_that_feature(self) -> None:
+    def test_a_face_picked_in_the_view_is_its_body(self) -> None:
         self.picked = [entry(self.body, "Pad.Face3")]
-        self.assertEqual(visibility.targets(self.doc), [self.pad])
-
-    def test_a_face_of_the_body_is_the_tips(self) -> None:
+        self.assertEqual(visibility.targets(self.doc), [self.body])
         self.picked = [entry(self.body, "Face6")]
-        self.assertEqual(visibility.targets(self.doc), [self.pocket])
+        self.assertEqual(visibility.targets(self.doc), [self.body])
 
-    def test_or_of_whichever_feature_is_showing(self) -> None:
-        self.pocket.ViewObject.Visibility = False
-        self.pad.ViewObject.Visibility = True
-        self.picked = [entry(self.body, "Face6")]
-        self.assertEqual(visibility.targets(self.doc), [self.pad])
+    def test_hiding_a_feature_shows_no_other(self) -> None:
+        self.picked = [entry(self.body, "Pocket.")]
+        visibility.toggle(self.doc, visibility.targets(self.doc))
+        self.assertFalse(self.pocket.ViewObject.Visibility)
+        self.assertFalse(self.pad.ViewObject.Visibility)
+        self.assertTrue(self.body.ViewObject.Visibility)
 
     def test_the_body_picked_whole_is_the_body(self) -> None:
         self.picked = [entry(self.body)]
         self.assertEqual(visibility.targets(self.doc), [self.body])
 
-    def test_space_hides_the_solid_and_nothing_else(self) -> None:
+    def test_space_in_the_view_hides_the_body_and_nothing_else(self) -> None:
         self.picked = [entry(self.body, "Face6"), entry(self.body, "Edge2")]
         visibility.toggle(self.doc, visibility.targets(self.doc))
-        self.assertFalse(self.pocket.ViewObject.Visibility)
-        self.assertTrue(self.body.ViewObject.Visibility)
+        self.assertFalse(self.body.ViewObject.Visibility)
+        self.assertTrue(self.pocket.ViewObject.Visibility)
         self.assertTrue(self.sketch.ViewObject.Visibility)
         self.assertEqual(self.doc.log, ["open", "commit"])
 
