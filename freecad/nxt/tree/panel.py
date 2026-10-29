@@ -557,6 +557,11 @@ class ModelPanel(QtWidgets.QDockWidget):
         """
         return quick_host.window_offset(self._view)
 
+    @QtCore.Slot(result=QtCore.QRectF)
+    def menuRoom(self) -> QtCore.QRectF:  # noqa: N802 - QML API
+        """The panel's corner in FreeCAD's window, and the window's size."""
+        return quick_host.room_in_window(self._view)
+
     @QtCore.Slot()
     def takeKeyboard(self) -> None:  # noqa: N802 - QML API
         """Give the view keyboard focus before a field starts editing.

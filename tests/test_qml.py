@@ -318,6 +318,10 @@ class Host(QtCore.QObject):
     def menuAnchorOffset(self):
         return QtCore.QPointF(0, 0)
 
+    @QtCore.Slot(result=QtCore.QRectF)
+    def menuRoom(self):  # noqa: N802
+        return QtCore.QRectF()
+
 
 def visual_tree(item, depth=0):
     """Every item in the *visual* tree below `item`.

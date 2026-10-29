@@ -359,6 +359,18 @@ Rectangle {
             ? rowItem.mapToItem(root, theme.rowPad + theme.indent,
                                 rowItem.height)
             : Qt.point(x, y);
+        // Kept inside FreeCAD's window: under Wayland Qt cannot tell
+        // where the window is on screen, so it cannot move a menu that
+        // runs off the bottom. Below the row if it fits, else above it,
+        // else as low as it fits.
+        var room = host.menuRoom();
+        var tall = menu.implicitHeight;
+        if (room.height > 0 && room.y + at.y + tall > room.height) {
+            var top = rowItem ? at.y - rowItem.height : at.y;
+            at.y = room.y + top - tall >= 0
+                ? top - tall
+                : Math.max(0, room.height - tall) - room.y;
+        }
         var offset = host.menuAnchorOffset();
         menuAnchor.x = at.x + offset.x;
         menuAnchor.y = at.y + offset.y;

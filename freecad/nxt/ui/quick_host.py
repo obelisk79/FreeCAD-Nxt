@@ -56,6 +56,20 @@ def window_offset(view: Any) -> QtCore.QPointF:
     return QtCore.QPointF(view.mapTo(view.window(), QtCore.QPoint(0, 0)))
 
 
+def room_in_window(view: Any) -> QtCore.QRectF:
+    """Where `view` sits in its top-level window, and that window's size.
+
+    (x, y): the view's corner in the window; (width, height): the
+    window's. Menus are kept inside it: under Wayland Qt cannot see
+    where the window is on screen, so it cannot keep them on screen.
+    """
+    if view is None:
+        return QtCore.QRectF()
+    top = view.window()
+    corner = view.mapTo(top, QtCore.QPoint(0, 0))
+    return QtCore.QRectF(corner.x(), corner.y(), top.width(), top.height())
+
+
 def view_of(window: Any) -> Any:
     """The QQuickWidget whose offscreen window this is, or None."""
     try:

@@ -220,8 +220,8 @@ def _drawer(fill: QuickFill, look: Any, ink: float, hatch: str,
         _restore_clips(g)
         g.glPopAttrib()
 
-    draw.kept = (diffuse, darker, ambient, ambient_ink,  # type: ignore[attr-defined]
-                 specular, emissive)
+    kept = (diffuse, darker, ambient, ambient_ink, specular, emissive)
+    draw.kept = kept  # type: ignore[attr-defined]
     return draw
 
 
