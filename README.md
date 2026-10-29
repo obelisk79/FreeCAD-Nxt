@@ -48,34 +48,32 @@ FreeCAD files, and FreeCAD's full parametric power is still underneath.
 
 ## See it in action
 
-*Click a picture to play its video.*
-
 ### Double-click to edit
 
 Double-click any face to edit the feature that made it, with its value
 and handles right on the model.
 
-[![Double-click to edit](docs/media/double-click-to-edit.jpg)](docs/media/double-click-to-edit.mp4)
+![Double-click to edit](docs/media/double-click-to-edit.gif)
 
 ### Rollback history
 
 Drag the bar in the tree to step back through the model's history, and
 forward again.
 
-[![Rollback history](docs/media/rollback-history.jpg)](docs/media/rollback-history.mp4)
+![Rollback history](docs/media/rollback-history.gif)
 
 ### Robust fillets
 
 Corners blend into one smooth patch, and a fillet fades out where it
 runs into another, instead of leaving a step.
 
-[![Robust fillets](docs/media/robust-fillet.jpg)](docs/media/robust-fillet.mp4)
+![Robust fillets](docs/media/robust-fillet.gif)
 
 ### Robust chamfers
 
 The same engine bevels edges cleanly, with a choice of corner styles.
 
-[![Robust chamfers](docs/media/robust-chamfer.jpg)](docs/media/robust-chamfer.mp4)
+![Robust chamfers](docs/media/robust-chamfer.gif)
 
 ### Section views
 
@@ -83,20 +81,20 @@ Slice through the model with up to three planes, or cut a wedge out of
 it. The cut faces are capped and hatched, and you can leave chosen parts
 whole.
 
-[![Section views](docs/media/section-view.jpg)](docs/media/section-view.mp4)
+![Section views](docs/media/section-view.gif)
 
 ### No more "Wire not closed"
 
 Pad a sketch with a gap or stray lines, and Nxt repairs it so the
 feature builds, with Undo one click away.
 
-[![Avoiding wire not closed](docs/media/avoid-wire-not-closed.jpg)](docs/media/avoid-wire-not-closed.mp4)
+![Avoiding wire not closed](docs/media/avoid-wire-not-closed.gif)
 
 ### Edit variables in place
 
 Add, rename and change VarSet variables right in the Property Inspector.
 
-[![Editing a VarSet](docs/media/edit-varset.jpg)](docs/media/edit-varset.mp4)
+![Editing a VarSet](docs/media/edit-varset.gif)
 
 ---
 
