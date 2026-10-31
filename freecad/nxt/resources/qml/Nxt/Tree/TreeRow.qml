@@ -331,9 +331,9 @@ Item {
             readonly property color wantColor:
                 row.selected ? theme.accent
                 : row.pickOrigin ? theme.hover
-                : !theme.overlay ? theme.hover
-                : hover.hovered ? theme.pillHover
-                : theme.pill
+                : !theme.overlay ? Qt.rgba(theme.hover.r, theme.hover.g, theme.hover.b, 0.15) // une valeur basse pour plus de transparence (entre 0.1 et 0.4)
+                : hover.hovered ? Qt.rgba(theme.pillHover.r, theme.pillHover.g, theme.pillHover.b, 0.3) // Plus transparent au survol
+                : Qt.rgba(theme.pill.r, theme.pill.g, theme.pill.b, 0.15) // Fond de ligne semi-transparent (ajustez ici entre 0.05 et 0.15)
             readonly property real want:
                 theme.overlay ? 1.0
                 : (row.selected || hover.hovered || row.dropTarget

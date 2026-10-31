@@ -1585,16 +1585,33 @@ def end(section: Section) -> None:
 
 
 def toggle() -> None:
-    """Finish the section being edited, or start another.
-
-    Sections already cutting the view stay; double-click one in the tree
-    to edit it again.
-    """
-    from . import section_object
+    """Aiguille entre la coupe standard par plan et la nouvelle coupe par trajectoire."""
+    from PySide import QtWidgets
+    
     found = _active()
     if found is None:
         return
     view, doc = found
+
+    # Boîte de dialogue de choix non destructive pour l'utilisateur
+    msg_box = QtWidgets.QMessageBox()
+    msg_box.setWindowTitle("Nxt - Mode de coupe")
+    msg_box.setText("Choisissez la méthode de coupe :")
+    btn_plane = msg_box.addButton("Coupe par plan (Standard)", QtWidgets.QMessageBox.AcceptRole)
+    btn_path = msg_box.addButton("Coupe par trajectoire", QtWidgets.QMessageBox.ActionRole)
+    msg_box.exec_()
+
+    if msg_box.clickedButton() == btn_plane:
+        # --- BLOC D'ORIGINE PRÉSERVÉ (Standard) ---
+        _toggle_plane(view, doc)
+    elif msg_box.clickedButton() == btn_path:
+        # --- NOUVEAU BLOC (Trajectoire Draft + Part) ---
+        _execute_trajectory_cut(doc, view)
+
+
+def _toggle_plane(view: Any, doc: Any) -> None:
+    """Ancienne logique de la fonction toggle() pour la coupe par plan standard."""
+    from . import section_object, section_aim
     existing = current()
     if existing is not None and existing.editing:
         existing.set_editing(False)
@@ -1622,6 +1639,257 @@ def toggle() -> None:
     obj = section_object.create(doc, normal, point, u)
     start(obj, editing=False)
     edit(obj)
+
+
+def _execute_trajectory_cut(doc: Any, view: Any) -> None:
+    """Séquence chronologique complète avec ciblage robuste et incrémentation dynamique du Label."""
+    import Part
+    import Draft
+    import WorkingPlane
+    import BOPTools.SplitFeatures
+    import CompoundTools.Explode
+    from PySide import QtWidgets, QtCore
+
+    try:
+        # 1. Message invitant l'utilisateur à sélectionner l'objet source dans l'arborescence
+        ret_sel = QtWidgets.QMessageBox.information(
+            None, "Nxt - Sélection de l'objet",
+            "Veuillez sélectionner l'objet ou le corps (Body) à couper dans l'arborescence de FreeCAD, puis cliquez sur OK.",
+            QtWidgets.QMessageBox.Ok | QtWidgets.QMessageBox.Cancel
+        )
+        if ret_sel != QtWidgets.QMessageBox.Ok:
+            return
+
+        selected_objs = Gui.Selection.getSelection()
+        if not selected_objs:
+            QtWidgets.QMessageBox.warning(None, "Nxt - Erreur", "Aucun objet sélectionné dans l'arborescence. Opération annulée.")
+            return
+
+        target_obj = selected_objs[0]
+
+        # 2. Étape de la copie simple pour préserver l'original[cite: 3]
+        Gui.activateWorkbench("PartWorkbench")
+        __shape = Part.getShape(target_obj, '', needSubElement=False, refine=False)
+        
+        copy_feat = doc.addObject('Part::Feature', f"{target_obj.Name}_Copy")
+        copy_feat.Shape = __shape
+        copy_feat.Label = f"{target_obj.Label} (Copie)"
+        doc.recompute()
+
+        # 3. Sélection du plan de travail et alignement de la vue
+        plans = ["Dessus (XY)", "Face (XZ)", "Côté (YZ)"]
+        plan_choisi, ok = QtWidgets.QInputDialog.getItem(
+            None, "Nxt - Plan de travail Draft",
+            "Sélectionnez le plan de travail pour la polyligne :",
+            plans, 0, False
+        )
+        if not ok:
+            return
+
+        active_view = Gui.activeDocument().activeView()
+        if active_view is None:
+            QtWidgets.QMessageBox.warning(None, "Nxt - Erreur", "Aucune vue active trouvée.")
+            return
+
+        if plan_choisi == "Dessus (XY)":
+            Gui.runCommand('Std_ViewTop')
+            active_view.viewTop()
+            Gui.runCommand('Std_ViewGroup', 2)
+            normal = App.Vector(0, 0, 1)
+        elif plan_choisi == "Face (XZ)":
+            Gui.runCommand('Std_ViewFront')
+            active_view.viewFront()
+            Gui.runCommand('Std_ViewGroup', 1)
+            normal = App.Vector(0, 1, 0)
+        elif plan_choisi == "Côté (YZ)":
+            Gui.runCommand('Std_ViewRight')
+            active_view.viewRight()
+            Gui.runCommand('Std_ViewGroup', 3)
+            normal = App.Vector(1, 0, 0)
+
+        wp = WorkingPlane.get_working_plane()
+        origin = App.Vector(0, 0, 0)
+        if hasattr(wp, "align_to_point_and_axis"):
+            wp.align_to_point_and_axis(origin, normal, 0)
+        elif hasattr(wp, "alignToPointAndAxis"):
+            wp.alignToPointAndAxis(origin, normal, 0)
+
+        if hasattr(wp, "save_to_document"):
+            wp.save_to_document()
+
+        Gui.SendMsgToActiveView("ViewFit")
+
+        # Passage en mode Filaire pour le tracé
+        for obj in doc.Objects:
+            if hasattr(obj, "ViewObject") and obj.ViewObject:
+                try:
+                    obj.ViewObject.DisplayMode = "Wireframe"
+                except Exception:
+                    pass
+
+        # 4. Enregistrement des objets avant le tracé interactif Draft Wire
+        before_objects = set(doc.Objects)
+
+        App.Console.PrintMessage("Nxt: Veuillez tracer votre trajectoire dans la vue 3D. Appuyez sur Échap pour terminer.\n")
+        
+        Gui.activateWorkbench("DraftWorkbench")
+        Gui.runCommand('Draft_Wire', 0)
+
+        # Boîte de dialogue non modale pour laisser l'utilisateur dessiner librement
+        msg_box = QtWidgets.QMessageBox(None)
+        msg_box.setWindowTitle("Nxt - Tracé de la trajectoire")
+        msg_box.setText("Tracez votre polyligne dans la vue 3D.\n\nAppuyez sur la touche **Échap** une fois le tracé terminé pour fermer l'outil Draft, puis cliquez sur **OK** ci-dessous.")
+        msg_box.setStandardButtons(QtWidgets.QMessageBox.Ok | QtWidgets.QMessageBox.Cancel)
+        msg_box.setModal(False)
+        msg_box.show()
+
+        loop = QtCore.QEventLoop()
+        msg_box.finished.connect(loop.quit)
+        
+        res_container = {"ok": False}
+        def on_button_clicked(i):
+            if msg_box.standardButton(i) == QtWidgets.QMessageBox.Ok:
+                res_container["ok"] = True
+            loop.quit()
+        msg_box.buttonClicked.connect(on_button_clicked)
+
+        loop.exec_()
+
+        if not res_container["ok"]:
+            return
+
+        # 5. Capture et validation du Wire créé
+        after_objects = set(doc.Objects)
+        created_objects = list(after_objects - before_objects)
+
+        wire_obj = None
+        for obj in created_objects:
+            if obj.isDerivedFrom("Part::Feature") or hasattr(obj, "Shape"):
+                if not obj.Shape.isNull():
+                    wire_obj = obj
+                    break
+
+        if wire_obj is None:
+            selected = Gui.Selection.getSelection()
+            if selected and not selected[0].Shape.isNull():
+                wire_obj = selected[0]
+            else:
+                wires = [o for o in doc.Objects if ("Wire" in o.Name or "Wire" in o.TypeId) and not o.Shape.isNull()]
+                if wires:
+                    wire_obj = wires[-1]
+
+        if wire_obj is None or wire_obj.Shape.isNull():
+            QtWidgets.QMessageBox.warning(None, "Nxt - Erreur", "Aucun tracé valide détecté. Opération annulée.")
+            return
+
+        wire_obj.Label = "Trajectoire001"
+        doc.recompute()
+
+        # 6. Calcul automatique de la BoundingBox globale pour estimer la profondeur
+        max_dim = 100.0
+        try:
+            bbox_totale = None
+            for obj in doc.Objects:
+                if obj != wire_obj and hasattr(obj, "Shape") and not obj.Shape.isNull():
+                    if bbox_totale is None:
+                        bbox_totale = obj.Shape.BoundBox
+                    else:
+                        bbox_totale.add(obj.Shape.BoundBox)
+            if bbox_totale is not None:
+                max_dim = max(bbox_totale.XLength, bbox_totale.YLength, bbox_totale.ZLength) * 1.5
+        except Exception:
+            pass
+
+        profondeur, ok_prof = QtWidgets.QInputDialog.getDouble(
+            None, "Nxt - Extrusion de coupe",
+            "Longueur d'extrusion (mm) :",
+            float(max_dim), 0.1, 1000.0, 2
+        )
+        if not ok_prof:
+            return
+
+        # 7. Bascule vers l'atelier Part et création de l'extrusion
+        Gui.activateWorkbench("PartWorkbench")
+
+        extrude_feat = doc.addObject("Part::Extrusion", "Extrude001")
+        extrude_feat.Base = wire_obj
+        extrude_feat.DirMode = "Custom"
+        extrude_feat.Dir = normal
+        extrude_feat.DirLink = None
+        extrude_feat.LengthFwd = float(profondeur)
+        extrude_feat.LengthRev = 0.0
+        extrude_feat.Solid = False
+        extrude_feat.Reversed = False
+        extrude_feat.Symmetric = True
+        extrude_feat.TaperAngle = 0.0
+        extrude_feat.TaperAngleRev = 0.0
+
+        wire_obj.Visibility = False
+        doc.recompute()
+        extrude_feat.Label = "ExtrudeTrajectoire001"
+
+        if extrude_feat.Shape.isNull():
+            QtWidgets.QMessageBox.warning(None, "Nxt - Erreur", "L'extrusion a échoué (forme vide). Vérifiez la trajectoire.")
+            return
+
+        # Enregistrement des objets avant l'explosion pour capturer précisément le nouveau groupe d'explosion généré
+        before_explode = set(doc.Objects)
+
+        # 8. Opération de coupe (Slice Apart / BOPTools) entre la copie et l'extrusion[cite: 3]
+        slice_feat = BOPTools.SplitFeatures.makeSlice(name='Slice')
+        slice_feat.Base = copy_feat
+        slice_feat.Tools = [extrude_feat]
+        slice_feat.Mode = 'Split'
+        slice_feat.Proxy.execute(slice_feat)
+        slice_feat.purgeTouched()
+
+        for child_obj in slice_feat.ViewObject.Proxy.claimChildren():
+            child_obj.ViewObject.hide()
+
+        CompoundTools.Explode.explodeCompound(slice_feat)
+        slice_feat.ViewObject.hide()
+        doc.recompute()
+
+        # Capture différentielle du conteneur d'explosion nouvellement créé
+        after_explode = set(doc.Objects)
+        new_explode_objects = list(after_explode - before_explode)
+        
+        explode_container = None
+        for obj in new_explode_objects:
+            if "GrExplode" in obj.Name or "Exploded" in obj.TypeId or hasattr(obj, "Group"):
+                explode_container = obj
+                break
+
+        # Fallback de recherche si non capturé par la différence
+        if explode_container is None:
+            explodes = [o for o in doc.Objects if "GrExplode" in o.Name or "Exploded" in o.Name]
+            if explodes:
+                explode_container = explodes[-1]
+
+        # 9. Incrémentation dynamique du Label pour les conteneurs "Section-Coupe"
+        base_label = "Section-Coupe"
+        existing_labels = [o.Label for o in doc.Objects if o.Label.startswith(base_label)]
+
+        if base_label not in existing_labels:
+            target_label = base_label
+        else:
+            idx = 1
+            while f"{base_label}{idx:03d}" in existing_labels:
+                idx += 1
+            target_label = f"{base_label}{idx:03d}"
+
+        # Application du nouveau Label sur le conteneur d'explosion identifié
+        if explode_container is not None:
+            explode_container.Label = target_label
+
+        wire_obj.Label = "Trajectoire001"
+
+        Gui.SendMsgToActiveView("ViewFit")
+        App.Console.PrintMessage(f"Nxt: Découpe par trajectoire exécutée. Conteneur généré : [{target_label}].\n")
+
+    except Exception as exc:
+        QtWidgets.QMessageBox.critical(None, "Nxt - Erreur", f"Erreur fatale : {exc}")
+        App.Console.PrintError(f"Nxt: Erreur fatale: {exc}\n")
 
 
 def flip() -> None:
