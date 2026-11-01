@@ -24,6 +24,7 @@ import os
 import re
 import sys
 import time
+from pathlib import Path
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 os.environ.setdefault("LC_ALL", "C.UTF-8")
@@ -31,14 +32,15 @@ os.environ.setdefault("LC_ALL", "C.UTF-8")
 from PySide6 import QtCore, QtGui, QtQml, QtQuick  # noqa: E402,F401
 from PySide6.QtTest import QTest  # noqa: E402
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SRC = os.path.join(ROOT, "freecad", "nxt", "tree")
-QML = os.path.join(SRC, "qml")
+ROOT = Path(__file__).resolve().parents[1]
+SRC = ROOT / "freecad" / "nxt" / "tree"
+QML = ROOT / "freecad" / "nxt" / "resources" / "qml"
 
 problems = []
 BAD = ("binding loop", "is not defined", "cannot read property",
        "unable to assign", "typeerror", "referenceerror", "cannot assign",
-       "is not a function", "required property")
+       "is not a function", "required property",
+       "no signal of the target matches")
 
 
 def _handler(mode, context, message):
@@ -55,7 +57,7 @@ QtCore.qInstallMessageHandler(_handler)
 # --- theme stub, generated from theme.py's own property list -------------- #
 
 def theme_properties():
-    tree = ast.parse(open(os.path.join(SRC, "theme.py")).read())
+    tree = ast.parse((SRC.parent / "ui" / "theme.py").read_text())
     out = {}
     for node in ast.walk(tree):
         if not isinstance(node, ast.FunctionDef):
@@ -72,9 +74,10 @@ def theme_properties():
 # a value missing here falls back to 20, which would silently change what
 # the geometry assertions below mean.
 SIZES = {"rowHeight": 20, "rowPad": 6, "indent": 12, "tipGutter": 14,
+         "scrollBarWidth": 10,
          "iconSize": 14, "markSize": 12, "markSizeSmall": 10,
          "fontRow": 10, "fontSmall": 9, "fontAside": 8,
-         "chipHeight": 14, "fieldHeight": 17,
+         "chipHeight": 14, "fieldHeight": 17, "valueWidth": 88,
          # A generous cap, so the offscreen screen (800 px) leaves the
          # header full width and the name-truncation check below still
          # means what it did; the cap itself is checked against these.
@@ -84,8 +87,9 @@ SIZES = {"rowHeight": 20, "rowPad": 6, "indent": 12, "tipGutter": 14,
 def make_theme(overlay=False):
     missing = [n for n, k in theme_properties().items()
                if k == "int" and n not in SIZES]
-    assert not missing, (
-        "theme gained int metrics the stub does not size: %s" % missing)
+    if missing:
+        raise AssertionError(
+            "theme gained int metrics the stub does not size: %s" % missing)
     ns = {"changed": QtCore.Signal(), "_overlay": overlay}
     for name, kind in theme_properties().items():
         if name == "overlay":
@@ -110,7 +114,7 @@ def make_theme(overlay=False):
 # --- model stub, with the real role names --------------------------------- #
 
 def role_names():
-    src = open(os.path.join(SRC, "models.py")).read()
+    src = (SRC / "models.py").read_text()
     body = src[src.index("_ROLE_NAMES = {"):]
     return re.findall(r':\s*"([A-Za-z]+)"', body[:body.index("\n    }")])
 
@@ -184,6 +188,11 @@ ROWS = [
          refs=[{"name": "Long", "severity": 2,
                 "label": "Mounting_Bracket_Profile_Rev2",
                 "sub": "", "iconUrl": ""}]),
+    # Outer active marks: an Assembly keeps the Active chip, a Part does not.
+    dict(name="Assembly", label="Assembly", depth=0, isContainer=True,
+         isActivePart=True, typeId="Assembly::AssemblyObject"),
+    dict(name="Part", label="Part", depth=0, isContainer=True,
+         isActivePart=True, typeId="App::Part"),
 ]
 
 DEFAULTS = dict(name="", label="", depth=0, hasChildren=False, expanded=False,
@@ -193,13 +202,16 @@ DEFAULTS = dict(name="", label="", depth=0, hasChildren=False, expanded=False,
                 isProfile=False, severity=0, notes=[], dof=-1, constrained=-1,
                 detailOpen=False, timeline=0, bodyName="", consumers=[],
                 isLifted=False, isActive=False, keyProps=[],
-                propertyCount=0)
+                propertyCount=0, branches=[], activeFrom=-1,
+                isActivePart=False, cycleTime="", isTotal=False,
+                isCam=False, typeId="")
 # refs entries must carry every key the delegate reads; a missing one shows
 # up as undefined rather than as an error, so it is worth being strict.
 REF_KEYS = {"name", "label", "severity", "sub", "iconUrl"}
 for _row in ROWS:
     for _ref in _row.get("refs", ()):
-        assert set(_ref) == REF_KEYS, "ref keys drifted: %s" % sorted(_ref)
+        if set(_ref) != REF_KEYS:
+            raise AssertionError("ref keys drifted: %s" % sorted(_ref))
 
 
 class Rows(QtCore.QAbstractListModel):
@@ -224,7 +236,7 @@ class Rows(QtCore.QAbstractListModel):
 # --- bridge stub, generated from bridge.py's slot list -------------------- #
 
 def bridge_slots():
-    tree = ast.parse(open(os.path.join(SRC, "bridge.py")).read())
+    tree = ast.parse((SRC / "bridge.py").read_text())
     out = {}
     for node in ast.walk(tree):
         if not isinstance(node, ast.FunctionDef):
@@ -250,28 +262,72 @@ def make_bridge():
     ns = {
         "changed": QtCore.Signal(),
         "revealTreeRow": QtCore.Signal(int),
+        "rowHeld": QtCore.Signal(int),
+        "rowReleased": QtCore.Signal(),
+        "detailAutoShow": QtCore.Property(bool, lambda self: True,
+                                          constant=True),
+        "pinnedDetails": QtCore.Property(list, lambda self: ["Sketch"],
+                                         constant=True),
+        "propertyInspectorRequested": QtCore.Signal(int),
+        "contextMenuRequested": QtCore.Signal(float, float),
+        "renameRowRequested": QtCore.Signal(int),
+        "flashRows": QtCore.Signal(list),
         "treeModel": QtCore.Property(QtCore.QObject,
                                      lambda self: ROWS_MODEL, constant=True),
         "hasDocument": QtCore.Property(bool, lambda self: True),
+        "atRoot": QtCore.Property(bool, lambda self: True),
         "documentLabel": QtCore.Property(
             str, lambda self: "PartDesignExample"),
-        "profileCount": QtCore.Property(int, lambda self: 2),
         "problemCount": QtCore.Property(int, lambda self: 1),
         "searchResults": QtCore.Property(list, lambda self: []),
         "tipBars": QtCore.Property(list, lambda self: BARS),
+        # One row marked as the origin of a 3D pick, so its binding runs.
+        "pickOrigins": QtCore.Property(list, lambda self: ["Pad"],
+                                       constant=True),
+        # Arrows from the Pad, so the overlay paints every kind.
+        "linkArrows": QtCore.Property("QVariantMap", lambda self: {
+            "source": 2, "links": [
+                {"row": 1, "dir": "in", "kind": "geometry", "count": 1},
+                {"row": 3, "dir": "out", "kind": "attachment", "count": 2},
+                {"row": 40, "dir": "out", "kind": "link", "count": 1}]},
+            constant=True),
     }
+
+    # Called as the list scrolls, with no click to prompt it, so it needs
+    # a stub QML can really call: every row but the first is in the Body.
+    def breadcrumb(self, row):
+        return [{"row": 0, "label": "Body"}] if row > 0 else []
+    ns["breadcrumb"] = QtCore.Slot(int, result="QVariantList")(breadcrumb)
     for name, types in bridge_slots().items():
         if name in ns:
             continue
-        ns[name] = QtCore.Slot(*types)(
+        ns[name] = QtCore.Slot(*types, name=name)(
             (lambda n: lambda self, *a: None)(name))
     return type("Bridge", (QtCore.QObject,), ns)
 
 
 class Host(QtCore.QObject):
+    viewOverlayChanged = QtCore.Signal()
+
+    @QtCore.Property(bool, notify=viewOverlayChanged)
+    def viewOverlay(self):  # noqa: N802
+        return False
+
     @QtCore.Slot()
     def repaintBehind(self):
         pass
+
+    @QtCore.Slot()
+    def takeKeyboard(self):  # noqa: N802
+        pass
+
+    @QtCore.Slot(result=QtCore.QPointF)
+    def menuAnchorOffset(self):
+        return QtCore.QPointF(0, 0)
+
+    @QtCore.Slot(result=QtCore.QRectF)
+    def menuRoom(self):  # noqa: N802
+        return QtCore.QRectF()
 
 
 def visual_tree(item, depth=0):
@@ -307,20 +363,48 @@ KEEP = []      # nothing is torn down: dropping a context property while the
 # against null, which is noise, not a finding.
 
 
+class Isolation(QtCore.QObject):
+    """Stands in for isolate.Isolation.
+
+    On, so the row dimming's bindings run.
+    """
+
+    changed = QtCore.Signal()
+
+    @QtCore.Property(bool, notify=changed)
+    def isActive(self):  # noqa: N802
+        return True
+
+    @QtCore.Property(str, notify=changed)
+    def notice(self):
+        return "Isolated: Pad"
+
+    @QtCore.Property("QVariantMap", notify=changed)
+    def keptNames(self):  # noqa: N802
+        return {"Body": True, "Pad": True}
+
+    @QtCore.Slot(result=bool)
+    def leave(self):
+        return True
+
+
 def run(overlay):
     # A QQuickView, not a bare QQmlComponent: items outside a window are
     # never polished, so a ListView in one realises no delegates at all and
     # the harness would pass by doing nothing.
     view = QtQuick.QQuickView()
     theme, bridge, host = make_theme(overlay)(), make_bridge()(), Host()
-    view.engine().addImportPath(QML)
+    view.engine().addImportPath(str(QML))
     ctx = view.rootContext()
     ctx.setContextProperty("theme", theme)
     ctx.setContextProperty("nxt", bridge)
     ctx.setContextProperty("host", host)
+    isolation = Isolation()
+    ctx.setContextProperty("isolation", isolation)
+    view.isolation = isolation      # kept alive as long as the view
     view.setResizeMode(QtQuick.QQuickView.ResizeMode.SizeRootObjectToView)
     view.resize(320, 480)
-    view.setSource(QtCore.QUrl.fromLocalFile(os.path.join(QML, "NxtTree.qml")))
+    view.setSource(QtCore.QUrl.fromLocalFile(str(QML / "NxtTree.qml")))
 
     if view.status() == QtQuick.QQuickView.Status.Error:
         for err in view.errors():
@@ -346,6 +430,32 @@ def run(overlay):
             time.sleep(0.005)
 
     root = view.rootObject()
+
+    # Nxt's overlay asks the panel, per press, whether it draws anything
+    # there (view_overlay.py). The header is the panel's; far below the
+    # last row is the model's.
+    def wants(x, y):
+        return QtCore.QMetaObject.invokeMethod(
+            root, "wantsPoint", QtCore.Qt.ConnectionType.DirectConnection,
+            QtCore.Q_RETURN_ARG("QVariant"),
+            QtCore.Q_ARG("QVariant", float(x)),
+            QtCore.Q_ARG("QVariant", float(y)))
+    # And a container's expand arrow, which sits outside its pill.
+    arrows = [c for c in visual_tree(root)
+              if c.metaObject().className().startswith("Disclosure")
+              and c.property("shown")]
+    if arrows:
+        spot = arrows[0].mapToItem(root, QtCore.QPointF(
+            arrows[0].width() / 2, arrows[0].height() / 2))
+        if wants(spot.x(), spot.y()) is not True:
+            problems.append("overlay=%s: the expand arrow passes clicks "
+                            "through" % overlay)
+    else:
+        problems.append("overlay=%s: no expand arrow found" % overlay)
+    if wants(10, 10) is not True or wants(300, 470) is not False:
+        problems.append("overlay=%s: wantsPoint header %r, empty %r"
+                        % (overlay, wants(10, 10), wants(300, 470)))
+
     # More than one ListView in the tree: the search results are a list too,
     # and an empty one sorts first in findChildren. Take the populated one.
     lists = [c for c in visual_tree(root)
@@ -402,7 +512,12 @@ def run(overlay):
         problems.append("header not found")
 
     # The document name should not be truncated while the search field
-    # beside it still has room to give.
+    # beside it still has room to give: it gives way down to its floor,
+    # half the room it has with no name.
+    search = [c for c in visual_tree(root)
+              if c.objectName() == "treeSearch"]
+    floor_reached = bool(search) and search[0].property("width") <= (
+        search[0].parentItem().property("searchFloor") + 0.5)
     labels = [c for c in visual_tree(root)
               if c.metaObject().className().startswith("QQuickText") and
               c.property("text") == "PartDesignExample"]
@@ -410,14 +525,14 @@ def run(overlay):
         w = labels[0].property("width")
         iw = labels[0].property("implicitWidth")
         print("     doc label: width %.0f of implicit %.0f" % (w, iw))
-        if w < iw - 0.5:
+        if w < iw - 0.5 and not floor_reached:
             problems.append("overlay=%s: document name truncated at %.0f "
                             "when it wants %.0f" % (overlay, w, iw))
     else:
         problems.append("overlay=%s: no document label found" % overlay)
 
     # The key values in an open strip: a plain value and an expression
-    # shown in their fields, and the link to the card with its count.
+    # shown in their fields, and the link to the inspector with its count.
     texts = {c.property("text") for c in visual_tree(root)
              if c.metaObject().className().startswith(("QQuickText",
                                                        "QQuickTextInput"))}
@@ -515,6 +630,30 @@ def run(overlay):
     QTest.keyClick(view, QtCore.Qt.Key.Key_Escape)
     settle(0.1)
 
+    # Return in the rename field commits and is used up there: passed on,
+    # the tree would read it as "rename" again on macOS and reopen the
+    # field on the old name.
+    pad_row = next(c for c in visual_tree(root)
+                   if c.metaObject().className().startswith("TreeRow")
+                   and c.property("name") == "Pad")
+    begin = QtQml.QQmlExpression(QtQml.qmlContext(pad_row), pad_row,
+                                 "beginRename()")
+    begin.evaluate()
+    settle(0.1)
+    for key in (QtCore.Qt.Key.Key_Return, QtCore.Qt.Key.Key_Enter):
+        if not pad_row.property("renaming"):
+            begin.evaluate()
+            settle(0.1)
+        press = QtGui.QKeyEvent(QtCore.QEvent.Type.KeyPress, key,
+                                QtCore.Qt.KeyboardModifier.NoModifier)
+        QtCore.QCoreApplication.sendEvent(view, press)
+        settle(0.1)
+        print("     %s in the rename field: accepted %s, still renaming %s"
+              % (key.name, press.isAccepted(), pad_row.property("renaming")))
+        if not press.isAccepted() or pad_row.property("renaming"):
+            problems.append("overlay=%s: %s in the rename field was passed "
+                            "on, or left it open" % (overlay, key.name))
+
     # Live mode switches and bare `changed` re-notifications. Every theme
     # property shares one notify signal, so a flip re-evaluates the label
     # and the tail in the same pass - which is where a loop that a fresh
@@ -586,13 +725,24 @@ def run(overlay):
         return sum(1 for c in visual_tree(row_item)
                    if c.objectName() == "activeMark" and c.property("visible"))
 
+    chipped = sorted(
+        c.property("name") for c in visual_tree(root)
+        if c.metaObject().className().startswith("TreeRow")
+        and any(k.objectName() == "activeChip" and k.property("visible")
+                for k in visual_tree(c)))
+    print("     Active chips on: %s" % chipped)
+    if chipped != ["Assembly", "Body"]:
+        problems.append("overlay=%s: Active chips on %s, expected the "
+                        "active Body and the Assembly around it"
+                        % (overlay, chipped))
+
     active_marks, other_marks = None, []
     for c in visual_tree(root):
         if not c.metaObject().className().startswith("TreeRow"):
             continue
         if c.property("isActive"):
             active_marks = marks_on(c)
-        else:
+        elif not c.property("isActivePart"):
             other_marks.append((c.property("name"), marks_on(c)))
     inactive_max = max((n for _r, n in other_marks), default=0)
     print("     active mark: active row %s  busiest inactive row %s"
@@ -769,11 +919,70 @@ def run(overlay):
                             "not back on the boundary at %.2f"
                             % (overlay, back, rest))
 
+        # Scrolled under a held bar (the wheel, or the edge timer), the
+        # bar stays under the pointer instead of riding off with the rows.
+        bar.setProperty("grabOffset", 0)
+        bar.setProperty("pointerY", back + bar.parentItem().property("y")
+                        + 20)
+        bar.setProperty("dragging", True)
+        listview.setProperty("contentY", 6)
+        app.processEvents()
+        under = bar.property("y") + bar.parentItem().property("y")
+        bar.setProperty("dragging", False)
+        listview.setProperty("contentY", 0)
+        settle(0.4)
+        print("     held while scrolled: pointer %.2f  bar %.2f"
+              % (bar.property("pointerY"), under))
+        if abs(under - bar.property("pointerY")) > 0.01:
+            problems.append("overlay=%s: a held bar rode off with a scroll "
+                            "(%.2f, pointer at %.2f)"
+                            % (overlay, under, bar.property("pointerY")))
+
+        # Held past the bottom of a list that runs on, the list scrolls by
+        # itself while the bar stays held.
+        tall = root.property("height")
+        root.setProperty("height", 160)
+        settle(0.1)
+        room = (listview.property("contentHeight")
+                - listview.property("height"))
+        if room > 40:
+            # Far outside the panel: it scrolls on to the end, no further.
+            bar.setProperty("pointerY", listview.property("height") + 2000)
+            bar.setProperty("dragging", True)
+            settle(0.6)
+            scrolled_to = listview.property("contentY")
+            last = bar.property("dragPos")
+            on_screen = bar.property("y") + bar.parentItem().property("y")
+            if not bar.property("visible") or not (
+                    0 <= on_screen <= listview.property("height") + 3):
+                problems.append("overlay=%s: held past the end, the bar "
+                                "left the list (at %.1f, visible %s)"
+                                % (overlay, on_screen,
+                                   bar.property("visible")))
+            bar.setProperty("dragging", False)
+            bar.setProperty("dragPos", bar.property("pos"))
+            listview.setProperty("contentY", 0)
+            settle(0.4)
+            print("     edge scroll: %.1f of %.1f after 0.6s"
+                  % (scrolled_to, room))
+            if scrolled_to <= 0:
+                problems.append("overlay=%s: holding the bar past the "
+                                "list's end did not scroll it" % overlay)
+            if last != bar.property("maxPos"):
+                problems.append("overlay=%s: held past the end, the bar "
+                                "stopped at slot %s, not the last (%s)"
+                                % (overlay, last, bar.property("maxPos")))
+        else:
+            problems.append("overlay=%s: the list is too short to test "
+                            "edge scrolling (%.0f)" % (overlay, room))
+        root.setProperty("height", tall)
+        settle(0.1)
+
         # Scrolling moves the bar in lockstep with the rows. An animation
         # on `y` made it trail the list and rubber-band into place.
         listview.setProperty("contentY", 12)
         app.processEvents()
-        scrolled = bar.property("y")
+        scrolled = bar.property("y") + bar.parentItem().property("y")
         listview.setProperty("contentY", 0)
         settle(0.2)
         print("     scroll: rest %.2f  scrolled 12 -> %.2f" % (back, scrolled))
@@ -799,6 +1008,26 @@ def run(overlay):
             problems.append("overlay=%s: the gap did not close again (%.1f)"
                             % (overlay, back_h))
 
+    # The breadcrumb: nothing while the Body's row is on screen, the Body
+    # once it has scrolled off, and back to it on a click.
+    crumb = root.findChild(QtCore.QObject, "breadcrumb")
+    if crumb is None:
+        problems.append("overlay=%s: no breadcrumb" % overlay)
+    else:
+        shown = [crumb.property("visible")]
+        listview.setProperty("contentY", 60)
+        settle(0.2)
+        shown.append(crumb.property("visible"))
+        labels = [c["label"] for c in crumb.property("crumbs").toVariant()]
+        crumb.crumbClicked.emit(0)
+        settle(0.2)
+        shown.append(crumb.property("visible"))
+        print("     breadcrumb: shown %s, %s, back at %.0f"
+              % (shown, labels, listview.property("contentY")))
+        if shown != [False, True, False] or labels != ["Body"]:
+            problems.append("overlay=%s: breadcrumb shown %s with %s"
+                            % (overlay, shown, labels))
+
     plain = 20 * len(ROWS)
     if content <= plain:
         problems.append(
@@ -820,4 +1049,8 @@ print("PROBLEMS:", len(problems))
 for text in problems:
     print("  *", text)
 print("HARNESS", "FAILED" if problems else "PASSED")
+# os._exit skips Python's own exit, flushes included: a piped stdout (CI)
+# lost everything after its last full buffer, the problems too.
+sys.stdout.flush()
+sys.stderr.flush()
 os._exit(1 if problems else 0)
