@@ -229,13 +229,14 @@ class FilletBridge(QtCore.QObject):
 
     @QtCore.Property(int, notify=changed)
     def failing(self) -> int:
-        return len(self._task.limits)
+        return sum(self._task.limit_of(n) is not None
+                   for n in self._task.edge_names())
 
     @QtCore.Property(list, notify=changed)
     def edges(self) -> list[dict[str, Any]]:
         out = []
         for name in self._task.edge_names():
-            limit = self._task.limits.get(name)
+            limit = self._task.limit_of(name)
             out.append({"name": name, "short": limit is not None,
                         "limit": ("" if limit is None else
                                   "none fits" if limit <= 0 else
@@ -450,12 +451,9 @@ class FilletTask:
                                    self.obj.Shape.getElement(element))
         elif owner.Name != self.base.Name:
             return
-        if element.startswith("Edge"):
-            names = [element]
-        elif element.startswith("Face"):
-            names = blend_fillet.face_edges(self.base.Shape, element)
-        else:
+        if not element.startswith(("Edge", "Face")):
             return
+        names = [element]
         current = set(self.edge_names())
         self.toggle(names, add=not all(n in current for n in names))
         QtCore.QTimer.singleShot(0, Gui.Selection.clearSelection)
@@ -467,6 +465,18 @@ class FilletTask:
             return ["Edge%d" % (i + 1)
                     for i in range(len(self.base.Shape.Edges))]
         return [n for _owner, names in self.obj.Edges for n in names]
+
+    def limit_of(self, name: str) -> float | None:
+        """The largest size `name` takes, if not this one.
+
+        For a face, the smallest over its edges.
+        """
+        if not name.startswith("Face") or self.base is None:
+            return self.limits.get(name)
+        found = [self.limits[n] for n in
+                 blend_fillet.face_edges(self.base.Shape, name)
+                 if n in self.limits]
+        return min(found) if found else None
 
     def set_names(self, names: list[str]) -> None:
         self.obj.Edges = [(self.base, names)] if names else []
@@ -589,7 +599,7 @@ class FilletTask:
     def _refresh_view(self) -> None:
         if self.base is None:
             return
-        names = self.edge_names()
+        names = blend_fillet.expanded(self.base.Shape, self.edge_names())
         if self._handles is not None:
             self._handles.place(self.base.Shape,
                                 names[0] if names else None, self.radius)
