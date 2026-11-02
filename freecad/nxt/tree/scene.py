@@ -353,6 +353,7 @@ class Node:
     container_label: str = ""
     is_feature: bool = False        # member of a Body's solid feature stack
     after_tip: bool = False         # sits past the tip, so currently inert
+    suppressed: bool = False        # Suppressed set: left out of the stack
     body: str | None = None         # owning Body, for stack members
     stack: list[str] = field(default_factory=list)  # Bodies: features
     tip: str | None = None          # Bodies: current tip feature name
@@ -445,6 +446,7 @@ class Snapshot:
             state = getattr(obj, "State", None) or ()   # a fresh list per read
             node.touched = "Touched" in state
             node.in_error = "Invalid" in state or "Error" in state
+            node.suppressed = bool(getattr(obj, "Suppressed", False))
 
             if node.is_profile:
                 node.severity, node.notes = health.inspect(obj, node.in_error)

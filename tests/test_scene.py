@@ -316,6 +316,15 @@ class FeatureStackTests(unittest.TestCase):
         self.assertFalse(snap.nodes["Pocket"].after_tip)
         self.assertTrue(snap.nodes["Fillet"].after_tip)
 
+    def test_suppressed_feature_is_marked(self):
+        pad, pocket = self._chain("Pad", "Pocket")
+        pocket.Suppressed = True
+        b = self._body([pad, pocket], tip=pocket)
+        snap = scene.Snapshot(FakeDocument("Doc", [b, pad, pocket]))
+        self.assertTrue(snap.nodes["Pocket"].suppressed)
+        self.assertFalse(snap.nodes["Pad"].suppressed)
+        self.assertFalse(snap.nodes["Pocket"].after_tip)
+
     def test_every_stack_member_knows_its_body(self):
         pad, pocket = self._chain("Pad", "Pocket")
         b = self._body([pad, pocket], tip=pocket)

@@ -85,9 +85,25 @@ def run(bridge: TreeBridge, command: str, names: list[str]) -> None:
             except Exception as exc:
                 App.Console.PrintError("Nxt menu: %s failed: %s\n"
                                        % (command, exc))
-    else:
-        runner.run_command(command)
+    elif runner.run_command(command) and command in RECOMPUTE_BODY:
+        recompute_bodies(objects)
     bridge.invalidate(icons=True)
+
+
+#: FreeCAD commands that change what a Body builds without rebuilding it.
+RECOMPUTE_BODY = frozenset({"Std_ToggleSuppress"})
+
+
+def recompute_bodies(objects: list[Any]) -> None:
+    """Rebuild the Bodies these objects are in, and what they need."""
+    bodies = {}
+    for obj in objects:
+        with contextlib.suppress(Exception):  # not in a Body then
+            body = obj.getParentGeoFeatureGroup()
+            if body is not None and body.isDerivedFrom("PartDesign::Body"):
+                bodies[body.Name] = body
+    if bodies:
+        next(iter(bodies.values())).Document.recompute(list(bodies.values()))
 
 
 # -- Nxt actions --

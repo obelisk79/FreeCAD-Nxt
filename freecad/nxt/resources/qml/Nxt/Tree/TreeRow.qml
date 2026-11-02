@@ -22,6 +22,9 @@ Item {
     required property bool highlighted
     required property bool isFeature
     required property bool afterTip
+    required property bool suppressed
+    //: Left out like a feature past the tip: drawn as dim.
+    readonly property bool inert: afterTip || suppressed
     required property bool isProfile
     required property bool isLifted
     required property bool isActive
@@ -245,10 +248,11 @@ Item {
 
     readonly property string nameTip: {
         var differs = row.name !== row.label;
-        if (!title.truncated && !differs)
+        if (!title.truncated && !differs && !row.suppressed)
             return "";
         return row.label + (differs ? "\n" + qsTr("Internal name: %1")
-                                                .arg(row.name) : "");
+                                                .arg(row.name) : "")
+             + (row.suppressed ? "\n" + qsTr("Suppressed") : "");
     }
 
     readonly property string markTip: {
@@ -512,7 +516,7 @@ Item {
             sourceSize.width: width * 2
             sourceSize.height: width * 2
             source: row.iconUrl + (!row.objectVisible ? "/gray" : "")
-            opacity: row.afterTip ? 0.32
+            opacity: row.inert ? 0.32
                    : row.objectVisible ? 1.0 : 0.38
             Behavior on opacity { NumberAnimation { duration: 110 } }
 
@@ -522,6 +526,7 @@ Item {
                 text: row.label + (row.name !== row.label
                                    ? "\n" + qsTr("Internal name: %1")
                                                 .arg(row.name) : "")
+                      + (row.suppressed ? "\n" + qsTr("Suppressed") : "")
             }
         }
 
@@ -549,9 +554,10 @@ Item {
             font.bold: row.isContainer
             font.italic: row.isTotal
                          || (!row.objectVisible && !row.isProfile)
+            font.strikeout: row.suppressed
             color: row.selected ? theme.accentText
                  : (row.inError && !row.blamedOnProfile) ? theme.danger
-                 : row.afterTip ? theme.textDim
+                 : row.inert ? theme.textDim
                  : row.objectVisible ? theme.text
                  : theme.textDim
 

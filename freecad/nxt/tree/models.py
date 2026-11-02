@@ -88,6 +88,7 @@ class TreeRowModel(QtCore.QAbstractListModel):
     CycleTimeRole = _ROLE + 33
     IsTotalRole = _ROLE + 34
     IsCamRole = _ROLE + 35
+    SuppressedRole = _ROLE + 36
 
     _ROLE_NAMES = {
         NameRole: "name",
@@ -131,6 +132,7 @@ class TreeRowModel(QtCore.QAbstractListModel):
         IsTotalRole: "isTotal",
         # In a CAM Operations group: references there are icon chips.
         IsCamRole: "isCam",
+        SuppressedRole: "suppressed",
     }
 
     countChanged = QtCore.Signal()
@@ -161,6 +163,7 @@ class TreeRowModel(QtCore.QAbstractListModel):
     #: Node fields a row draws; if unchanged, the row needs no redraw.
     _DISPLAYED = ("label", "visible", "in_error", "touched", "is_container",
                   "is_feature", "is_profile", "is_lifted", "after_tip",
+                  "suppressed",
                   "severity",
                   "dof", "constrained", "body", "refs", "consumers", "notes",
                   "timeline")
@@ -537,6 +540,8 @@ class TreeRowModel(QtCore.QAbstractListModel):
             return node.is_feature
         if role == self.AfterTipRole:
             return node.after_tip
+        if role == self.SuppressedRole:
+            return node.suppressed
         if role == self.IsProfileRole:
             return node.is_profile
         if role == self.IsLiftedRole:
@@ -591,6 +596,7 @@ class TreeRowModel(QtCore.QAbstractListModel):
         BodyRole: "", ConsumersRole: [], IsLiftedRole: False,
         ActiveRole: False, ActivePartRole: False, KeyPropsRole: [],
         PropertyCountRole: 0, IsTotalRole: True, IsCamRole: True,
+        SuppressedRole: False,
     }
 
     def _total_data(self, role: int, name: str, depth: int) -> Any:

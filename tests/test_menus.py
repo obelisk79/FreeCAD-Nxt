@@ -422,5 +422,36 @@ class MergingTests(unittest.TestCase):
         self.assertFalse(cond.holds([good, bad]))
 
 
+class RecomputeBodyTests(unittest.TestCase):
+    class Thing:
+        def __init__(self, name: str, body: object = None,
+                     kind: str = "PartDesign::Feature") -> None:
+            self.Name, self._body, self._kind = name, body, kind
+            self.Document = self
+
+        def getParentGeoFeatureGroup(self) -> object:  # noqa: N802
+            return self._body
+
+        def isDerivedFrom(self, kind: str) -> bool:  # noqa: N802
+            return kind == self._kind
+
+        def recompute(self, objects: list[object]) -> None:
+            self.recomputed = objects
+
+    def test_each_body_once(self) -> None:
+        from freecad.nxt.tree import menu_actions
+        body = self.Thing("Body", kind="PartDesign::Body")
+        loose = self.Thing("Loose")
+        menu_actions.recompute_bodies(
+            [self.Thing("Pad", body), self.Thing("Pocket", body), loose])
+        self.assertEqual(body.recomputed, [body])
+
+    def test_nothing_outside_a_body(self) -> None:
+        from freecad.nxt.tree import menu_actions
+        loose = self.Thing("Loose")
+        menu_actions.recompute_bodies([loose])
+        self.assertFalse(hasattr(loose, "recomputed"))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
