@@ -1036,27 +1036,25 @@ Item {
                         anchors.fill: parent
                         radius: 3
                         color: pinButton.pinned ? theme.accent : theme.hover
-                        visible: pinButton.pinned || pinMouse.containsMouse
+                        visible: pinButton.pinned || pinHover.hovered
                     }
                     // The Property Inspector's pushpin (ui/glyphs.py).
                     Image {
                         readonly property color ink: pinButton.pinned
                             ? theme.accentText
-                            : pinMouse.containsMouse ? theme.text : theme.textDim
+                            : pinHover.hovered ? theme.text : theme.textDim
                         anchors.centerIn: parent
                         sourceSize: Qt.size(14, 14)
                         source: "image://nxticon/@pin/"
                                 + (pinButton.pinned ? "1" : "0") + "/"
                                 + ink.toString().substring(1)
                     }
-                    MouseArea {
-                        id: pinMouse
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        onClicked: nxt.toggleDetailPin(row.name)
-                    }
+                    // Handlers, not a MouseArea: the tooltip's own hover
+                    // handler, above it, would starve a MouseArea of hover.
+                    HoverHandler { id: pinHover }
+                    TapHandler { onTapped: nxt.toggleDetailPin(row.name) }
                     NxtToolTip {
-                        shown: pinMouse.containsMouse
+                        shown: pinHover.hovered
                         text: pinButton.pinned ? qsTr("Unpin")
                                                : qsTr("Keep these details open")
                     }
