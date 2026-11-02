@@ -79,8 +79,8 @@ class Case:
         """Round the edges nearest `picks` (and of faces at `faces`)."""
         shape = self.tip.Shape
         names = [edge_at(shape, p) for p in picks]
-        for point in faces:
-            names += bf.face_edges(shape, face_at(shape, point))
+        # Kept as faces, as picked: the feature finds their edges.
+        names += [face_at(shape, point) for point in faces]
         obj = bf.new_fillet(self.tip, names, size, flat)
         obj.TangentEdges = tangent
         obj.Refine = True
@@ -111,6 +111,22 @@ def kidney(r1, r2, gap, height, bulge):
         Part.Arc(p1, V(-r1, 0, 0), p2).toShape(),
         Part.Arc(q1, V(gap + r2, 0, 0), q2).toShape()]))
     return Part.Face(wire).extrude(V(0, 0, height)), m2
+
+
+def slot_off_tangent(length=30.0, width=10.0, height=6.0, off=0.02):
+    """A slot whose right end bulges `off` past round.
+
+    Its arc meets the straight sides a fraction of a degree off tangent,
+    as a sketch's unconstrained arc does.
+    """
+    half = width / 2
+    wire = Part.Wire([
+        Part.LineSegment(V(0, 0, 0), V(length, 0, 0)).toShape(),
+        Part.Arc(V(length, 0, 0), V(length + half + off, half, 0),
+                 V(length, width, 0)).toShape(),
+        Part.LineSegment(V(length, width, 0), V(0, width, 0)).toShape(),
+        Part.Arc(V(0, width, 0), V(-half, half, 0), V(0, 0, 0)).toShape()])
+    return Part.Face(wire).extrude(V(0, 0, height))
 
 
 def frustum(bottom=17.5, top=8.121785, height=35.0):
@@ -366,6 +382,17 @@ def build(doc):
              "rounded rim beside it, where it ends flat, as the face the "
              "round blends into.")
     c.add([V(-8.4845, 6.4371, -2.5)], 3.94)
+
+    c = case("Near_tangent", slot_off_tangent(),
+             "A slot's top face, r 1: one end's arc a quarter degree off "
+             "tangent to the sides, rounded all round without a sliver.")
+    c.add([], 1.0, faces=[V(15, 5, 6)])
+
+    c = case("Kinked_slot", slot_off_tangent(off=0.4),
+             "The same slot, its arc meeting the sides some 4 degrees off "
+             "tangent: the rounds mitred there go in together, leaving "
+             "no sliver where their cuts meet.")
+    c.add([], 1.0, faces=[V(15, 5, 6)])
 
     c = case("Run_off", plate(30, 20, 6),
              "Radius larger than the side face: the round runs off it "

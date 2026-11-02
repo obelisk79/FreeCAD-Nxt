@@ -40,6 +40,11 @@ AXIS_TOLERANCE = 1e-9
 FULL_TURN = 2 * math.pi
 #: Edges this close to parallel at a shared vertex run on tangentially.
 TANGENT_TOLERANCE = 1e-4
+#: Closer still, their rounds butt square, end to end. Between the two
+#: (a sketch's arc a hair off tangent to its line) each runs on and is
+#: mitred at the plane halving the joint, so the slight kink leaves no
+#: wedge or sliver between them.
+JOINT_TOLERANCE = 1e-9
 #: Faces closer to flat or to folded back than this get no fillet.
 MIN_TURN = 1e-3
 #: Distance used to tell which side of the edge a face lies on.
@@ -1033,14 +1038,18 @@ def _sharp(shape: Any, edge: Any) -> bool:
     return True
 
 
-def _runs_on(a: Any, b: Any, tolerance: float) -> App.Vector | None:
-    """The vertex where `b` carries on from `a` tangentially, if any."""
+def _runs_on(a: Any, b: Any, tolerance: float,
+             within: float = TANGENT_TOLERANCE) -> App.Vector | None:
+    """The vertex where `b` carries on from `a` tangentially, if any.
+
+    Tangent to `within`, as one minus the cosine of the kink.
+    """
     for v in a.Vertexes:
         for w in b.Vertexes:
             if (v.Point - w.Point).Length < tolerance:
                 with contextlib.suppress(Exception):  # not tangent then
                     if 1 - abs(_tangent_at(a, v.Point).dot(
-                            _tangent_at(b, v.Point))) < TANGENT_TOLERANCE:
+                            _tangent_at(b, v.Point))) < within:
                         return v.Point
     return None
 
@@ -1139,7 +1148,7 @@ def _chain_joints(shape: Any, edges: list[Any]) -> list[App.Vector]:
     joints = []
     for i, a in enumerate(edges):
         for b in edges[i + 1:]:
-            at = _runs_on(a, b, tolerance)
+            at = _runs_on(a, b, tolerance, JOINT_TOLERANCE)
             if at is not None:
                 joints.append(at)
     return joints
@@ -2323,8 +2332,8 @@ def _rounded_all(shape: Any, edges: list[Any], sizes: list[float],
     if _flat and _flat[-1]:
         _stopped_at_chamfers(shape, edges, built)
     result = shape
-    for chain in _chains(edges, [i for i, _r in order if i in built],
-                         built):
+    for chain in _chains(shape, edges,
+                         [i for i, _r in order if i in built], built):
         convex = built[chain[0]][1]
         tools = [built[i][0] for i in chain]
         done = None
@@ -2406,11 +2415,19 @@ def _chamfer_face(shape: Any, edge: Any, tool: Any) -> Any:
     return best
 
 
-def _chains(edges: list[Any], indices: list[int],
+def _chains(shape: Any, edges: list[Any], indices: list[int],
             built: dict[int, tuple[Any, bool, list[str]]]) -> list[list[int]]:
-    """The indices grouped into runs of rounds joined end to end."""
-    joints = _joints[-1] if _joints else []
+    """The indices grouped into runs of rounds joined end to end.
+
+    Joined tangentially, or mitred: two rounds cut back to the plane
+    halving their corner share a face there, and one cut after the other
+    leaves a sliver of it behind (a slightly kinked sketch outline).
+    """
     tolerance = max((e.Length for e in edges), default=1.0) * 1e-6
+    joints = list(_joints[-1]) if _joints else []
+    with contextlib.suppress(Exception):  # tangent joints only, then
+        joints += [v.Point for i in indices for v in edges[i].Vertexes
+                   if built[i][1] and _mitre(shape, edges[i], v.Point)]
     groups: list[list[int]] = []
     for index in indices:
         ends = [v.Point for v in edges[index].Vertexes]
@@ -2911,7 +2928,8 @@ class BlendFillet:
         """The edges this feature rounds, as "EdgeN" of its base."""
         if getattr(obj, "UseAllEdges", False):
             return ["Edge%d" % (i + 1) for i in range(len(shape.Edges))]
-        names = [name for _owner, names in obj.Edges for name in names]
+        names = expanded(shape, [name for _owner, names in obj.Edges
+                                 for name in names])
         if getattr(obj, "TangentEdges", False):
             return tangent_chain(shape, names, not self.FLAT)
         return names
@@ -3219,6 +3237,20 @@ def new_fillet(base: Any, names: list[str], size: float,
     return obj
 
 
+def expanded(shape: Any, names: list[str]) -> list[str]:
+    """`names` with each "FaceN" given as its edges, each edge once.
+
+    A face stays a face in the feature's Edges, as picked; its edges
+    are found afresh from it at each recompute.
+    """
+    out: list[str] = []
+    for name in names:
+        found = face_edges(shape, name) if name.startswith("Face") \
+            else [name]
+        out += [n for n in found if n not in out]
+    return out
+
+
 def face_edges(shape: Any, face_name: str) -> list[str]:
     """The "EdgeN" names of a face's edges, in `shape`'s numbering."""
     face = shape.getElement(face_name)
@@ -3227,9 +3259,9 @@ def face_edges(shape: Any, face_name: str) -> list[str]:
 
 
 def picked_edges() -> tuple[Any, list[str]]:
-    """The feature owning the selected edges, and their "EdgeN" names.
+    """The feature owning the selected edges, and their names.
 
-    A selected face stands for its edges.
+    A selected face is kept as "FaceN": it stands for its edges.
     """
     import FreeCADGui as Gui
 
@@ -3240,12 +3272,9 @@ def picked_edges() -> tuple[Any, list[str]]:
             element = (element or "").lstrip("?")
             if owner is None:
                 continue
-            if element.startswith("Edge"):
-                found = [element]
-            elif element.startswith("Face"):
-                found = face_edges(owner.Shape, element)
-            else:
+            if not element.startswith(("Edge", "Face")):
                 continue
+            found = [element]
             picked = owners.setdefault(owner.Name, (owner, []))[1]
             picked += [n for n in found if n not in picked]
     if not owners:
@@ -3269,7 +3298,7 @@ def explain(radius: float) -> None:
     base, names = picked_edges()
     shape = base.Shape.copy()
     say = App.Console.PrintMessage
-    for name in names:
+    for name in expanded(shape, names):
         edge = shape.getElement(name)
         faces = _faces_of(shape, edge)
         say("%s: %s, faces %s\n" % (name, type(edge.Curve).__name__,
