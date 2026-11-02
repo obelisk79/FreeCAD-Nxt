@@ -542,6 +542,13 @@ class AutoDetailTests(unittest.TestCase):
         self.assertEqual(self.bridge._tree.open, {"D"})
         self.assertEqual(self.held, [1, 3])
 
+    def test_closed_by_hand_reopens_on_the_next_click(self) -> None:
+        self.click("B")
+        self.bridge.toggleDetail("B")       # the strip's ×
+        self.bridge.select("B", False)      # deselected, then clicked again
+        self.bridge._auto_show_detail()
+        self.assertEqual(self.bridge._tree.open, {"B"})
+
     def test_not_for_several_selected(self) -> None:
         self.bridge.select("B", False)
         SELECTION.names = ["B", "C"]

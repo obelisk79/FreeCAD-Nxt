@@ -661,10 +661,21 @@ class TreeBridge(QtCore.QObject):
     def toggleDetail(self, name: str) -> bool:
         """Open or close a row's detail strip."""
         opened = self._tree.toggle_detail(name)
-        if not opened and name in self._pinned:
-            self._pinned.discard(name)      # closed by hand: unpinned
-            self.pinnedDetailsChanged.emit()
+        if not opened:
+            self._closed_by_hand([name])
         return opened
+
+    def _closed_by_hand(self, names: list[str] | None) -> None:
+        """Forget strips closed by hand (every one if None).
+
+        They are unpinned, and a click on the auto-shown one opens it again.
+        """
+        if names is None or self._auto_detail in names:
+            self._auto_detail = ""
+        gone = self._pinned if names is None else self._pinned & set(names)
+        if gone:
+            self._pinned -= gone
+            self.pinnedDetailsChanged.emit()
 
     def _auto_show_detail(self) -> None:
         """Open the clicked row's strip and close the last unpinned one."""
@@ -721,8 +732,14 @@ class TreeBridge(QtCore.QObject):
     @QtCore.Slot(result=bool)
     def closeDetail(self) -> bool:
         """Escape: close the selected rows' strips, else every open one."""
-        return (self._tree.close_details(self._selected_names())
-                or self._tree.close_details())
+        names = self._selected_names()
+        if self._tree.close_details(names):
+            self._closed_by_hand(names)
+            return True
+        if self._tree.close_details():
+            self._closed_by_hand(None)
+            return True
+        return False
 
     # -- search --
 
