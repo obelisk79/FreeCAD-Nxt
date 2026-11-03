@@ -1007,19 +1007,24 @@ class Section:
             for plane, cut in ((0, a), (1, b)):
                 faces += cut
                 self._cut_owner += [(solid.name, plane)] * len(cut)
+        from . import section_object
         cut_obj = (self.doc.getObject(self._cut_name) if self._cut_name
                    else None)
+        if cut_obj is not None and not section_object.is_cut(cut_obj):
+            # From before cuts had their own double-click: made again.
+            self.doc.removeObject(cut_obj.Name)
+            cut_obj = None
         if cut_obj is None:
-            cut_obj = self.doc.addObject("Part::Feature", CUT_NAME)
+            cut_obj = self.doc.addObject("Part::FeaturePython", CUT_NAME)
             self._cut_name = cut_obj.Name
             view = cut_obj.ViewObject
             if view is not None:
+                section_object.ViewProviderCut(view)
                 view.Transparency = 100
                 view.LineColor = CUT_LINE
                 view.LineWidth = CUT_LINE_WIDTH
                 view.PointSize = 1
             if self.obj is not None:
-                from . import section_object
                 cut_obj.Label = "%s cut" % self.obj.Label
                 section_object.group(self.doc).addObject(cut_obj)
                 self.obj.Cut = cut_obj
@@ -1467,6 +1472,43 @@ class _Recompute:
 
 _sections: dict[str, Section] = {}
 _observer: _Recompute | None = None
+
+
+#: How near a section's cut a pick on a clipped solid counts as on the
+#: cut, as a share of the model's size: the clip sits a hair behind it.
+PICK_SLACK = 1e-4
+
+
+def section_at(info: dict[str, Any] | None) -> Any:
+    """The section object whose cut a 3D view pick landed on, or None.
+
+    The pick may name the exact cut, or the solid behind its hatch.
+    """
+    doc = App.ActiveDocument
+    if not info or doc is None:
+        return None
+    from . import section_object
+    picked = doc.getObject(str(info.get("Object", "")))
+    if picked is not None:
+        if section_object.is_section(picked):
+            return picked
+        owner = section_object.section_of(picked)
+        if owner is not None:
+            return owner
+    if not all(k in info for k in "xyz"):
+        return None
+    import Part
+    point = Part.Vertex(App.Vector(info["x"], info["y"], info["z"]))
+    for section in _sections.values():
+        if section.doc is not doc or section.obj is None:
+            continue
+        cut = doc.getObject(section._cut_name) if section._cut_name \
+            else None
+        if cut is None or cut.Shape.isNull():
+            continue
+        if cut.Shape.distToShape(point)[0] <= section.span * PICK_SLACK:
+            return section.obj
+    return None
 
 
 def _key(obj: Any) -> str:

@@ -1,9 +1,10 @@
 """Section planes as document objects, kept in a "Sections" group.
 
 Each section is a FeaturePython holding its plane; its exact cut is a
-Part::Feature beside it in the group. The eye turns the cut on and off,
-a double-click edits it, and both are saved with the file. Opened
-without Nxt, the objects load and simply do nothing.
+Part::FeaturePython beside it in the group. The eye turns the cut on
+and off, a double-click on either edits the section, and both are saved
+with the file. Opened without Nxt, the objects load and simply do
+nothing.
 """
 
 from __future__ import annotations
@@ -139,6 +140,48 @@ class ViewProviderSection:
 
     def loads(self, _state: Any) -> None:
         return None
+
+
+class ViewProviderCut:
+    """A section's exact cut: a double-click edits its section."""
+
+    def __init__(self, vobj: Any) -> None:
+        vobj.Proxy = self
+
+    def attach(self, vobj: Any) -> None:
+        self.Object = vobj.Object
+
+    def getIcon(self) -> str:  # noqa: N802 - FreeCAD API
+        return ICON
+
+    def doubleClicked(self, vobj: Any) -> bool:  # noqa: N802
+        section = section_of(vobj.Object)
+        if section is not None:
+            edit(section)
+        return True
+
+    def setEdit(self, vobj: Any, _mode: int = 0) -> bool:  # noqa: N802
+        """Any edit is its section's: the cut has no placement of its own."""
+        self.doubleClicked(vobj)
+        return False
+
+    def dumps(self) -> None:
+        return None
+
+    def loads(self, _state: Any) -> None:
+        return None
+
+
+def is_cut(obj: Any) -> bool:
+    view = getattr(obj, "ViewObject", None)
+    return view is None or isinstance(getattr(view, "Proxy", None),
+                                      ViewProviderCut)
+
+
+def section_of(cut: Any) -> Any:
+    """The section whose exact cut this is, or None."""
+    return next((o for o in cut.InList
+                 if is_section(o) and getattr(o, "Cut", None) is cut), None)
 
 
 def group(doc: Any) -> Any:

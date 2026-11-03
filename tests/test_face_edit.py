@@ -120,6 +120,15 @@ class DoubleClickTests(unittest.TestCase):
         self.assertTrue(self.send(self.viewport))
         self.assertEqual(self.bridge.edited, [("Doc", "Pad")])
 
+    def test_a_section_cut_edits_its_section(self) -> None:
+        from freecad.nxt.tools import section_object
+        section = types.SimpleNamespace(
+            Proxy=section_object.SectionPlane.__new__(
+                section_object.SectionPlane))
+        self.picked = section
+        self.assertTrue(self.send(self.viewport))
+        self.assertEqual(self.bridge.edited, [])
+
     def test_other_events_pass(self) -> None:
         press = QtGui.QMouseEvent(
             QtCore.QEvent.Type.MouseButtonPress, QtCore.QPointF(5, 5),
