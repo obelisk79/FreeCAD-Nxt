@@ -31,6 +31,7 @@ from typing import Any
 
 import FreeCAD as App
 
+from ..app.i18n import translate
 from ..core import property_kinds, units
 from ..core.transaction import transaction
 from . import templates as inspector_templates
@@ -296,23 +297,87 @@ def _assign(container: Any, obj: DocObject, prop: str, value: Any,
             unit: str) -> None:
     kind = property_kinds.kind_of(container.getTypeIdOfProperty(prop))
     if property_kinds.is_expression(value) and container is obj:
-        obj.setExpression(prop, property_kinds.expression_of(value))
+        expression = property_kinds.expression_of(value)
+        # FreeCAD binds a name it cannot find, and fails at recompute.
+        obj.evalExpression(expression)
+        obj.setExpression(prop, expression)
         return
     if container is obj and prop in _expressions(obj):
         obj.setExpression(prop, None)
-    if kind == "bool":
+    if kind in ("number", "quantity"):
+        try:
+            if kind == "number":
+                current = getattr(container, prop)
+                setattr(container, prop,
+                        type(current)(units.number_value(str(value))))
+            else:
+                setattr(container, prop, units.with_unit(str(value), unit))
+        except Exception:
+            # An expression typed without its "=": bound as one, if
+            # FreeCAD can work it out; else why it can't is reported.
+            if container is not obj or not _reads(obj, str(value)):
+                raise
+            obj.setExpression(prop, str(value).strip())
+    elif kind == "bool":
         setattr(container, prop, bool(value))
-    elif kind == "number":
-        current = getattr(container, prop)
-        setattr(container, prop, type(current)(units.number_value(str(value))))
-    elif kind == "quantity":
-        setattr(container, prop, units.with_unit(str(value), unit))
     elif kind == "color":
         colour = _parse_colour(str(value))
         if colour is not None:
             setattr(container, prop, colour)
     else:
         setattr(container, prop, str(value))
+
+
+def _reads(obj: DocObject, text: str) -> bool:
+    """Whether `text` is an expression FreeCAD can work out on `obj`."""
+    try:
+        obj.evalExpression(text.strip())
+    except Exception:
+        return False
+    return True
+
+
+def problem(obj: DocObject | None, prop: str, value: Any,
+            error: Exception) -> str:
+    """Why `value` could not be set, in a line the user can act on."""
+    text = str(value).strip()
+    typed = property_kinds.expression_of(text) \
+        if property_kinds.is_expression(text) else text
+    reason = ""
+    if obj is not None and typed:
+        try:
+            obj.evalExpression(typed)
+        except Exception as exc:
+            reason = _first_line(exc)
+    shadowed = _unit_names(typed)
+    if shadowed:
+        reason += ". " + translate(
+            "Nxt", "%s is also a unit, which FreeCAD reads first: rename "
+                   "the variable") % ", ".join("'%s'" % n for n in shadowed)
+    elif not reason:
+        reason = _first_line(error)
+        if not property_kinds.is_expression(text):
+            reason += ". " + translate("Nxt", "Expressions start with =")
+    return "%s: %s" % (prop, reason)
+
+
+def _first_line(error: Exception) -> str:
+    lines = str(error).strip().splitlines()
+    return lines[0] if lines else type(error).__name__
+
+
+def _unit_names(text: str) -> list[str]:
+    """Property names after a "." that FreeCAD would read as units."""
+    return [name for name in re.findall(r"\.\s*([A-Za-z_]\w*)", text)
+            if _is_unit(name)]
+
+
+def _is_unit(name: str) -> bool:
+    try:
+        App.Units.Quantity("1 %s" % name)
+    except Exception:
+        return False
+    return True
 
 
 def _parse_colour(text: str) -> tuple[float, float, float] | None:
@@ -379,15 +444,19 @@ def edit_links(objects: list[DocObject], prop: str,
 
 
 def apply(objects: list[DocObject], prop: str, value: Any,
-          tab: str = DATA, unit: str = "", part: str = "") -> bool:
+          tab: str = DATA, unit: str = "", part: str = "",
+          problems: list[str] | None = None) -> bool:
     """Set `prop` on every object as one undo step, then recompute."""
-    return apply_many(objects, [(prop, value, unit)], tab, part)
+    return apply_many(objects, [(prop, value, unit)], tab, part, problems)
 
 
 def apply_many(objects: list[DocObject],
                edits: list[tuple[str, Any, str]], tab: str = DATA,
-               part: str = "") -> bool:
-    """Make several (property, value, unit) edits as one undo step."""
+               part: str = "", problems: list[str] | None = None) -> bool:
+    """Make several (property, value, unit) edits as one undo step.
+
+    What went wrong, if anything, goes to `problems` for the user.
+    """
     if not objects or not edits:
         return False
     doc = getattr(objects[0], "Document", None)
@@ -398,10 +467,15 @@ def apply_many(objects: list[DocObject],
             for prop, value, unit in edits:
                 for obj in objects:
                     container = _container(obj, tab)
-                    if part:
-                        _assign_part(container, prop, part, str(value))
-                    else:
-                        _assign(container, obj, prop, value, unit)
+                    try:
+                        if part:
+                            _assign_part(container, prop, part, str(value))
+                        else:
+                            _assign(container, obj, prop, value, unit)
+                    except Exception as exc:
+                        if problems is not None:
+                            problems.append(problem(obj, prop, value, exc))
+                        raise
     except Exception:
         App.Console.PrintError("Nxt: could not set %s\n"
                                % ", ".join("%s to %r" % (p, v)
