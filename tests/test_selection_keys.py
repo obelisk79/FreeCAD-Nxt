@@ -382,6 +382,61 @@ class ActivateTests(unittest.TestCase):
         self.assertEqual(self.started, ["B"])
 
 
+#: A stand-in snapshot node's flags: a feature, and a sketch beside one.
+FEATURE = {"is_feature": True, "is_lifted": False,
+           "is_coordinate_system": False, "after_tip": False}
+SKETCH = {"is_feature": False, "is_lifted": True,
+          "is_coordinate_system": False, "after_tip": True}
+
+
+class BarPlacementTests(unittest.TestCase):
+    """A Body's bar goes anywhere in it; a new sketch takes it along."""
+
+    def setUp(self) -> None:
+        self.bridge = make_bridge()
+        rows = self.bridge._tree
+        names = "ABCD"      # A: the Body; B: Pad; C: sketch; D: Pocket
+        rows.row_index_map = lambda: {n: i for i, n in enumerate(names)}
+        rows.name_at = lambda r: names[r] if 0 <= r < len(names) else None
+        rows.rowCount = lambda: len(names)
+        rows.depth_at = lambda _row: 1
+        rows.touch = lambda *_a: None
+        node = types.SimpleNamespace
+        self.bridge._snapshot.nodes = {
+            "A": node(stack=["B", "D"], children=["B", "C", "D"],
+                      is_model=False, tip="B", label="A", body=None),
+            "B": node(stack=[], children=[], body="A", **FEATURE),
+            "C": node(stack=[], children=[], body="A", **SKETCH),
+            "D": node(stack=[], children=[], body="A", **FEATURE),
+        }
+        self.rollback = self.bridge._rollback
+
+    def bar(self) -> dict[str, Any]:
+        return self.rollback.bars()[0]
+
+    def test_the_bar_reaches_above_the_first_feature(self) -> None:
+        self.assertEqual(self.bar()["minPos"], 0)
+
+    def test_above_the_first_feature_there_is_no_tip(self) -> None:
+        self.assertEqual(self.rollback.tip_for_row("A", 0),
+                         bridge_mod.rollback.NO_TIP)
+        self.assertEqual(self.rollback.tip_for_row("A", 2), "B")
+
+    def test_no_tip_rests_at_the_top(self) -> None:
+        self.bridge._snapshot.nodes["A"].tip = None
+        self.assertEqual(self.bar()["pos"], 0)
+
+    def test_a_new_sketch_at_the_bar_takes_it_below(self) -> None:
+        self.assertEqual(self.bar()["pos"], 1)
+        self.rollback.created("C")
+        self.assertEqual(self.bar()["pos"], 2)
+        self.assertFalse(self.bridge._snapshot.nodes["C"].after_tip)
+
+    def test_an_object_made_past_the_next_feature_leaves_it(self) -> None:
+        self.rollback.created("D")      # a feature: the tip moves it
+        self.assertEqual(self.bar()["pos"], 1)
+
+
 class TipBarTests(unittest.TestCase):
     """Every Body has a rollback bar, active or not."""
 
@@ -397,8 +452,8 @@ class TipBarTests(unittest.TestCase):
                       tip="B", label="A"),
             "D": node(stack=["E"], children=["E"], is_model=False,
                       tip="E", label="D"),
-            "B": node(stack=[], children=[], is_model=False),
-            "E": node(stack=[], children=[], is_model=False),
+            "B": node(stack=[], children=[], is_model=False, **FEATURE),
+            "E": node(stack=[], children=[], is_model=False, **FEATURE),
         }
         self.bridge._active = ""
 

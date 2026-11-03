@@ -8,6 +8,12 @@ import FreeCAD as App
 
 from ..app.i18n import translate
 from ..core import log
+from ..core.qt import QtCore
+
+#: Where a Body's bar sets no tip: above its first feature.
+NO_TIP = ""
+#: Objects made but not yet placed against the bar, at most.
+MAX_PENDING = 64
 
 
 class Rollback:
@@ -22,6 +28,9 @@ class Rollback:
         # model -> (tip, steps it was set against)
         self._model_tips: dict[str, tuple[str, tuple[str, ...]]] = {}
         self._pending_restore: list[str] = []
+        #: Objects just made: a Body's bar moves below each, as below a
+        #: new feature, if it lands where the bar rests.
+        self._created: list[str] = []
         self._pending_finish: tuple[str, bool] | None = None
         self._bars_timer = bridge._deferral(bridge.tipBarsChanged.emit)
         self._drain_timer = bridge._deferral(self._drain_tip_drag)
@@ -44,13 +53,21 @@ class Rollback:
         """
         self._bars_timer.start()
 
+    def created(self, name: str) -> None:
+        """An object was made: placed against its Body's bar at next look."""
+        self._created = [*self._created[-MAX_PENDING:], name]
+
     def bars(self) -> list[dict[str, Any]]:
         """The rollback bars: every Body's, and each Part model's.
 
-        `pos` is the row the bar sits below.
+        `pos` is the row the bar sits below. A Body's bar goes anywhere
+        among its children, above the first feature too (no tip); a
+        Part model's, from its first step to its last.
         """
         index = self._tree.row_index_map()
+        self._place_created(index)
         bars: list[dict[str, Any]] = []
+        dimmed: list[str] = []
         for name, node in self._snapshot.nodes.items():
             if not node.stack:
                 continue
@@ -60,35 +77,101 @@ class Rollback:
             child_rows = [index[c] for c in node.children if c in index]
             first_feature = min(feature_rows)
             last_child = max(child_rows) if child_rows else max(feature_rows)
+            top = (first_feature if node.is_model
+                   else self._top_row(name, node, index, first_feature))
             pos = self._resting_position(name, node, index)
             if pos is None and node.is_model and node.tip == name:
                 pos = max(feature_rows)
             if pos is None:
                 pos = index.get(node.tip) if node.tip else None
             if pos is None:
-                pos = first_feature
+                pos = top
+            if not node.is_model:
+                dimmed += self._dim_past(node, index, pos)
             bars.append({
                 "body": name,
                 "label": node.label,
                 "pos": pos,
-                "minPos": first_feature,
+                "minPos": top,
                 "maxPos": max(last_child, first_feature),
                 "depth": self._tree.depth_at(first_feature),
             })
+        if dimmed:
+            # Not inside the property read that asked for the bars.
+            QtCore.QTimer.singleShot(0, lambda: self._tree.touch(dimmed))
         return bars
+
+    def _top_row(self, name: str, node: Any, index: dict[str, int],
+                 first_feature: int) -> int:
+        """The highest a Body's bar goes.
+
+        Under the Body, and below its Origin, which every feature uses.
+        """
+        top = index.get(name, first_feature - 1)
+        for child in node.children:
+            row = index.get(child)
+            kid = self._snapshot.nodes.get(child)
+            if row is None or kid is None or not kid.is_coordinate_system:
+                break
+            top = row
+        return min(top, first_feature)
+
+    def _dim_past(self, node: Any, index: dict[str, int],
+                  pos: int) -> list[str]:
+        """Timeline rows below the bar drawn as past the tip; the rest not.
+
+        Features follow the tip already; this keeps sketches and other
+        lifted rows between the tip and the bar from looking rolled back.
+        """
+        changed = []
+        for child in node.children:
+            kid = self._snapshot.nodes.get(child)
+            row = index.get(child)
+            if kid is None or row is None or kid.is_feature \
+                    or not kid.is_lifted:
+                continue
+            past = row > pos
+            if kid.after_tip != past:
+                kid.after_tip = past
+                changed.append(child)
+        return changed
+
+    def _place_created(self, index: dict[str, int]) -> None:
+        """A Body's bar moves below an object just made where it rests.
+
+        As FreeCAD moves the tip to a new feature: a new sketch, binder or
+        datum placed at the bar takes the bar below it; the tip is kept.
+        """
+        waiting = []
+        for name in self._created:
+            node = self._snapshot.nodes.get(name)
+            if node is None:
+                waiting.append(name)
+                continue
+            body = self._snapshot.nodes.get(node.body or "")
+            row = index.get(name)
+            if body is None or body.is_model or node.is_feature \
+                    or row is None:
+                continue
+            if self.tip_for_row(node.body, row) == (body.tip or NO_TIP):
+                self._bar_anchor[node.body] = name
+        self._created = waiting[-MAX_PENDING:]
 
     def _resting_position(self, name: str, node: Any,
                           index: dict[str, int]) -> int | None:
         """Where the bar was last put down, if it still sets this tip."""
         anchor = self._bar_anchor.get(name)
         resting = index.get(anchor) if anchor is not None else None
-        if (resting is not None and
-                self.tip_for_row(name, resting) == node.tip):
+        if (resting is not None and self.tip_for_row(name, resting)
+                == (node.tip or (NO_TIP if not node.is_model else None))):
             return resting
         return None
 
     def tip_for_row(self, body_name: str, row: int) -> str | None:
-        """The feature a bar dropped below `row` sets."""
+        """The feature a bar dropped below `row` sets.
+
+        NO_TIP above a Body's first feature; None outside the Body.
+        """
         node = self._snapshot.nodes.get(body_name)
         if node is None or not node.stack:
             return None
@@ -102,6 +185,8 @@ class Rollback:
             name = self._tree.name_at(cursor)
             if name in stack:
                 return name
+            if name == body_name:
+                return None if node.is_model else NO_TIP
             cursor -= 1
         return None
 
@@ -121,11 +206,12 @@ class Rollback:
         except Exception:
             log.error("could not open a transaction for the tip drag")
             return
+        tip = node.tip or (None if node.is_model else NO_TIP)
         self.drag = {
             "body": body_name,
-            "original": node.tip,
-            "current": node.tip,    # what the document is actually showing
-            "wanted": node.tip,     # which feature the bar would set
+            "original": tip,
+            "current": tip,         # what the document is actually showing
+            "wanted": tip,          # which feature the bar would set
             "anchor": None,         # the row the bar is resting under
             "live": True,
             "applying": False,
@@ -256,7 +342,8 @@ class Rollback:
                 wanted = other == feature_name
                 if bool(getattr(vo, "Visibility", not wanted)) != wanted:
                     vo.Visibility = wanted
-            self._tree.touch(self._snapshot.retip(body_name, feature_name))
+            self._tree.touch(self._snapshot.retip(body_name,
+                                                  feature_name or None))
             return True
         except Exception:
             log.error("could not show %s at %s" % (body_name, feature_name))
@@ -311,9 +398,10 @@ class Rollback:
         if doc is None:
             return False
         body = doc.getObject(body_name)
-        feature = doc.getObject(feature_name)
+        feature = doc.getObject(feature_name) if feature_name else None
         body_node = self._snapshot.nodes.get(body_name)
-        if body is None or feature is None or body_node is None:
+        if body is None or body_node is None or (
+                feature is None and (feature_name or body_node.is_model)):
             return False
         if body_node.is_model:
             try:
@@ -337,7 +425,8 @@ class Rollback:
                     vo.Visibility = wanted
             self._recompute(doc, body)
             # Patch the snapshot; a drag suppresses rebuilds.
-            self._tree.touch(self._snapshot.retip(body_name, feature_name))
+            self._tree.touch(self._snapshot.retip(body_name,
+                                                  feature_name or None))
             return True
         except Exception:
             log.error("could not set the tip of %s to %s"
@@ -398,9 +487,12 @@ class Rollback:
         node = self._snapshot.nodes.get(body_name)
         if node is not None and node.is_model:
             return      # a Part model's bar is a view; there is no undo
-        self._bridge._toast(doc, translate("Nxt", "Tip of %s moved to %s") % (
-            self._bridge._named(doc, [body_name]),
-            self._bridge._named(doc, [feature_name or body_name])), body_name)
+        body = self._bridge._named(doc, [body_name])
+        message = (translate("Nxt", "Tip of %s moved to %s") % (
+            body, self._bridge._named(doc, [feature_name]))
+            if feature_name else
+            translate("Nxt", "%s rolled back to its start") % body)
+        self._bridge._toast(doc, message, body_name)
 
     def show_through_tip(self, body_name: str, doc: Any) -> None:
         """Show a Body through its tip again after an undo.
