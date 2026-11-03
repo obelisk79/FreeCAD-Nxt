@@ -454,16 +454,33 @@ Item {
             }
         }
 
-        LinkChips {
+        // A link with a lead (Type before Up to face): the choice stays
+        // on its line, so the type can be changed back.
+        Row {
             visible: editor.kind === "link" && editor.editsLinks
             width: parent.width
-            items: editor.spec.chips || []
-            editable: !editor.locked
-            picking: editor.picking
-            hint: editor.spec.pickHint || ""
-            onRemoved: function (key) { editor.linkRemoved(key); }
-            onOpened: function (key) { editor.linkOpened(key); }
-            onPickRequested: editor.pickRequested()
+            spacing: 4
+
+            DropBox {
+                id: linkLead
+                objectName: "linkLead"
+                visible: !!editor.lead
+                text: editor.lead ? editor.labelOf(editor.choiceOf(editor.lead),
+                                                   editor.lead) : ""
+                onOpened: editor.openChoices(linkLead, editor.lead,
+                                             editor.leadEdited)
+            }
+            LinkChips {
+                width: parent.width - (linkLead.visible
+                                       ? linkLead.width + parent.spacing : 0)
+                items: editor.spec.chips || []
+                editable: !editor.locked
+                picking: editor.picking
+                hint: editor.spec.pickHint || ""
+                onRemoved: function (key) { editor.linkRemoved(key); }
+                onOpened: function (key) { editor.linkOpened(key); }
+                onPickRequested: editor.pickRequested()
+            }
         }
 
         Flow {
