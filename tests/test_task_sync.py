@@ -97,6 +97,26 @@ class TaskTests(unittest.TestCase):
                                               "2", "cm"))
         self.assertEqual(self.length.property("rawValue"), 20.0)
 
+    def test_a_number_replaces_the_fields_expression(self) -> None:
+        self.pad.ExpressionEngine = [("Length", "VarSet.depth")]
+        cleared: list[Any] = []
+        self.pad.setExpression = lambda p, e: cleared.append((p, e))
+        bound: list[Any] = []
+
+        class Binding:
+            def __init__(self, widget: Any) -> None:
+                self.widget = widget
+
+            def bind(self, obj: Any, prop: str) -> None:
+                bound.append((self.widget, obj, prop))
+
+        Gui.ExpressionBinding = Binding
+        self.assertTrue(task_sync.set_in_task([self.pad], "Length", "3",
+                                              "mm"))
+        self.assertEqual(cleared, [("Length", None)])
+        self.assertEqual(bound, [(self.length, self.pad, "Length")])
+        self.assertEqual(self.length.property("rawValue"), 3.0)
+
     def test_a_check_box(self) -> None:
         task_sync.set_in_task([self.pad], "Reversed", True)
         self.assertTrue(self.reversed.isChecked())

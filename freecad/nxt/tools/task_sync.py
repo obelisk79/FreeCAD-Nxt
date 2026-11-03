@@ -115,6 +115,21 @@ def _mode_index(options: list[str], value: str) -> int:
     return shown.index(value) if value in shown else -1
 
 
+def _unbind(obj: Any, prop: str, widget: Any) -> None:
+    """A plain value replaces the field's expression.
+
+    The field keeps its own copy of the expression and writes it back
+    on OK, whatever value it then shows: the property's is cleared and
+    the field bound again, to nothing. Inside the edit's undo step, so
+    Cancel brings the expression back.
+    """
+    if prop not in dict(getattr(obj, "ExpressionEngine", None) or ()):
+        return
+    obj.setExpression(prop, None)
+    binding: Any = Gui.ExpressionBinding     # not in FreeCAD's stubs
+    binding(widget).bind(obj, prop)
+
+
 def set_in_task(objects: list[Any], prop: str, value: Any,
                 unit: str = "") -> bool:
     """Make the edit in the open task panel's field; False if it has none.
@@ -157,6 +172,7 @@ def set_in_task(objects: list[Any], prop: str, value: Any,
             number = units.internal_value(value, unit)
             if number is None:
                 return False
+            _unbind(obj, prop, widget)
             widget.setProperty("rawValue", number)
     except (RuntimeError, AttributeError, ValueError):
         return False
