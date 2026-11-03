@@ -478,6 +478,25 @@ def _walk(obj: Any, parent: Any, out: list[Instance],
     out.append(Instance(obj.Name, shape, body_colour(painted), obj, parent))
 
 
+#: The scene node FreeCAD draws the document's objects under. A picture
+#: saved of the view (Std_ViewScreenShot) draws only that, not what the
+#: rest of the view's scene holds.
+MODEL_ROOT = "SoFCUnifiedSelection"
+
+
+def drawn_root(scene: Any) -> Any:
+    """The node the cut goes under, to be drawn wherever the model is.
+
+    Its handles stay outside it: a screenshot shows the cut, not the
+    tools to move it. The scene itself where there is no such node.
+    """
+    for i in range(scene.getNumChildren()):
+        child = scene.getChild(i)
+        if child.getTypeId().getName() == MODEL_ROOT:
+            return child
+    return scene
+
+
 def _finite(box: Any) -> bool:
     """Whether a box bounds anything: broken links give void or infinite."""
     try:
@@ -543,6 +562,8 @@ class Section:
         self.span = 1.0
         self._placed = False
         self._root = view.getSceneGraph()
+        #: Where the cut is drawn: with the model, so a screenshot has it.
+        self._drawn = drawn_root(self._root)
 
         from . import section_cap
         #: The plane in world space: it trims the other sections' caps.
@@ -632,9 +653,9 @@ class Section:
         view.addEventCallbackPivy(coin.SoEvent.getClassTypeId(),
                                   self._on_event)
 
-        self._root.addChild(self._fill.switch)
-        self._root.addChild(self._capper.root)
-        self._root.addChild(self._wedge)
+        self._drawn.addChild(self._fill.switch)
+        self._drawn.addChild(self._capper.root)
+        self._drawn.addChild(self._wedge)
         self.refresh()
         self._root.insertChild(self._handle, 0)
 
@@ -1352,10 +1373,12 @@ class Section:
         self._offset_box.remove()
         self._flip_button.remove()
         self._clicks.stop()
-        for node in (self._fill.switch, self._capper.root, self._wedge,
-                     self._handle):
-            if self._root.findChild(node) >= 0:
-                self._root.removeChild(node)
+        for parent, node in ((self._drawn, self._fill.switch),
+                             (self._drawn, self._capper.root),
+                             (self._drawn, self._wedge),
+                             (self._root, self._handle)):
+            if parent.findChild(node) >= 0:
+                parent.removeChild(node)
         cut = self.doc.getObject(self._cut_name) if self._cut_name \
             else None
         if cut is None:
