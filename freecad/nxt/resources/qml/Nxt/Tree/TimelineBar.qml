@@ -229,18 +229,24 @@ Item {
 
     function slotAt(localY) {
         var cy = localY - listTopMargin;
-        var slot;
-        if (list) {
-            var idx = list.indexAt(4, cy);
-            if (idx < 0) {
-                slot = cy < 0 ? minPos - 1 : maxPos;
-            } else {
-                var item = list.itemAtIndex(idx);
-                slot = (item && cy > item.y + item.height / 2) ? idx : idx - 1;
-            }
-        } else {
-            slot = Math.round(cy / rowHeight) - 1;
+        if (!list)
+            return clampSlot(Math.round(cy / rowHeight) - 1);
+        var idx = list.indexAt(4, cy);
+        var item = idx >= 0 ? list.itemAtIndex(idx) : null;
+        if (!item) {
+            // Past the rows, or over one not yet made while scrolling.
+            return cy < list.originY ? minPos
+                 : cy >= list.originY + list.contentHeight ? maxPos
+                 : bar.dragPos;
         }
+        // The row's own halves decide, not the gap this bar opened
+        // under it: opening the gap must not move the slot.
+        var opened = item.gap || 0;
+        return clampSlot(cy > item.y + (item.height - opened) / 2
+                         ? idx : idx - 1);
+    }
+
+    function clampSlot(slot) {
         return Math.max(minPos, Math.min(maxPos, slot));
     }
 
