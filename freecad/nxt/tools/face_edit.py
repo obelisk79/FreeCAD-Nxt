@@ -78,10 +78,20 @@ class DoubleClickEditor(ApplicationEventFilter):
         gui_doc = Gui.ActiveDocument
         if gui_doc is None or gui_doc.getInEdit() is not None:
             return False
+        info: Any = None
         with contextlib.suppress(Exception):
             view = fc.active_view()
-            if view.getObjectInfo(view.getCursorPos()) is None:
+            info = view.getObjectInfo(view.getCursorPos())
+            if info is None:
                 return False            # empty space: FreeCAD's
+        from . import section_object, section_view
+        section = None
+        with contextlib.suppress(Exception):  # no section, then
+            section = section_view.section_at(info)
+        if section is not None:
+            # Deferred: editing opens a dialog, not inside the click.
+            QtCore.QTimer.singleShot(0, lambda: section_object.edit(section))
+            return True
         found = picked_feature()
         doc = App.ActiveDocument
         if found is None or doc is None or editing.is_reference_pick(

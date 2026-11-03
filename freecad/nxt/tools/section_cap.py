@@ -30,10 +30,12 @@ MESH_REUSE = 1.25
 EDGES = ((0, 1), (1, 2), (2, 0))
 #: The hatch tile's texture, square, in texels.
 TILE = 32
-#: The cap is drawn this far toward the viewer (polygon offset units),
-#: clear of the plane's own fill lying on it.
-CAP_FACTOR = -2.0
-CAP_UNITS = -8.0
+#: The cap is drawn a touch behind its plane (polygon offset units), as
+#: FreeCAD draws a part's faces behind its edges: lines lying on the cut,
+#: a sketch drawn on it or the cut's own outline, show over the hatch.
+#: (The quick fill on the same plane is gone once the cap is built.)
+CAP_FACTOR = 1.0
+CAP_UNITS = 1.0
 OUTLINE_COLOUR = (0.1, 0.1, 0.1)
 OUTLINE_WIDTH = 2.0
 VIEW_PARAMS = "User parameter:BaseApp/Preferences/View"
