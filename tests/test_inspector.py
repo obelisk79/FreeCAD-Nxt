@@ -132,6 +132,15 @@ class SeveralTests(unittest.TestCase):
         self.assertEqual(doc.log, ["open Edit Pitch", "commit", "recompute"])
 
 
+class Strict(Thing):
+    """Refuses a name typed where a length goes, as FreeCAD's parser does."""
+
+    def __setattr__(self, name: str, value: object) -> None:
+        if name == "Pitch" and "VarSet" in str(value):
+            raise ValueError("syntax error")
+        super().__setattr__(name, value)
+
+
 class ApplyTests(unittest.TestCase):
 
     def test_equals_binds_an_expression(self) -> None:
@@ -160,6 +169,25 @@ class ApplyTests(unittest.TestCase):
         }, document=thing.Document)
         inspector.apply([thing], "ShapeColor", "#FF0000", inspector.VIEW)
         self.assertEqual(thing.ViewObject.ShapeColor, (1.0, 0.0, 0.0))
+
+    def test_an_expression_without_equals_is_bound(self) -> None:
+        thing = helix()
+        thing.__class__ = Strict
+        inspector.apply([thing], "Pitch", "VarSet.pitch", unit="mm")
+        self.assertEqual(thing.ExpressionEngine, [("Pitch", "VarSet.pitch")])
+
+    def test_an_unreadable_expression_is_explained(self) -> None:
+        thing = helix()
+
+        def refuse(text: str) -> float:
+            raise ValueError("Property 'x' not found in 'VarSet'")
+        thing.evalExpression = refuse
+        problems: list[str] = []
+        self.assertFalse(inspector.apply([thing], "Pitch", "= VarSet.x",
+                                         problems=problems))
+        self.assertEqual(problems,
+                         ["Pitch: Property 'x' not found in 'VarSet'"])
+        self.assertEqual(thing.ExpressionEngine, [])
 
     def test_a_failure_aborts(self) -> None:
         thing = helix()

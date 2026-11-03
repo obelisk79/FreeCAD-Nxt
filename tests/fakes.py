@@ -144,6 +144,10 @@ class Thing:
     def getEnumerationsOfProperty(self, prop: str) -> list[str]:
         return ["Dimension", "ThroughAll"]
 
+    def evalExpression(self, text: str) -> float:  # noqa: N802
+        """Every expression reads: tests that need one to fail replace it."""
+        return 0.0
+
     def setExpression(self, prop: str, expression: str | None) -> None:
         self.ExpressionEngine = [e for e in self.ExpressionEngine
                                  if e[0] != prop]

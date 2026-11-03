@@ -53,6 +53,13 @@ def _whole_sketches(pairs: list[tuple[Any, str]]) -> list[tuple[Any, str]]:
     return out
 
 
+def _say(objects: list[Any], message: str) -> None:
+    """Tell the user, beside the model, why an edit did not take."""
+    from ..app import services
+    doc = getattr(objects[0], "Document", None) if objects else None
+    services.toast(doc, message, undoable=False)
+
+
 class InspectorBridge(QtCore.QObject):
     """Serves `inspector.describe` for the selection, and applies edits."""
 
@@ -275,10 +282,14 @@ class InspectorBridge(QtCore.QObject):
                 self.refresh()
                 return
             edits = rest
+        problems: list[str] = []
         if inspector.apply_many(
                 objects, [(p, v, unit if p == prop else "")
-                          for p, v in edits], self._tab):
+                          for p, v in edits], self._tab, problems=problems):
             self.refresh()
+        elif problems:
+            _say(objects, problems[0])
+            self.refresh()          # the field shows the value it kept
 
     # -- a VarSet's variables (templates: variables = true) --
 
