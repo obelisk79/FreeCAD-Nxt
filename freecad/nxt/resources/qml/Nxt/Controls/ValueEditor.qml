@@ -213,9 +213,15 @@ Item {
                 Connections {
                     target: field.input
                     // Deferred: the focusing press places the cursor later.
+                    // Leaving the field keeps what was typed, as FreeCAD's
+                    // own fields do: OK, or a click elsewhere, would lose
+                    // an expression picked but not yet confirmed.
                     function onActiveFocusChanged() {
                         if (field.input.activeFocus)
                             Qt.callLater(editor.selectValue);
+                        else if (field.text !== editor.shown
+                                 && !(editor.spec.mixed && field.text === ""))
+                            editor.edited(field.text);
                     }
                 }
             }
