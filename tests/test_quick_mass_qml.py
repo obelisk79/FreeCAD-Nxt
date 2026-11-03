@@ -52,7 +52,10 @@ class Mass(QtCore.QObject):
     def __init__(self) -> None:
         super().__init__()
         self._materials = ["ABS-Generic", "Aluminum-Generic",
-                           "Steel-Generic", "Wood-Generic"]
+                           "Steel-Generic", "Wood-Generic", "Custom"]
+        self._densities = ["1060 kg/m³", "2700 kg/m³", "7850 kg/m³",
+                           "550.0 kg/m³", "1000 kg/m³"]
+        self.custom_typed: list[str] = []
         self._units = ["Standard (mm, kg, s, °)",
                        "Imperial decimal (in, lb)", "MKS (m, kg, s, °)"]
         self._material = 2
@@ -62,9 +65,26 @@ class Mass(QtCore.QObject):
     def materials(self) -> list[str]:
         return self._materials
 
+    @QtCore.Property(list, notify=changed)
+    def densities(self) -> list[str]:
+        return self._densities
+
     @QtCore.Property(int, notify=changed)
     def material(self) -> int:
         return self._material
+
+    @QtCore.Property(bool, notify=changed)
+    def custom(self) -> bool:
+        return self._material == len(self._materials) - 1
+
+    @QtCore.Property(str, notify=changed)
+    def customDensity(self) -> str:  # noqa: N802
+        return "1000"
+
+    @QtCore.Slot(str, result=bool)
+    def setCustomDensity(self, text: str) -> bool:  # noqa: N802
+        self.custom_typed.append(text)
+        return True
 
     @QtCore.Property(list, notify=changed)
     def units(self) -> list[str]:
@@ -158,8 +178,8 @@ view.show()
 settle()
 
 print("bar")
-for label in ("Quick Mass", "Steel-Generic", "Standard (mm, kg, s, °)",
-              "3.000 kg"):
+for label in ("Quick Mass", "Steel-Generic", "7850 kg/m³",
+              "Standard (mm, kg, s, °)", "3.000 kg"):
     try:
         text_item(view, label)
         found = True
@@ -186,6 +206,32 @@ settle()
 check("Return picks the first left", mass.material == 1)
 check("and closes the list", not popups())
 check("the bar shows it", text_item(view, "Aluminum-Generic") is not None)
+
+print("custom")
+click(view, text_item(view, "Aluminum-Generic"))
+window = popups()[0]
+check("each material shows its density",
+      text_item(window, "550.0 kg/m³") is not None)
+click(window, text_item(window, "Custom"))
+check("Custom is offered last and picked", mass.custom)
+field = next((i for i in items_of(view.contentItem())
+              if i.metaObject().className().startswith("QQuickTextInput")
+              and i.property("visible")
+              and i.property("text") == "1000"), None)
+check("a density field appears", field is not None)
+if field is not None:
+    view.requestActivate()
+    settle()
+    field.forceActiveFocus()
+    field.setProperty("text", "8000")
+    QTest.keyClick(view, QtCore.Qt.Key.Key_Return)
+    settle()
+    check("Return sets the custom density", mass.custom_typed == ["8000"])
+click(view, text_item(view, "Custom"))
+window = popups()[0]
+click(window, text_item(window, "Wood-Generic"))
+check("another material can be picked after Custom",
+      mass.material == 3 and not mass.custom)
 
 print("units")
 click(view, text_item(view, "Standard (mm, kg, s, °)"))

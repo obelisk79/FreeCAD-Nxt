@@ -27,6 +27,12 @@ FIRST_SCHEMAS = ("Internal", "ImperialDecimal")
 #: Significant digits shown.
 DIGITS = 4
 BODY = "PartDesign::Body"
+#: kg/m³ in a kg/mm³, FreeCAD's internal density unit.
+PER_CUBIC_METRE = 1e9
+#: The material setting's value while a custom density is used.
+CUSTOM = "Custom"
+#: Densities at least this large are shown as whole numbers.
+WHOLE_FROM = 1000.0
 
 
 def materials() -> list[tuple[str, float]]:
@@ -44,6 +50,26 @@ def materials() -> list[tuple[str, float]]:
         if density > 0:
             found.setdefault(material.Name, density)
     return sorted(found.items(), key=lambda item: item[0].lower())
+
+
+def density_text(kg_per_m3: float) -> str:
+    """A density as the material list shows it: "7850 kg/m³"."""
+    number = ("%.0f" % kg_per_m3 if kg_per_m3 >= WHOLE_FROM
+              else "%.*g" % (DIGITS, kg_per_m3))
+    return "%s kg/m³" % number
+
+
+def parse_density(text: str) -> float | None:
+    """kg/m³ from what was typed: a number, or a density with its unit."""
+    text = text.strip().replace(",", ".")
+    try:
+        value = float(text)
+    except ValueError:
+        try:
+            value = float(App.Units.Quantity(text).getValueAs("kg/m^3"))
+        except Exception:
+            return None
+    return value if value > 0 and math.isfinite(value) else None
 
 
 def schemas() -> list[tuple[str, str]]:
@@ -117,12 +143,27 @@ class QuickMass(QtCore.QObject):
         return self._materials
 
     def _names(self) -> list[str]:
-        return [name for name, _density in self._all_materials()]
+        """The materials, then the custom density, last."""
+        return [name for name, _density in self._all_materials()] + [
+            translate("QuickMass", "Custom")]
 
     def _material(self) -> int:
-        names = self._names()
+        names = [name for name, _density in self._all_materials()]
         wanted = settings.get("QuickMassMaterial")
+        if wanted == CUSTOM or not names:
+            return len(names)
         return names.index(wanted) if wanted in names else 0
+
+    def _custom(self) -> float:
+        return float(settings.get("QuickMassDensity"))
+
+    def _density(self) -> float:
+        """The chosen density, kg/mm³."""
+        found = self._all_materials()
+        index = self._material()
+        if index < len(found):
+            return found[index][1]
+        return self._custom() / PER_CUBIC_METRE
 
     def _unit(self) -> int:
         names = [name for name, _label in self._schemas]
@@ -133,9 +174,23 @@ class QuickMass(QtCore.QObject):
     def materials(self) -> list[str]:
         return self._names()
 
+    @QtCore.Property(list, notify=changed)
+    def densities(self) -> list[str]:
+        return [density_text(d * PER_CUBIC_METRE)
+                for _name, d in self._all_materials()] + [
+            density_text(self._custom())]
+
     @QtCore.Property(int, notify=changed)
     def material(self) -> int:
         return self._material()
+
+    @QtCore.Property(bool, notify=changed)
+    def custom(self) -> bool:
+        return self._material() == len(self._all_materials())
+
+    @QtCore.Property(str, notify=changed)
+    def customDensity(self) -> str:  # noqa: N802 - QML API
+        return "%g" % self._custom()
 
     @QtCore.Property(list, notify=changed)
     def units(self) -> list[str]:
@@ -156,10 +211,25 @@ class QuickMass(QtCore.QObject):
 
     @QtCore.Slot(int)
     def pickMaterial(self, index: int) -> None:  # noqa: N802 - QML API
-        names = self._names()
+        names = [name for name, _density in self._all_materials()]
         if 0 <= index < len(names):
             settings.put("QuickMassMaterial", names[index])
-            self.refresh()
+        elif index == len(names):
+            settings.put("QuickMassMaterial", CUSTOM)
+        self.refresh()
+
+    @QtCore.Slot(str, result=bool)
+    def setCustomDensity(self, text: str) -> bool:  # noqa: N802 - QML API
+        """Keep a density of one's own; False if it is no density.
+
+        Only the value: the field finishes editing as it loses focus,
+        which picking another material makes it do.
+        """
+        value = parse_density(text)
+        if value is not None:
+            settings.put("QuickMassDensity", value)
+        self.refresh()
+        return value is not None
 
     @QtCore.Slot(int)
     def pickUnit(self, index: int) -> None:  # noqa: N802 - QML API
@@ -172,9 +242,6 @@ class QuickMass(QtCore.QObject):
         self.changed.emit()
 
     def _measured(self) -> str:
-        found = self._all_materials()
-        if not found:
-            return translate("QuickMass", "No materials")
         try:
             volume, count = selected_volume()
         except Exception as exc:  # noqa: BLE001 - a broken shape
@@ -182,7 +249,7 @@ class QuickMass(QtCore.QObject):
             count = 0
         if not count:
             return translate("QuickMass", "Select a solid or body")
-        density = found[self._material()][1]
+        density = self._density()
         name = self._schemas[self._unit()][0]
         schema = list(App.Units.listSchemas()).index(name)
         return shown(volume * density, schema)

@@ -18,6 +18,8 @@ Rectangle {
         id: picker
 
         property var options: []
+        //: Beside each option, dimmed (a material's density); optional.
+        property var details: []
         property int current: 0
         property bool searchable: false
         property real fieldWidth: 150
@@ -34,11 +36,22 @@ Rectangle {
         Text {
             anchors.verticalCenter: parent.verticalCenter
             x: 8
-            width: parent.width - 26
+            width: parent.width - 26 - (fieldDetail.visible
+                                        ? fieldDetail.width + 6 : 0)
             elide: Text.ElideRight
             text: picker.options[picker.current] || ""
             font.pixelSize: theme.fontSmall
             color: theme.text
+        }
+        Text {
+            id: fieldDetail
+            visible: text.length > 0
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.right: parent.right
+            anchors.rightMargin: 20
+            text: picker.details[picker.current] || ""
+            font.pixelSize: theme.fontAside
+            color: theme.textDim
         }
         Text {
             anchors.verticalCenter: parent.verticalCenter
@@ -74,7 +87,7 @@ Rectangle {
 
             popupType: Popup.Window
             padding: 1
-            width: Math.max(picker.width, 220)
+            width: Math.max(picker.width, picker.details.length ? 280 : 220)
             height: Math.min(360, column.implicitHeight + 2)
             closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
             focus: true
@@ -169,10 +182,21 @@ Rectangle {
                         Text {
                             anchors.verticalCenter: parent.verticalCenter
                             x: 8
+                            width: parent.width - 16 - optionDetail.width
+                            elide: Text.ElideRight
                             text: picker.options[option.modelData]
                             font.pixelSize: theme.fontSmall
                             font.bold: option.modelData === picker.current
                             color: theme.text
+                        }
+                        Text {
+                            id: optionDetail
+                            anchors.verticalCenter: parent.verticalCenter
+                            anchors.right: parent.right
+                            anchors.rightMargin: 8
+                            text: picker.details[option.modelData] || ""
+                            font.pixelSize: theme.fontAside
+                            color: theme.textDim
                         }
 
                         MouseArea {
@@ -211,12 +235,53 @@ Rectangle {
 
         Picker {
             anchors.verticalCenter: parent.verticalCenter
-            fieldWidth: 170
+            fieldWidth: 230
             searchable: true
             options: quickMass.materials
+            details: quickMass.custom ? [] : quickMass.densities
             current: quickMass.material
             onPicked: function (index) { quickMass.pickMaterial(index); }
             Accessible.name: qsTr("Material")
+        }
+
+        // A density of one's own, for a material not listed.
+        Rectangle {
+            visible: quickMass.custom
+            anchors.verticalCenter: parent.verticalCenter
+            width: 110
+            height: Math.round(bar.height * 0.72)
+            radius: 3
+            color: theme.background
+            border.width: 1
+            border.color: densityInput.activeFocus ? theme.accent : theme.border
+
+            TextInput {
+                id: densityInput
+                anchors.left: parent.left
+                anchors.right: densityUnit.left
+                anchors.margins: 6
+                anchors.verticalCenter: parent.verticalCenter
+                text: quickMass.customDensity
+                font.pixelSize: theme.fontSmall
+                color: theme.text
+                selectByMouse: true
+                clip: true
+                onEditingFinished: {
+                    if (text !== quickMass.customDensity
+                            && !quickMass.setCustomDensity(text))
+                        text = quickMass.customDensity;
+                }
+                Accessible.name: qsTr("Density")
+            }
+            Text {
+                id: densityUnit
+                anchors.right: parent.right
+                anchors.rightMargin: 6
+                anchors.verticalCenter: parent.verticalCenter
+                text: "kg/m³"
+                font.pixelSize: theme.fontAside
+                color: theme.textDim
+            }
         }
 
         Picker {

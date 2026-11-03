@@ -3207,12 +3207,15 @@ def set_tool(obj: Any, base: Any, result: Any) -> str:
         obj.AddSubShape = Part.Shape()
         return ("it both removes and adds material; mirror or pattern "
                 "its convex and concave edges as separate features")
-    if adds:
-        obj.Operation = "Union"
-        obj.AddSubShape = added
-    else:
-        obj.Operation = "Subtraction"
-        obj.AddSubShape = removed
+    # Operation came with FreeCAD 26.3; before it, a Python add/sub
+    # feature cannot be told that it removes material.
+    operation = "Union" if adds else "Subtraction"
+    obj.AddSubShape = added if adds else removed
+    if hasattr(obj, "Operation"):
+        obj.Operation = operation
+    elif not adds:
+        return ("this FreeCAD cannot be told the round removes material; "
+                "mirroring or patterning it needs FreeCAD 26.3 or later")
     return ""
 
 

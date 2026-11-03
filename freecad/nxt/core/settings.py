@@ -62,6 +62,8 @@ DEFAULTS: dict[str, bool | int | float | str] = {
     # Quick Mass at the bottom of the 3D view (ui/quick_mass.py).
     "QuickMass": False,
     "QuickMassMaterial": "Steel-Generic",
+    # kg/m³, used when the material is "Custom".
+    "QuickMassDensity": 1000.0,
     "QuickMassUnits": "Internal",
     # Strip width: percent of screen, floored at HeaderMinWidth pixels.
     "HeaderMaxPercent": 18,
