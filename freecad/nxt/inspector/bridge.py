@@ -65,6 +65,7 @@ class InspectorBridge(QtCore.QObject):
 
     changed = QtCore.Signal()
     noticeChanged = QtCore.Signal()
+    focusedChanged = QtCore.Signal()
     nativeRequested = QtCore.Signal(str)
 
     def __init__(self, parent: QtCore.QObject | None = None,
@@ -80,6 +81,7 @@ class InspectorBridge(QtCore.QObject):
         self._groups: list[dict[str, Any]] = []
         #: What is wrong with the object, shown above its cards.
         self._notice = ""
+        self._focused = ""
         #: Per panel list picking its reference: the item chosen before,
         #: its "Select reference..." item, and what has been picked.
         self._picks: dict[str, dict[str, str]] = {}
@@ -196,6 +198,19 @@ class InspectorBridge(QtCore.QObject):
         if notice != self._notice:
             self._notice = notice
             self.noticeChanged.emit()
+
+    def _get_focused(self) -> str:
+        return self._focused
+
+    def _set_focused(self, name: str) -> None:
+        if name != self._focused:
+            self._focused = name
+            self.focusedChanged.emit()
+
+    #: The property whose field has the keyboard: a rebuild of the cards
+    #: (Two sides adds one) gives it back, so arrows keep working.
+    focused = QtCore.Property(str, _get_focused, _set_focused,
+                              notify=focusedChanged)
 
     @QtCore.Property(str, notify=noticeChanged)
     def notice(self) -> str:

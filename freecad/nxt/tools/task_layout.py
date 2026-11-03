@@ -101,10 +101,17 @@ class _Keyboard(QtCore.QObject):
         view.installEventFilter(self)
 
     def eventFilter(self, _obj: Any, event: Any) -> bool:  # noqa: N802
-        if event.type() == QtCore.QEvent.Type.MouseButtonPress:
+        kind = event.type()
+        if kind == QtCore.QEvent.Type.MouseButtonPress:
             with contextlib.suppress(RuntimeError):
                 self._view.activateWindow()
                 self._view.setFocus(QtCore.Qt.FocusReason.MouseFocusReason)
+        elif kind == QtCore.QEvent.Type.FocusOut \
+                and event.reason() in quick_host.LEAVING:
+            # The view keeps its own focus item when the keyboard goes
+            # elsewhere, and its focus ring stays lit: let it go.
+            with contextlib.suppress(RuntimeError):
+                quick_host.let_go(self._view)
         return False
 
 
@@ -182,6 +189,30 @@ class _Confirm(QtCore.QObject):
                     root.forceActiveFocus()     # the field keeps its edit
                 self._bridge.apply_pending()
         return False
+
+
+def tab_in_order(cards: Any) -> None:
+    """Tab through the task panel in reading order, the cards included.
+
+    Left to right, top to bottom: from the cards on to the dialog's own
+    options and OK, not off to the rest of the window, which is where
+    the focus chain leads from a view added after the dialog was built.
+    """
+    view = _task_view()
+    if view is None or not widgets.alive(cards):
+        return
+    found = []
+    for widget in view.findChildren(QtWidgets.QWidget):
+        if widget is cards or (
+                widget.isVisibleTo(view)
+                and widget.focusPolicy() & QtCore.Qt.FocusPolicy.TabFocus
+                and not cards.isAncestorOf(widget)):
+            at = widget.mapTo(view, QtCore.QPoint(0, 0))
+            found.append((at.y(), at.x(), widget))
+    found.sort(key=lambda f: (f[0], f[1]))
+    ordered = [w for _y, _x, w in found]
+    for first, second in zip(ordered, ordered[1:]):
+        QtWidgets.QWidget.setTabOrder(first, second)
 
 
 def _discard(cards: Any, bridge: Any) -> None:
@@ -288,6 +319,9 @@ class TaskLayout(QtCore.QObject):
             layout.addWidget(cards)
         box.hide()
         bridge.start()
+        # Once laid out: positions decide the order.
+        for delay in RENEW_MS:
+            QtCore.QTimer.singleShot(delay, cards, lambda: tab_in_order(cards))
         confirm = _Confirm(cards, bridge)
         cards.nxt_confirm = confirm  # type: ignore[attr-defined]
         # The box goes with its dialog; what holds it stays for the next.

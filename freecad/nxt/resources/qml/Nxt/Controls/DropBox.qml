@@ -15,11 +15,13 @@ Rectangle {
     implicitHeight: theme.fieldHeight
     radius: 3
     activeFocusOnTab: enabled
+    // Inside a field it still reads as a button: a chip's fill, and the
+    // focus ring a field has.
     color: tap.pressed ? theme.pressed
-         : box.inset ? (hover.hovered ? theme.hover : "transparent")
          : hover.hovered && enabled ? theme.hover
+         : box.inset ? theme.chip
          : theme.overlay ? theme.chip : theme.background
-    border.width: box.inset ? 0 : activeFocus ? 2 : 1
+    border.width: activeFocus ? 2 : box.inset ? 0 : 1
     border.color: box.active || activeFocus ? theme.accent
                 : hover.hovered ? theme.textDim : theme.border
     opacity: enabled ? 1.0 : 0.5
@@ -41,7 +43,7 @@ Rectangle {
         anchors.verticalCenter: parent.verticalCenter
         text: "▾"
         font.pixelSize: theme.fontSmall
-        color: theme.textDim
+        color: hover.hovered || box.activeFocus ? theme.text : theme.textDim
     }
     Rectangle {
         visible: box.inset
@@ -55,14 +57,24 @@ Rectangle {
     HoverHandler {
         id: hover
         enabled: box.enabled
+        cursorShape: Qt.PointingHandCursor
     }
     TapHandler {
         id: tap
         enabled: box.enabled
         onTapped: box.opened()
     }
+    // As a combo box opens: Space, Return, Down (Alt+Down too) and F4.
     Keys.onSpacePressed: box.opened()
     Keys.onReturnPressed: box.opened()
+    Keys.onEnterPressed: box.opened()
+    Keys.onDownPressed: box.opened()
+    Keys.onPressed: function (event) {
+        if (event.key === Qt.Key_F4) {
+            box.opened();
+            event.accepted = true;
+        }
+    }
 
     Accessible.role: Accessible.ComboBox
     Accessible.name: box.text
