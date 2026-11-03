@@ -28,6 +28,9 @@ class _AppObserver(object):
     def slotCreatedObject(self, obj: Any) -> None:
         self._bridge.invalidate(icons=True)
         self._bridge.auto_rename.created(obj)
+        if not (App.isRestoring() or getattr(obj.Document, "Restoring", False)
+                or getattr(obj.Document, "Transacting", False)):
+            self._bridge.note_created(obj.Name)
 
     def slotDeletedObject(self, obj: Any) -> None:
         self._bridge.invalidate()

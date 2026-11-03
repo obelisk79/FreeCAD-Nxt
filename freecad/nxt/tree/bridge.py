@@ -253,6 +253,10 @@ class TreeBridge(QtCore.QObject):
             self._rollback.publish()
         self._arrows_timer.start()
 
+    def note_created(self, name: str) -> None:
+        """An object was made: a Body's bar may move below it."""
+        self._rollback.created(name)
+
     @QtCore.Property(list, notify=tipBarsChanged)
     def tipBars(self) -> list[dict[str, Any]]:
         return self._rollback.bars()
