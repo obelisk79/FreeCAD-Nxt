@@ -56,6 +56,9 @@ Item {
     }
 
     implicitHeight: theme.fieldHeight
+    //: What a user puts inside the field (a lead choice) comes before its
+    //: text: Tab goes in child order, so left to right.
+    default property alias inside: front.data
 
     Rectangle {
         anchors.fill: parent
@@ -125,6 +128,11 @@ Item {
         opacity: 0.8
     }
 
+    Item {
+        id: front
+        anchors.fill: parent
+    }
+
     TextInput {
         id: input
         anchors.fill: parent
@@ -139,6 +147,9 @@ Item {
         selectedTextColor: theme.accentText
         selectByMouse: true
         clip: true
+        // Tab reaches every field, in reading order, as it does in
+        // FreeCAD's own panels.
+        activeFocusOnTab: !readOnly
 
         onTextChanged: field.edited(text)
 

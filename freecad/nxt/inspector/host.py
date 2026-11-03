@@ -607,6 +607,7 @@ def _make_inspector(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
          "theme": theme})
     bridge.setParent(view)
     view.nxt_bridge = bridge  # type: ignore[attr-defined]
+    view.nxt_lets_go = quick_host.LetsGo(view)  # type: ignore[attr-defined]
     return view
 
 

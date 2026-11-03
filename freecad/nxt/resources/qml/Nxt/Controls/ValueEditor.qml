@@ -114,6 +114,63 @@ Item {
         ChoiceList {}
     }
 
+    //: A check box's click or Space: shown at once, told a frame later.
+    function flipCheck() {
+        var to = !(editor.shownCheck !== undefined
+                   ? editor.shownCheck : !!editor.spec.checked);
+        editor.shownCheck = to;
+        later.run(function () { editor.edited(to); });
+    }
+
+    // The keyboard survives the cards being rebuilt: an edit that adds
+    // or removes a card makes every field anew, the focused one too.
+    readonly property bool remembers: typeof inspector !== "undefined"
+                                      && !!inspector && !!editor.spec.name
+    readonly property bool holdsFocus: {
+        var item = editor.Window.activeFocusItem;
+        while (item) {
+            if (item === editor)
+                return true;
+            item = item.parent;
+        }
+        return false;
+    }
+    onHoldsFocusChanged: {
+        if (!editor.remembers)
+            return;
+        if (editor.holdsFocus)
+            inspector.focused = editor.spec.name;
+        else if (inspector.focused === editor.spec.name)
+            Qt.callLater(editor.takeFocusBack);     // a rebuild took it
+    }
+    Component.onCompleted: {
+        if (editor.remembers && inspector.focused === editor.spec.name)
+            Qt.callLater(editor.takeFocusBack);
+    }
+
+    //: Only when no field has the keyboard: the focused one went with
+    //: the rebuild, and nothing else took it.
+    function takeFocusBack() {
+        if (!editor.visible || inspector.focused !== editor.spec.name)
+            return;
+        var now = editor.Window.activeFocusItem;
+        if (now && now.activeFocusOnTab)
+            return;                 // another control has it
+        for (var item = now; item; item = item.parent) {
+            if (item.remembers !== undefined)
+                return;
+        }
+        var main = joined.visible ? joined
+                 : editor.isField && !editor.locked ? field.input
+                 : toggle.visible ? toggle
+                 : dropBox.visible ? dropBox
+                 : choice.visible ? choice
+                 : checkBox.visible ? checkBox
+                 : linkLead.visible ? linkLead : null;
+        if (main)
+            main.forceActiveFocus();
+    }
+
     function labelOf(value, spec) {
         spec = spec || editor.spec;
         var values = spec.options || [];
@@ -126,6 +183,8 @@ Item {
         spec = spec || editor.spec;
         done = done || editor.edited;
         var root = anchor.Window.contentItem;
+        // Back to the control the list was opened from, for the keyboard.
+        var from = anchor.Window.activeFocusItem;
         // A view only as tall as its content (a task dialog's) cannot show
         // the list: its host offers a menu of its own instead.
         if (typeof nativeChoices !== "undefined" && nativeChoices) {
@@ -135,6 +194,8 @@ Item {
                 at.x, at.y, anchor.width);
             if (picked.length > 0 && picked !== editor.choiceOf(spec))
                 editor.choose(spec, done, picked);
+            if (from)
+                from.forceActiveFocus();
             return;
         }
         var list = choices.createObject(root, {
@@ -152,6 +213,8 @@ Item {
         });
         list.Component.destruction.connect(function () {
             editor.choosing = false;
+            if (from)
+                from.forceActiveFocus();
         });
         list.forceActiveFocus();
     }
@@ -234,11 +297,14 @@ Item {
             height: theme.fieldHeight
 
             Rectangle {
+                id: checkBox
                 anchors.verticalCenter: parent.verticalCenter
                 width: theme.markSize
                 height: theme.markSize
                 radius: 2
                 opacity: editor.locked ? 0.5 : 1.0
+                activeFocusOnTab: !editor.locked
+                Keys.onSpacePressed: editor.flipCheck()
                 readonly property bool on: editor.shownCheck !== undefined
                                            ? editor.shownCheck
                                            : !!editor.spec.checked
@@ -246,8 +312,8 @@ Item {
                 color: on ? (checkTap.pressed ? Qt.darker(theme.accent, 1.15)
                                               : theme.accent)
                      : checkTap.pressed ? theme.pressed : "transparent"
-                border.width: 1
-                border.color: on || checkHover.hovered
+                border.width: activeFocus ? 2 : 1
+                border.color: on || checkHover.hovered || activeFocus
                               ? theme.accent : theme.border
 
                 Text {
@@ -280,12 +346,7 @@ Item {
             TapHandler {
                 id: checkTap
                 enabled: !editor.locked
-                onTapped: {
-                    var to = !(editor.shownCheck !== undefined
-                               ? editor.shownCheck : !!editor.spec.checked);
-                    editor.shownCheck = to;
-                    later.run(function () { editor.edited(to); });
-                }
+                onTapped: editor.flipCheck()
             }
         }
 

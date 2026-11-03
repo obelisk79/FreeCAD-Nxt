@@ -89,3 +89,38 @@ def popup_offset(item: Any) -> QtCore.QPointF:
     """window_offset for the view that holds the QML `item`."""
     return window_offset(view_of(item.window()) if item is not None
                          else None)
+
+
+#: How the keyboard leaves a view for good, by the user's hand. Not to a
+#: menu it opened, nor as the window loses focus (it comes back to the
+#: same field), nor as the dialog rebuilds around the view.
+LEAVING = (QtCore.Qt.FocusReason.TabFocusReason,
+           QtCore.Qt.FocusReason.BacktabFocusReason,
+           QtCore.Qt.FocusReason.MouseFocusReason,
+           QtCore.Qt.FocusReason.ShortcutFocusReason)
+
+
+def let_go(view: Any) -> None:
+    """No item in `view` has the keyboard, nor gets it back."""
+    root = view.rootObject()
+    if root is None:
+        return
+    context = view.rootContext().contextProperty("inspector")
+    if context is not None:
+        context.setProperty("focused", "")
+    root.forceActiveFocus()
+
+
+class LetsGo(QtCore.QObject):
+    """A view lets go of its focused item as the keyboard leaves it."""
+
+    def __init__(self, view: Any) -> None:
+        super().__init__(view)
+        self._view = view
+        view.installEventFilter(self)
+
+    def eventFilter(self, _obj: Any, event: Any) -> bool:  # noqa: N802
+        if event.type() == QtCore.QEvent.Type.FocusOut \
+                and event.reason() in LEAVING:
+            let_go(self._view)
+        return False
