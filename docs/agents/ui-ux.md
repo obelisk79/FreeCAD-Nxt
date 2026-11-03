@@ -30,6 +30,39 @@ inside FreeCAD: quiet, quick, predictable.
 - Mouse wheel over a number steps it (fine; with the modifier, coarse), the
   same steps as the 3D drag handles.
 
+## Keyboard
+
+The keyboard reaches everything the mouse does, in the order the eye
+reads, and focus is always visible and never lost.
+
+- **Tab order is reading order**: left to right, then top to bottom. In
+  QML that is child order, so declare items in the order they are read
+  (a field's lead choice before its text: `TextField` puts what is placed
+  inside it ahead of its input). Every value control takes Tab focus:
+  text fields, dropdowns, selectors, switches, check boxes, chip pickers.
+- **Task panels are one Tab sequence**, cards and FreeCAD's own options
+  together (`task_layout.tab_in_order`): Tab goes from the last card on to
+  Preview and its check boxes, not off to the main window.
+- **Focus is drawn by a ring** in the accent colour, outside the control
+  so it shows on an accent fill too (a switch that is on). Keyboard focus
+  only; a click shows no ring. Hover is a separate, plainly visible cue
+  (fill change, a darker outline), never a one-shade shift.
+- **Dropdowns open as combo boxes do**: Space, Return/Enter, Down,
+  Alt+Down, F4. Up/Down on a closed dropdown never changes its value.
+  Closing the list (by choice or Escape) gives the focus back to it.
+- **Selectors step with the arrows**, and keep the focus while the panel
+  rebuilds around them (Two sides adds a card): the bridge remembers the
+  focused property and its new field takes the keyboard back
+  (`ValueEditor.takeFocusBack`), unless another control already has it.
+- **Leaving a field keeps what was typed**, as FreeCAD's fields do: on
+  Tab, a click elsewhere, or a task's OK (which takes no focus, so the
+  cards apply pending edits first). Escape is the only way to drop an
+  edit.
+- **When the keyboard leaves a view, its ring goes** (Tab out, a click
+  elsewhere, a shortcut): `quick_host.LetsGo` / `let_go`. Not for the
+  view's own popup or menu, another application, or the dialog
+  rebuilding; focus stays put through those.
+
 ## Controls
 
 - **Switches, not checkboxes**, for on/off settings, in most places.
