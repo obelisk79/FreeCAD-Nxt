@@ -151,6 +151,39 @@ class _OnShow(QtCore.QObject):
         return False
 
 
+class _Confirm(QtCore.QObject):
+    """OK takes what is typed in the cards, as FreeCAD's own fields do.
+
+    A field keeps its edit on Return or as it loses focus; OK's button
+    takes no focus, so the cards are left first and their edit applied
+    before the dialog writes its fields back.
+    """
+
+    def __init__(self, cards: Any, bridge: Any) -> None:
+        super().__init__(cards)
+        self._cards = cards
+        self._bridge = bridge
+        view = _task_view()
+        boxes = (view.findChildren(QtWidgets.QDialogButtonBox)
+                 if view is not None else [])
+        for box in boxes:
+            for button in box.buttons():
+                if box.buttonRole(button) in (
+                        QtWidgets.QDialogButtonBox.ButtonRole.AcceptRole,
+                        QtWidgets.QDialogButtonBox.ButtonRole.ApplyRole):
+                    button.installEventFilter(self)
+
+    def eventFilter(self, _obj: Any, event: Any) -> bool:  # noqa: N802
+        if event.type() in (QtCore.QEvent.Type.MouseButtonPress,
+                            QtCore.QEvent.Type.KeyPress):
+            with contextlib.suppress(RuntimeError):
+                root = self._cards.rootObject()
+                if root is not None:
+                    root.forceActiveFocus()     # the field keeps its edit
+                self._bridge.apply_pending()
+        return False
+
+
 def _discard(cards: Any, bridge: Any) -> None:
     with contextlib.suppress(RuntimeError):
         bridge.stop()
@@ -255,6 +288,8 @@ class TaskLayout(QtCore.QObject):
             layout.addWidget(cards)
         box.hide()
         bridge.start()
+        confirm = _Confirm(cards, bridge)
+        cards.nxt_confirm = confirm  # type: ignore[attr-defined]
         # The box goes with its dialog; what holds it stays for the next.
         box.destroyed.connect(lambda *_: _discard(cards, bridge))
 

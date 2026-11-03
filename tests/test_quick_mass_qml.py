@@ -232,6 +232,8 @@ window = popups()[0]
 click(window, text_item(window, "Wood-Generic"))
 check("another material can be picked after Custom",
       mass.material == 3 and not mass.custom)
+mass.pickMaterial(1)
+settle()
 
 print("units")
 click(view, text_item(view, "Standard (mm, kg, s, °)"))

@@ -252,6 +252,11 @@ class InspectorBridge(QtCore.QObject):
         self._edits.append(edit)
         self._edit_timer.start()
 
+    def apply_pending(self) -> None:
+        """Make the edits still waiting, now: a dialog is about to close."""
+        self._edit_timer.stop()
+        self._apply_edits()
+
     def _apply_edits(self) -> None:
         edits, self._edits = self._edits, []
         for edit in edits:
