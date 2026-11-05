@@ -1144,7 +1144,8 @@ class BodyDropTests(unittest.TestCase):
     def test_a_top_level_row_takes_it_out_of_the_body(self) -> None:
         top = DOC.objects["C"]
         top.InList = []
-        top.ViewObject.canDropObjects = lambda: False
+        # As FreeCAD's: takes nothing, yet answers True for any object.
+        top.ViewObject.canDropObject = lambda source=None: source is not None
         try:
             self.assertEqual(self.bridge.dropHint(["VarSet"], "C"),
                              "To the top level")
@@ -1152,7 +1153,7 @@ class BodyDropTests(unittest.TestCase):
             self.assertTrue(self.bridge.dropOn(["VarSet"], "C"))
             self.assertEqual(self.removed, ["VarSet"])
         finally:
-            del top.InList, top.ViewObject.canDropObjects
+            del top.InList, top.ViewObject.canDropObject
 
     def test_into_another_container_it_leaves_the_body_first(self) -> None:
         self.bridge._snapshot.nodes = {

@@ -174,7 +174,8 @@ class DragDrop:
         if tvo is None:
             return False
         try:
-            probe = getattr(tvo, "canDropObjects", None)
+            # Asked of no object, it says whether the row takes any.
+            probe = getattr(tvo, "canDropObject", None)
             if callable(probe) and not probe():
                 return False
         except Exception:
