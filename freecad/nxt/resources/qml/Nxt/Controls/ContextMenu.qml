@@ -27,44 +27,51 @@ Menu {
 
     delegate: Row_ {}
 
+    // Submenus are owned by this menu: made without a parent, the JS
+    // engine could collect one while this menu still listed it, and
+    // destroying the menu then crashed FreeCAD. Rows are items, placed
+    // in the menu as they are added.
     onClosed: Qt.callLater(contextMenu.destroy)
 
     function addEntry(target, spec, style) {
         if (spec.items && spec.items.length) {
-            var inner = submenu.createObject(null, {title: spec.label});
+            var inner = submenu.createObject(contextMenu,
+                                             {title: spec.label});
             for (var i = 0; i < spec.items.length; ++i)
                 addEntry(inner, spec.items[i], "plain");
             target.addMenu(inner);
         } else {
             target.addItem(entry.createObject(null, {spec: spec,
-                                                     style: style}));
+                                                            style: style}));
         }
     }
 
     function load(spec) {
-        addItem(header.createObject(null, {title: spec.title || "",
-                                           subtitle: spec.subtitle || ""}));
+        addItem(header.createObject(null, {
+            title: spec.title || "", subtitle: spec.subtitle || ""}));
         if ((spec.bar || []).length)
             addItem(bar.createObject(null, {buttons: spec.bar}));
         if (spec.lead)
             addItem(entry.createObject(null, {spec: spec.lead,
-                                              style: "lead"}));
+                                                     style: "lead"}));
         for (var s = 0; s < (spec.state || []).length; ++s)
             addItem(entry.createObject(null, {spec: spec.state[s],
-                                              style: "state"}));
+                                                     style: "state"}));
         var sections = spec.sections || [];
         for (var i = 0; i < sections.length; ++i) {
-            addItem(label.createObject(null, {text: sections[i].name}));
+            addItem(label.createObject(null,
+                                       {text: sections[i].name}));
             for (var j = 0; j < sections[i].items.length; ++j)
                 addEntry(contextMenu, sections[i].items[j], "plain");
         }
         addItem(separator.createObject(null));
         if (spec.delete)
             addItem(entry.createObject(null, {spec: spec.delete,
-                                              style: "danger"}));
+                                                     style: "danger"}));
         var groups = spec.more || [];
         if (groups.length) {
-            var more = submenu.createObject(null, {title: qsTr("More")});
+            var more = submenu.createObject(contextMenu,
+                                            {title: qsTr("More")});
             for (var g = 0; g < groups.length; ++g) {
                 if (g > 0)
                     more.addItem(separator.createObject(null));
