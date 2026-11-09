@@ -28,6 +28,8 @@ ACTIONS: dict[str, str] = {
     "nxt:make_active": QT_TRANSLATE_NOOP("NxtMenu", "Make active"),
     "nxt:select_group_contents": QT_TRANSLATE_NOOP(
         "NxtMenu", "Select group contents"),
+    "nxt:select_instances": QT_TRANSLATE_NOOP(
+        "NxtMenu", "Select all instances"),
     "nxt:select_same_type": QT_TRANSLATE_NOOP(
         "NxtMenu", "Select all of this type in the Body"),
     "nxt:expand_all": QT_TRANSLATE_NOOP("NxtMenu", "Expand all"),
@@ -75,6 +77,7 @@ ICONS: dict[str, str] = {
     "nxt:inspector": "Std_Properties",
     "nxt:rename": "Std_Rename",
     "nxt:recompute_object": "Std_Refresh",
+    "nxt:select_instances": "Std_TreeSelectAllInstances",
     "nxt:set_tip": "PartDesign_MoveTip",
     "nxt:roll_forward": "PartDesign_MoveTip",
 }

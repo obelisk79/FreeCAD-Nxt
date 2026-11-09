@@ -1,4 +1,4 @@
-"""A VarSet's variables: renaming, tooltips and adding, as undo steps.
+"""A VarSet's variables: renaming, tooltips, adding and deleting.
 
 Run with: python3 tests/test_variables.py
 """
@@ -39,6 +39,9 @@ class FakeDocument:
 
     def recompute(self) -> None:
         self.log.append("recompute")
+
+    #: The document's objects; tests add expression owners here.
+    Objects: list[object] = []
 
 
 class FakeVarSet:
@@ -99,6 +102,18 @@ class FakeVarSet:
     def getEditorMode(self, prop: str) -> list[str]:
         return []
 
+    def removeProperty(self, prop: str) -> None:
+        del self._types[prop]
+
+
+class Reader:
+    """An object with expressions, as Part Design features have."""
+
+    def __init__(self, label: str, expressions: list[tuple[str, str]]
+                 ) -> None:
+        self.Label = label
+        self.ExpressionEngine = expressions
+
 
 class VariableTests(unittest.TestCase):
 
@@ -147,6 +162,32 @@ class VariableTests(unittest.TestCase):
         self.assertEqual(variables.add(
             self.varset(), "App::PropertyLink", "Other", ""),
             "Choose a type.")
+
+    def test_an_unused_variable_is_deleted_as_one_undo_step(self) -> None:
+        obj = self.varset()
+        obj.Document.Objects = [obj]
+        self.assertEqual(variables.remove(obj, "Width"), "")
+        self.assertNotIn("Width", obj.PropertiesList)
+        self.assertEqual(obj.Document.log, [
+            "open Delete variable Width", "commit", "recompute"])
+
+    def test_a_variable_in_use_is_kept_and_its_users_named(self) -> None:
+        obj = self.varset()
+        obj.Document.Objects = [
+            obj, Reader("Pad", [(".Length", "VarSet.Width * 2")]),
+            Reader("Pocket", [(".Depth", "<<VarSet>>.Width")]),
+            Reader("Other", [(".Length", "VarSet.Widths + MyVarSet.Width")])]
+        why = variables.remove(obj, "Width")
+        self.assertEqual(why, "Used by Pad.Length, Pocket.Depth; "
+                              "change those first.")
+        self.assertIn("Width", obj.PropertiesList)
+        self.assertEqual(obj.Document.log, [])
+
+    def test_a_built_in_property_cannot_be_deleted(self) -> None:
+        obj = self.varset()
+        obj.Document.Objects = [obj]
+        self.assertIn("Only variables", variables.remove(obj, "Label"))
+        self.assertIn("Label", obj.PropertiesList)
 
     def test_only_variables_are_counted_as_added(self) -> None:
         self.assertEqual(variables.added(self.varset()), ("Width",))

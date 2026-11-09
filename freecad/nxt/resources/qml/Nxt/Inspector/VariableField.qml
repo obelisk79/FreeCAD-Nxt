@@ -59,6 +59,17 @@ Column {
         }
     }
 
+    // Closed first, as save(): the cards are laid out again.
+    function remove() {
+        var prop = field.spec.name;
+        field.close();
+        var why = inspector.removeVariable(prop);
+        if (why) {
+            field.expanded = true;
+            field.error = why;
+        }
+    }
+
     function labelOf(typeId) {
         for (var i = 0; i < field.types.length; ++i)
             if (field.types[i].id === typeId)
@@ -246,17 +257,32 @@ Column {
                 color: theme.danger
             }
 
-            Row {
-                anchors.right: parent.right
-                spacing: 2
+            Item {
+                width: form.width
+                height: theme.fieldHeight
+
+                // Undo brings it back; one in use by an expression is
+                // refused, with where it is used.
                 TextButton {
-                    text: qsTr("Cancel")
-                    onClicked: field.close()
+                    visible: !field.adding
+                    anchors.left: parent.left
+                    text: qsTr("Delete")
+                    danger: true
+                    onClicked: field.remove()
                 }
-                TextButton {
-                    text: field.adding ? qsTr("Add") : qsTr("Save")
-                    primary: true
-                    onClicked: field.save()
+
+                Row {
+                    anchors.right: parent.right
+                    spacing: 2
+                    TextButton {
+                        text: qsTr("Cancel")
+                        onClicked: field.close()
+                    }
+                    TextButton {
+                        text: field.adding ? qsTr("Add") : qsTr("Save")
+                        primary: true
+                        onClicked: field.save()
+                    }
                 }
             }
         }

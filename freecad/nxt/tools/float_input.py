@@ -462,7 +462,9 @@ class FloatingInput(QtCore.QObject):
 
     def remove(self) -> None:
         self._timer.stop()
-        QtWidgets.QApplication.instance().removeEventFilter(self)
+        app = QtWidgets.QApplication.instance()
+        if app is not None:
+            app.removeEventFilter(self)
         self._drop_widgets()
 
     def _box(self, name: str) -> _Box:
@@ -562,7 +564,9 @@ class FloatingInput(QtCore.QObject):
             # On the application too, after FreeCAD's overlay manager:
             # it is asked first, and sends a wheel over the 3D view on to
             # the view, which zooms.
-            QtWidgets.QApplication.instance().installEventFilter(self)
+            app = QtWidgets.QApplication.instance()
+            if app is not None:
+                app.installEventFilter(self)
         placed: list[tuple[_Box, Any, placement.Rect]] = []
         for name, spin, corners in targets:
             box = self._box(name)

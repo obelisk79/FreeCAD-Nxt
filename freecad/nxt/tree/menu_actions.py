@@ -194,6 +194,24 @@ def _make_active(bridge: TreeBridge, objects: list[Any]) -> None:
         bridge._activation.toggle_active(objects[0].Name)
 
 
+def instances(obj: Any) -> list[Any]:
+    """`obj` and every link in its document that shows it.
+
+    FreeCAD's Std_TreeSelectAllInstances works on its own tree's items;
+    with Nxt's tree in its place it only cleared the selection.
+    """
+    found = [obj]
+    for other in obj.Document.Objects:
+        with contextlib.suppress(Exception):  # not a link then
+            if other is not obj and other.getLinkedObject(True) is obj:
+                found.append(other)
+    return found
+
+
+def _select_instances(bridge: TreeBridge, objects: list[Any]) -> None:
+    _select(bridge, [i.Name for o in objects for i in instances(o)])
+
+
 def _select_same_type(bridge: TreeBridge, objects: list[Any]) -> None:
     obj = objects[0]
     body = None
@@ -344,6 +362,7 @@ _ACTIONS: dict[str, Action] = {
     "roll_forward": _set_tip,
     "make_active": _make_active,
     "select_group_contents": _select_group_contents,
+    "select_instances": _select_instances,
     "select_same_type": _select_same_type,
     "expand_all": _expand_all,
     "collapse_all": _collapse_all,

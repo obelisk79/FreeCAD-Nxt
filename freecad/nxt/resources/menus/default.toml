@@ -95,7 +95,7 @@ Organize = [
 Relations = [
     { command = "nxt:select_consumers", flags = ["has_dependents"] },
     { command = "nxt:select_support", flags = ["has_inputs"] },
-    "Std_TreeSelectAllInstances",
+    "nxt:select_instances",
 ]
 Inspect = [
     { label = "Expressions", submenu = ["nxt:expressions_copy_selected", "nxt:expressions_copy_document", "nxt:expressions_copy_all", "nxt:expressions_paste"] },
@@ -165,9 +165,11 @@ when = { in_body = true }
 
 [menu.section]
 Relations = [{ command = "nxt:select_same_type", count = 1 }]
+# Part Design's moves take shapes only (features, sketches, datums,
+# binders): on a VarSet they do nothing.
 Organize = [
-    { command = "PartDesign_MoveFeature", label = "Move to another Body" },
-    { command = "PartDesign_MoveFeatureInTree", label = "Move after another feature" },
+    { command = "PartDesign_MoveFeature", label = "Move to another Body", type = "Part::Feature" },
+    { command = "PartDesign_MoveFeatureInTree", label = "Move after another feature", type = "Part::Feature" },
 ]
 
 # ----------------------------------------------------------------------- Body

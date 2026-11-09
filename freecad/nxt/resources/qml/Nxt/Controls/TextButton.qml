@@ -7,6 +7,8 @@ Rectangle {
     property alias text: label.text
     //: Accent text, for the action the form is for.
     property bool primary: false
+    //: Danger text, for an action that removes something.
+    property bool danger: false
     readonly property bool hovered: hover.hovered
 
     signal clicked()
@@ -23,7 +25,8 @@ Rectangle {
         id: label
         anchors.centerIn: parent
         font.pixelSize: theme.fontSmall
-        color: button.primary ? theme.link : theme.text
+        color: button.danger ? theme.danger
+             : button.primary ? theme.link : theme.text
     }
 
     HoverHandler { id: hover }

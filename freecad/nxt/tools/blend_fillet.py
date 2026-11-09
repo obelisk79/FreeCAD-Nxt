@@ -1729,7 +1729,7 @@ def fillet(shape: Any, edges: list[Any], radius: float | list[float],
 def _ours(shape: Any, edges: list[Any], radius: float | list[float],
           flat: bool, refine: bool, limits: dict[int, float] | None,
           mended: bool) -> tuple[Any, list[str]]:
-    """fillet's rounds as Nxt builds them."""
+    """The rounds as Nxt builds them, for `fillet`."""
     sizes = (list(radius) if isinstance(radius, (list, tuple))
              else [radius] * len(edges))
     from . import fillet_fade as fade

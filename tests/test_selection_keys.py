@@ -20,9 +20,8 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "tests"))
 
-from PySide6 import QtWidgets  # noqa: E402
-
 import fakes  # noqa: E402
+from PySide6 import QtWidgets  # noqa: E402
 
 
 class Selection:

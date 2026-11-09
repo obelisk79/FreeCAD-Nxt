@@ -148,6 +148,21 @@ class DefaultFileTests(unittest.TestCase):
         loose = self.resolve(obj(*SKETCH, flags=SHAPED))
         self.assertNotIn("PartDesign_MoveFeature", section(loose, "Organize"))
 
+    def test_a_varset_in_a_body_is_not_offered_part_design_moves(
+            self) -> None:
+        varset = self.resolve(obj("App::VarSet", "App::DocumentObject",
+                                  in_body=True))
+        organize = section(varset, "Organize")
+        self.assertNotIn("PartDesign_MoveFeature", organize)
+        self.assertNotIn("PartDesign_MoveFeatureInTree", organize)
+        self.assertIn("nxt:select_same_type", section(varset, "Relations"))
+
+    def test_select_all_instances_is_nxts_own(self) -> None:
+        body = self.resolve(obj("PartDesign::Body", "Part::BodyBase",
+                                "Part::Feature", flags=SHAPED))
+        self.assertIn("nxt:select_instances", section(body, "Relations"))
+        self.assertNotIn("Std_TreeSelectAllInstances", body.commands())
+
     def test_attachable_objects_offer_the_attachment_editor(self) -> None:
         menu = self.resolve(obj(*SKETCH, flags=SHAPED + ("attachable",)))
         self.assertIn("nxt:edit_attachment", section(menu, "Model"))

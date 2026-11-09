@@ -346,7 +346,7 @@ Restart FreeCAD now to use the new versions?</source>
     </message>
     <message>
         <source>Renamed %s to %s</source>
-        <extracomment>Re-exported for callers that import it from here. Active-container poll interval; FreeCAD emits no signal for it. How long a click in the tree stands before its detail strip opens. Scene position for the context menu. Hold this row in place on screen until rowReleased. getActiveObject keys, most specific first.</extracomment>
+        <extracomment>Re-exported for callers that import it from here. Active-container poll interval; FreeCAD emits no signal for it. How long a click in the tree stands before its detail strip opens. Scene position for the context menu. Hold this row in place on screen until rowReleased. getActiveObject keys, most specific first. The keys of the outer mark: an Assembly or Part around a Body.</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -439,6 +439,11 @@ The panel needs PySide6.QtQuickWidgets.</source>
     </message>
     <message>
         <source>Tip of %s moved to %s</source>
+        <extracomment>Where a Body&apos;s bar sets no tip: above its first feature. Objects made but not yet placed against the bar, at most. Objects just made: a Body&apos;s bar moves below each, as below a new feature, if it lands where the bar rests.</extracomment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%s rolled back to its start</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -476,6 +481,7 @@ The panel needs PySide6.QtQuickWidgets.</source>
     </message>
     <message>
         <source>Model panel</source>
+        <extracomment>FollowSelection as loaded, to tell an edit on this page.</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -646,6 +652,20 @@ Hold Alt while dragging to pass through.</source>
         <source>Section</source>
         <translation type="unfinished"></translation>
     </message>
+    <message>
+        <source>Deleted %s from %s</source>
+        <extracomment>Selection and undo counts are polled; both are cheap to read. In a task of Nxt&apos;s own: what it edits, rather than FreeCAD&apos;s object in edit. Inside a task dialog (task_layout.py): the object it edits, never the selection; the Data tab, a template&apos;s cards only. What is wrong with the object, shown above its cards. Per panel list picking its reference: the item chosen before, its &quot;Select reference...&quot; item, and what has been picked. While picking for a link: its property and whose it is. The property whose field has the keyboard: a rebuild of the cards (Two sides adds one) gives it back, so arrows keep working.</extracomment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%s is also a unit, which FreeCAD reads first: rename the variable</source>
+        <extracomment>Kinds that fit half a row. Everything else takes a whole one. Groups collapsed unless something in them has an expression. An enumeration this short is joined buttons, not a drop-down.</extracomment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Expressions start with =</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>NxtMenu</name>
@@ -703,6 +723,10 @@ Hold Alt while dragging to pass through.</source>
     </message>
     <message>
         <source>Select group contents</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select all instances</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -1596,6 +1620,10 @@ Hold Alt while dragging to pass through.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <source>Density</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Unit system</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1604,8 +1632,8 @@ Hold Alt while dragging to pass through.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>No materials</source>
-        <extracomment>Gap between the bottom of the 3D view and the bar. Unit schemas offered first, by FreeCAD&apos;s name for them. Significant digits shown. The QQuickWidget showing the bar, once there is one.</extracomment>
+        <source>Custom</source>
+        <extracomment>Gap between the bottom of the 3D view and the bar. Unit schemas offered first, by FreeCAD&apos;s name for them. Significant digits shown. kg/m³ in a kg/mm³, FreeCAD&apos;s internal density unit. The material setting&apos;s value while a custom density is used. Densities at least this large are shown as whole numbers. The QQuickWidget showing the bar, once there is one.</extracomment>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -1705,6 +1733,10 @@ Hold Alt while dragging to pass through.</source>
     </message>
     <message>
         <source>Internal name: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Suppressed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -1977,6 +2009,10 @@ Hold Alt while dragging to pass through.</source>
     </message>
     <message>
         <source>What it sets</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Delete</source>
         <translation type="unfinished"></translation>
     </message>
     <message>

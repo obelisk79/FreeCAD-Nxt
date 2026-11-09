@@ -344,6 +344,20 @@ class InspectorBridge(QtCore.QObject):
             self._refresh_later()
         return why
 
+    @QtCore.Slot(str, result=str)
+    def removeVariable(self, prop: str) -> str:
+        """Delete a variable from the selected VarSet; "" or why not."""
+        obj = self._sole()
+        if obj is None:
+            return "Select one variable set."
+        why = variables.remove(obj, prop)
+        if not why:
+            from ..app import services
+            services.toast(obj.Document, i18n.translate(
+                "Nxt", "Deleted %s from %s") % (prop, obj.Label))
+            self._refresh_later()
+        return why
+
     @QtCore.Slot(result="QVariantList")
     def variableTypes(self) -> list[dict[str, str]]:
         """The types a new variable may have."""

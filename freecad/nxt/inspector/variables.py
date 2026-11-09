@@ -7,6 +7,7 @@ once, when it is added.
 from __future__ import annotations
 
 import contextlib
+import re
 import traceback
 from collections.abc import Callable
 from typing import Any
@@ -95,6 +96,35 @@ def edit(obj: Any, prop: str, name: str, tip: str) -> str:
         if tip != tip_of(obj, name):
             obj.setDocumentationOfProperty(name, tip)
     return _changed(obj, "Edit variable %s" % prop, change)
+
+
+def users(obj: Any, prop: str) -> list[str]:
+    """"Object.Property" of each expression that reads this variable."""
+    owners = {re.escape(obj.Name), re.escape("<<%s>>" % obj.Label)}
+    if re.fullmatch(r"\w+", obj.Label):
+        owners.add(re.escape(obj.Label))
+    used = re.compile(r"(?<![\w.])(?:%s)\.%s\b"
+                      % ("|".join(owners), re.escape(prop)))
+    found = []
+    for other in obj.Document.Objects:
+        for path, expression in getattr(other, "ExpressionEngine", ()) or ():
+            if used.search(expression):
+                found.append("%s.%s" % (other.Label, path.lstrip(".")))
+    return found
+
+
+def remove(obj: Any, prop: str) -> str:
+    """Delete a variable as one undo step; "" or why not.
+
+    Not while an expression reads it: that would break silently.
+    """
+    if prop not in added(obj):
+        return "Only variables added to the set can be deleted."
+    readers = users(obj, prop)
+    if readers:
+        return "Used by %s; change those first." % ", ".join(readers)
+    return _changed(obj, "Delete variable %s" % prop,
+                    lambda: obj.removeProperty(prop))
 
 
 def add(obj: Any, type_id: str, name: str, tip: str) -> str:
