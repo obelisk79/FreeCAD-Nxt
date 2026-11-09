@@ -136,6 +136,8 @@ class NxtPreferencesPage:
 
     def __init__(self) -> None:
         self.form = QtWidgets.QWidget()
+        #: FollowSelection as loaded, to tell an edit on this page.
+        self._followed = bool(settings.DEFAULTS["FollowSelection"])
         self.form.setWindowTitle(translate("Nxt", "Model panel"))
         self.form.setWindowIcon(QtGui.QIcon(str(resources.LOGO)))
         follow(self.form)
@@ -300,7 +302,8 @@ class NxtPreferencesPage:
             box.setCurrentIndex(max(0, index))
         self._marks.setChecked(bool(settings.get("UnderConstrainedMarks")))
         self._tips.setChecked(bool(settings.get("RowToolTips")))
-        self._follow.setChecked(bool(settings.get("FollowSelection")))
+        self._followed = bool(settings.get("FollowSelection"))
+        self._follow.setChecked(self._followed)
         self._dbl.setChecked(bool(settings.get("EditOnDoubleClick")))
         self._repair.setChecked(bool(settings.get("RepairProfiles")))
         self._rename.setChecked(bool(settings.get("AutoRename")))
@@ -325,7 +328,11 @@ class NxtPreferencesPage:
             settings.put(key, str(box.currentData()))
         settings.put("UnderConstrainedMarks", self._marks.isChecked())
         settings.put("RowToolTips", self._tips.isChecked())
-        settings.put("FollowSelection", self._follow.isChecked())
+        # FreeCAD's Selection page saves this too, first: write it only if
+        # changed here, or this page's stale copy would undo that edit.
+        if self._follow.isChecked() != self._followed:
+            self._followed = self._follow.isChecked()
+            settings.put("FollowSelection", self._followed)
         settings.put("EditOnDoubleClick", self._dbl.isChecked())
         settings.put("RepairProfiles", self._repair.isChecked())
         settings.put("AutoRename", self._rename.isChecked())

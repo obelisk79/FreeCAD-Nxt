@@ -26,6 +26,8 @@ _OVERLAY_MOVES = (QtCore.QEvent.Type.Show, QtCore.QEvent.Type.Hide,
 #: the 3D view: a dragged toolbar reaching it opens a new toolbar row, as
 #: it does over a docked panel's header (the 3D view never offers one).
 DROP_STRIP_HEIGHT = 10
+#: How often to look again while a close's save prompt is open.
+CLOSE_POLL_MS = 100
 #: The class of FreeCAD's overlay panels (docks drawn over the 3D view).
 _OVERLAY_CLASS = "OverlayTabWidget"
 #: What a 3D view window does on its way to being destroyed.
@@ -48,6 +50,9 @@ class ViewOverlay(QtCore.QObject):
         self._holder: Any = None
         self._parked = False
         self._retrying = False
+        #: Whether the user has the panel showing; the dock itself stays
+        #: hidden, so its menu entry is kept in step by hand.
+        self._shown = True
         #: Explicitly hidden parent for the panel while no 3D view shows,
         #: so a workbench switch showing the dock cannot reveal it.
         self._shelf = QtWidgets.QWidget(dock)
@@ -59,9 +64,21 @@ class ViewOverlay(QtCore.QObject):
         self._replace.setSingleShot(True)
         self._replace.setInterval(0)
         self._replace.timeout.connect(self._place)
+        self._rehide = QtCore.QTimer(self)
+        self._rehide.setSingleShot(True)
+        self._rehide.setInterval(0)
+        self._rehide.timeout.connect(self._keep_dock_hidden)
+        #: After a 3D view was asked to close: back in, if it stayed.
+        self._recheck = QtCore.QTimer(self)
+        self._recheck.setSingleShot(True)
+        self._recheck.setInterval(0)
+        self._recheck.timeout.connect(self._after_close)
 
     def attached(self) -> bool:
         return self._attached
+
+    def shown(self) -> bool:
+        return self._attached and self._shown
 
     def attach(self) -> bool:
         """Into the active 3D view, or out of sight until there is one."""
@@ -69,6 +86,7 @@ class ViewOverlay(QtCore.QObject):
         if not widgets.alive(view):
             return False
         self._attached = True
+        self._shown = True
         self._dock.setWidget(QtWidgets.QWidget())   # the view leaves it
         host = view3d.active_viewport()
         if host is not None:
@@ -77,6 +95,8 @@ class ViewOverlay(QtCore.QObject):
             self._park()        # no 3D view yet: into the first one
         self._dock.hide()
         self._dock.installEventFilter(self)
+        self._dock.toggleViewAction().triggered.connect(self._toggled)
+        self._sync_action()
         self._add_strip()
         area = view3d.mdi_area()
         if area is not None:
@@ -88,7 +108,10 @@ class ViewOverlay(QtCore.QObject):
         if not self._attached:
             return
         self._attached = False
+        self._recheck.stop()
         self._dock.removeEventFilter(self)
+        with contextlib.suppress(RuntimeError, TypeError):
+            self._dock.toggleViewAction().triggered.disconnect(self._toggled)
         self._remove_strip()
         area = view3d.mdi_area()
         if area is not None:
@@ -127,6 +150,9 @@ class ViewOverlay(QtCore.QObject):
         strip.setWindowTitle("Nxt")
         strip.setFeatures(
             QtWidgets.QDockWidget.DockWidgetFeature.NoDockWidgetFeatures)
+        # Not a panel to the user: kept out of View > Panels and the
+        # toolbar area's menu.
+        strip.toggleViewAction().setVisible(False)
         bar = QtWidgets.QWidget(strip)
         bar.setFixedHeight(DROP_STRIP_HEIGHT)
         strip.setTitleBarWidget(bar)
@@ -150,6 +176,17 @@ class ViewOverlay(QtCore.QObject):
         if isinstance(main, QtWidgets.QMainWindow):
             main.removeDockWidget(strip)
         strip.deleteLater()
+
+    def _after_close(self) -> None:
+        """Back into the 3D view if its close was cancelled.
+
+        Not while the save prompt is open: the view may still go.
+        """
+        if QtWidgets.QApplication.activeModalWidget() is not None:
+            self._recheck.start(CLOSE_POLL_MS)
+            return
+        self._recheck.setInterval(0)
+        self._follow()
 
     def _follow(self, *_args: Any) -> None:
         """Another MDI window became active: go with it, if it is 3D."""
@@ -211,13 +248,33 @@ class ViewOverlay(QtCore.QObject):
         self._passing = False
         self._owning = False
         self._place()
-        view.show()
+        view.setVisible(self._shown)
         view.raise_()
         self._dock._release_timer.start()
 
     def _keep_dock_hidden(self) -> None:
         if self._attached and widgets.alive(self._dock):
             self._dock.hide()
+            self._sync_action()
+
+    def _sync_action(self) -> None:
+        """Tick the dock's menu entry by the panel, not the hidden dock."""
+        if self._attached and widgets.alive(self._dock):
+            self._dock.toggleViewAction().setChecked(self._shown)
+
+    def _toggled(self, on: bool) -> None:
+        """The panel's menu entry was chosen: show or hide the panel."""
+        if not self._attached:
+            return
+        self._shown = on
+        view = self._dock._view
+        if widgets.alive(view) and not self._parked:
+            view.setVisible(on)
+            if on:
+                view.raise_()
+        # Qt shows or hides the dock for the entry too: undone next turn.
+        self._rehide.start()
+        self._dock.save_state()
 
     def _place(self) -> None:
         view = self._dock._view
@@ -268,9 +325,11 @@ class ViewOverlay(QtCore.QObject):
         kind = event.type()
         try:
             if watched is self._dock:
-                if kind == QtCore.QEvent.Type.Show:
-                    # Workbench switches re-show remembered docks.
-                    QtCore.QTimer.singleShot(0, self._keep_dock_hidden)
+                if kind in (QtCore.QEvent.Type.Show,
+                            QtCore.QEvent.Type.Hide):
+                    # Workbench switches re-show remembered docks; a hide
+                    # unticks the dock's menu entry.
+                    self._rehide.start()
                 return False
             if watched in self._overlays:
                 if kind in _OVERLAY_MOVES:
@@ -278,6 +337,8 @@ class ViewOverlay(QtCore.QObject):
                 return False
             if watched is self._holder and kind in _GOING:
                 self._park()
+                # Closing asks to save first, and may be cancelled.
+                self._recheck.start()
                 return False
             if watched is self._host:
                 if kind == QtCore.QEvent.Type.MouseButtonRelease:

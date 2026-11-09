@@ -378,25 +378,34 @@ class TabKeyTests(unittest.TestCase):
     def test_the_wheel_is_kept_from_the_view_underneath(self) -> None:
         floating = float_input.FloatingInput()
         widget = QtWidgets.QLineEdit()
+        widget.resize(60, 20)
+        widget.show()
         floating._box("lengthEdit").widget = widget
         turned: list[tuple[int, bool]] = []
         floating._send_wheel = lambda _w, a, t: turned.append((a, t))
+        over = QtCore.QPointF(widget.mapToGlobal(QtCore.QPoint(5, 5)))
+        away = QtCore.QPointF(widget.mapToGlobal(QtCore.QPoint(-50, -50)))
 
-        def wheel(modifiers: Any) -> QtGui.QWheelEvent:
+        def wheel(modifiers: Any, at: Any = over) -> QtGui.QWheelEvent:
             return QtGui.QWheelEvent(
-                QtCore.QPointF(5, 5), QtCore.QPointF(5, 5), QtCore.QPoint(),
+                QtCore.QPointF(5, 5), at, QtCore.QPoint(),
                 QtCore.QPoint(0, -120), QtCore.Qt.MouseButton.NoButton,
                 modifiers, QtCore.Qt.ScrollPhase.NoScrollPhase, False)
 
+        # Taken whichever object it is on its way to: FreeCAD's overlay
+        # manager hands it to the 3D view before the box sees it.
+        view = QtWidgets.QWidget()
         plain = wheel(QtCore.Qt.KeyboardModifier.NoModifier)
         plain.ignore()
-        self.assertTrue(floating.eventFilter(widget, plain))
+        self.assertTrue(floating.eventFilter(view, plain))
         self.assertTrue(plain.isAccepted())
         self.assertTrue(floating.eventFilter(
             widget, wheel(QtCore.Qt.KeyboardModifier.ControlModifier)))
         self.assertEqual(turned, [(-120, False), (-120, True)])
-        # Another widget's wheel is its own.
-        self.assertFalse(floating.eventFilter(QtWidgets.QLineEdit(), plain))
+        # A wheel elsewhere is the view's.
+        self.assertFalse(floating.eventFilter(
+            view, wheel(QtCore.Qt.KeyboardModifier.NoModifier, away)))
+        widget.hide()
 
     def test_other_keys_pass(self) -> None:
         self.assertEqual(self.press(QtCore.Qt.Key.Key_A), (False, []))

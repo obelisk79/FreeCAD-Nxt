@@ -18,8 +18,11 @@ from typing import Any
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / "tests"))
 
 from PySide6 import QtWidgets  # noqa: E402
+
+import fakes  # noqa: E402
 
 
 class Selection:
@@ -996,6 +999,21 @@ class PickTests(unittest.TestCase):
         finally:
             bridge_mod.settings.get = original
         self.assertEqual(self.scrolled, [])
+
+    def test_it_is_freecads_auto_expand_setting(self) -> None:
+        groups: dict[str, dict[str, Any]] = {}
+        original = bridge_mod.settings.App.ParamGet
+        bridge_mod.settings.App.ParamGet = lambda group: fakes.Params(
+            groups.setdefault(group, {}))
+        try:
+            bridge_mod.settings.put("FollowSelection", False)
+            tree = groups["User parameter:BaseApp/Preferences/TreeView"]
+            self.assertIs(tree["SyncSelection"], False)
+            tree["SyncSelection"] = True
+            self.assertIs(bridge_mod.settings.get("FollowSelection"), True)
+        finally:
+            bridge_mod.settings.App.ParamGet = original
+        self.assertNotIn(bridge_mod.settings.GROUP, groups)
 
 
 class EditTransactionTests(unittest.TestCase):

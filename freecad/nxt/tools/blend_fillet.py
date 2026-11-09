@@ -1131,11 +1131,15 @@ def tangent_chain(shape: Any, names: list[str],
             at = _runs_on(edge, other, tolerance)
             if at is None or not _faces_run_on(shape, edge, other, at):
                 continue
-            if not _sharp(shape, other):
+            if _sharp(shape, other):
+                kind[index] = _convex_edge(shape, other)
+            else:
                 end = fade.fading_end(shape, other) if fading else None
                 if end is None or _near(end, at, tolerance):
                     continue
-            kind[index] = _convex_edge(shape, other)
+                # Read mid-way, where it is nearly tangent, its kind is
+                # a guess; it is the crease it runs on from, so its kind.
+                kind[index] = kind[index_from]
             if kind[index] != kind[index_from]:
                 continue
             seen.add(index)
@@ -1705,6 +1709,27 @@ def fillet(shape: Any, edges: list[Any], radius: float | list[float],
     faces, 0 where none does. Without `mended`, a quick preview: the
     finished faces' tolerances are not mended.
     """
+    result, problems = _ours(shape, edges, radius, flat, refine, limits,
+                             mended)
+    if not problems or flat:
+        return result, problems
+    # Ours left a round short (it would not run out over curved faces,
+    # say): OCCT's own fillet may go all the way round.
+    sizes = (list(radius) if isinstance(radius, (list, tuple))
+             else [radius] * len(edges))
+    with timed("OCCT fillet tried"):
+        rescued = _occt_made(shape, edges, sizes, flat, refine, mixed=True)
+    if rescued is None:
+        return result, problems
+    if limits is not None:
+        limits.clear()
+    return rescued, []
+
+
+def _ours(shape: Any, edges: list[Any], radius: float | list[float],
+          flat: bool, refine: bool, limits: dict[int, float] | None,
+          mended: bool) -> tuple[Any, list[str]]:
+    """fillet's rounds as Nxt builds them."""
     sizes = (list(radius) if isinstance(radius, (list, tuple))
              else [radius] * len(edges))
     from . import fillet_fade as fade
@@ -1744,7 +1769,7 @@ def fillet(shape: Any, edges: list[Any], radius: float | list[float],
                              % reason)
         rest = [i for i in range(len(edges)) if i != dropped]
         found: dict[int, float] = {}
-        result, problems = fillet(
+        result, problems = _ours(
             shape, [edges[i] for i in rest], [sizes[i] for i in rest],
             flat, refine, found if limits is not None else None, mended)
         if limits is not None:
@@ -1798,17 +1823,17 @@ def fillet(shape: Any, edges: list[Any], radius: float | list[float],
 
 
 def _occt_made(shape: Any, edges: list[Any], sizes: list[float],
-               flat: bool, refine: bool) -> Any:
+               flat: bool, refine: bool, mixed: bool = False) -> Any:
     """OCCT's own fillet or chamfer where likely to match ours; else None.
 
     Used only when it comes out sound. Likely: one size, no fades, and
     every edge of one kind (all outer or all inner), so no corner mixes
-    the two.
+    the two; with `mixed`, tried whatever the kinds.
     """
     if len(set(sizes)) != 1 or not edges:
         return None
     kinds = {_convex_edge(shape, e) for e in edges}
-    if len(kinds) != 1 or None in kinds:
+    if not mixed and (len(kinds) != 1 or None in kinds):
         return None
     try:
         made = (shape.makeChamfer(sizes[0], edges) if flat
@@ -2943,6 +2968,8 @@ class BlendFillet:
             # CAD systems: an earlier one is worked out again only where
             # this one meets it at a corner (_with_earlier).
             shape = _usable(obj.BaseFeature.Shape)
+            if not shape.isValid():
+                raise ValueError(_invalid_from(base))
             names = self.names(obj, shape)
             edges = [shape.getElement(n) for n in names]
             own = shape
@@ -3177,6 +3204,22 @@ def _usable(shape: Any) -> Any:
         if fixed.isValid():
             return fixed
     return copy
+
+
+def _invalid_from(base: Any) -> str:
+    """Why rounds cannot go on `base`: the feature that made it invalid.
+
+    The first invalid one walking back along the base features: each
+    after it only inherits the fault.
+    """
+    culprit = base
+    earlier = getattr(culprit, "BaseFeature", None)
+    while earlier is not None and not _usable(earlier.Shape).isValid():
+        culprit, earlier = earlier, getattr(earlier, "BaseFeature", None)
+    if culprit is base:
+        return "%s has invalid geometry; fix it first" % base.Label
+    return ("%s has invalid geometry, made by %s; fix %s first"
+            % (base.Label, culprit.Label, culprit.Label))
 
 
 #: Less material than this, per the base's volume, is none at all.

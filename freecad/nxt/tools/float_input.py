@@ -462,6 +462,7 @@ class FloatingInput(QtCore.QObject):
 
     def remove(self) -> None:
         self._timer.stop()
+        QtWidgets.QApplication.instance().removeEventFilter(self)
         self._drop_widgets()
 
     def _box(self, name: str) -> _Box:
@@ -558,6 +559,10 @@ class FloatingInput(QtCore.QObject):
             self._drop_widgets()
             self._viewport = viewport
             viewport.installEventFilter(self)
+            # On the application too, after FreeCAD's overlay manager:
+            # it is asked first, and sends a wheel over the 3D view on to
+            # the view, which zooms.
+            QtWidgets.QApplication.instance().installEventFilter(self)
         placed: list[tuple[_Box, Any, placement.Rect]] = []
         for name, spin, corners in targets:
             box = self._box(name)
@@ -701,26 +706,28 @@ class FloatingInput(QtCore.QObject):
             widget.setFocus(QtCore.Qt.FocusReason.MouseFocusReason)
 
     def eventFilter(self, watched: Any, event: Any) -> bool:  # noqa: N802
-        """Block FreeCAD shortcuts while focused; watch handle drags."""
+        """Take wheels over a box, shortcuts while focused; watch drags."""
         kind = event.type()
+        if kind == QtCore.QEvent.Type.Wheel:
+            widget = self._box_at(event.globalPosition().toPoint())
+            if widget is None:
+                return False
+            # Taken here, so the 3D view underneath does not zoom.
+            self._send_wheel(widget, event.angleDelta().y(), bool(
+                event.modifiers()
+                & QtCore.Qt.KeyboardModifier.ControlModifier))
+            event.accept()
+            return True
         if watched is self._viewport:
             if kind in (QtCore.QEvent.Type.MouseButtonPress,
                         QtCore.QEvent.Type.MouseButtonRelease):
                 self._watch_drag(event)
             return False
         if kind not in (QtCore.QEvent.Type.ShortcutOverride,
-                        QtCore.QEvent.Type.KeyPress,
-                        QtCore.QEvent.Type.Wheel):
+                        QtCore.QEvent.Type.KeyPress):
             return False
         if not any(watched is box.widget for box in self._boxes.values()):
             return False
-        if kind == QtCore.QEvent.Type.Wheel:
-            # Swallowed so the 3D view underneath does not zoom.
-            self._send_wheel(watched, event.angleDelta().y(), bool(
-                event.modifiers()
-                & QtCore.Qt.KeyboardModifier.ControlModifier))
-            event.accept()
-            return True
         if kind == QtCore.QEvent.Type.ShortcutOverride:
             if watched.hasFocus():
                 event.accept()
@@ -736,6 +743,15 @@ class FloatingInput(QtCore.QObject):
             event.modifiers() & QtCore.Qt.KeyboardModifier.ShiftModifier)
         self._send_tab(watched, backward)
         return True
+
+    def _box_at(self, point: Any) -> Any:
+        """The value box shown under the global `point`, if any."""
+        for box in self._boxes.values():
+            widget = box.widget
+            if widgets.alive(widget) and widget.isVisible() \
+                    and widget.rect().contains(widget.mapFromGlobal(point)):
+                return widget
+        return None
 
     @staticmethod
     def _send_wheel(widget: Any, angle: int, tenfold: bool) -> None:

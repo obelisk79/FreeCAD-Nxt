@@ -179,11 +179,16 @@ def gather(feature: Any) -> tuple[list[Face], Any, Any] | None:
 # -- the watcher --
 
 def _fields() -> dict[str, Any]:
+    """The task's length fields, shown or not.
+
+    Nxt's cards replace the box that holds them, so they are hidden, yet
+    every edit, the cards' and the 3D handles', still goes through them.
+    """
     found: dict[str, Any] = {}
     for widget in Gui.getMainWindow().findChildren(
             QtWidgets.QAbstractSpinBox):
         name = widget.objectName()
-        if name in (FORWARD, BACKWARD) and widget.isVisible():
+        if name in (FORWARD, BACKWARD):
             found[name] = widget
     return found
 

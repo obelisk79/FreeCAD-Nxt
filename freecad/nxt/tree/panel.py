@@ -513,9 +513,10 @@ class ModelPanel(QtWidgets.QDockWidget):
 
     def _flush_save(self) -> None:
         try:
-            # In Nxt's overlay the dock is hidden but the panel is showing.
-            settings_mod.put("Visible", self.isVisible()
-                             or self.in_view_overlay())
+            # In Nxt's overlay the dock is hidden; the panel may show.
+            settings_mod.put("Visible", self.isVisible() or (
+                self._view_overlay is not None
+                and self._view_overlay.shown()))
             settings_mod.put("ViewOverlay", self.in_view_overlay())
             settings_mod.put("Floating", self.isFloating())
             settings_mod.put("Overlay", self.overlay())

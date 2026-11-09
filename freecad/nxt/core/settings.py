@@ -36,6 +36,7 @@ DEFAULTS: dict[str, bool | int | float | str] = {
     # "nxt" (drawn in the 3D view) or "freecad".
     "OverlayMode": "nxt",
     "ViewOverlay": False,
+    # FreeCAD's own "Auto expand tree item" (see SHARED).
     "FollowSelection": True,
     "EditOnDoubleClick": True,
     "AttachSketchByPoints": True,
@@ -78,8 +79,17 @@ DEFAULTS: dict[str, bool | int | float | str] = {
 }
 
 
-def _params() -> Any:
-    return App.ParamGet(GROUP)
+#: Settings that are FreeCAD's own: key -> (group, name). Nxt's page
+#: edits them in place, so both preference pages show one value.
+SHARED: dict[str, tuple[str, str]] = {
+    "FollowSelection": ("User parameter:BaseApp/Preferences/TreeView",
+                        "SyncSelection"),
+}
+
+
+def _params(key: str) -> tuple[Any, str]:
+    group, name = SHARED.get(key, (GROUP, key))
+    return App.ParamGet(group), name
 
 
 #: bool before int: bool is a subclass of int, so the order matters.
@@ -103,7 +113,8 @@ def get(key: str) -> Any:
     default = DEFAULTS[key]
     _kind, getter, _setter = _accessor(default)
     try:
-        return getattr(_params(), getter)(key, default)
+        params, name = _params(key)
+        return getattr(params, getter)(name, default)
     except Exception:
         App.Console.PrintError("Nxt: could not read preference %r\n" % key)
         return default
@@ -119,7 +130,8 @@ def put(key: str, value: object) -> None:
         return
     kind, _getter, setter = _accessor(DEFAULTS[key])
     try:
-        getattr(_params(), setter)(key, kind(value))
+        params, name = _params(key)
+        getattr(params, setter)(name, kind(value))
     except Exception:
         App.Console.PrintError("Nxt: could not write preference %r\n" % key)
         App.Console.PrintError(traceback.format_exc())
