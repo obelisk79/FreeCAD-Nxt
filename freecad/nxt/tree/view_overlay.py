@@ -25,7 +25,11 @@ _OVERLAY_MOVES = (QtCore.QEvent.Type.Show, QtCore.QEvent.Type.Hide,
 #: Height of the strip docked under the toolbars while the panel is in
 #: the 3D view: a dragged toolbar reaching it opens a new toolbar row, as
 #: it does over a docked panel's header (the 3D view never offers one).
-DROP_STRIP_HEIGHT = 10
+#: Its body's; Qt lays the dock out a pixel shorter, so 10 px on screen.
+DROP_STRIP_HEIGHT = 11
+#: After a toolbar is let go, how long the strip stays: Qt places the
+#: toolbar on the release, and the strip must still be there for it.
+STRIP_LINGER_MS = 150
 #: How often to look again while a close's save prompt is open.
 CLOSE_POLL_MS = 100
 #: The class of FreeCAD's overlay panels (docks drawn over the 3D view).
@@ -33,6 +37,53 @@ _OVERLAY_CLASS = "OverlayTabWidget"
 #: What a 3D view window does on its way to being destroyed.
 _GOING = (QtCore.QEvent.Type.Close, QtCore.QEvent.Type.DeferredDelete,
           QtCore.QEvent.Type.Hide)
+
+
+class ToolbarDrag(QtCore.QObject):
+    """Tells when a toolbar of `main` starts being dragged, and ends.
+
+    `started` is called on the first move, `ended` on the release. A
+    toolbar is dragged by a press on the toolbar itself (its handle or
+    empty space; its buttons take their own presses) and a move.
+    """
+
+    def __init__(self, main: QtWidgets.QMainWindow,
+                 started: Any, ended: Any) -> None:
+        super().__init__(main)
+        self._main = main
+        self._started, self._ended = started, ended
+        self._held: Any = None
+        self._dragging = False
+
+    def install(self) -> None:
+        app = QtWidgets.QApplication.instance()
+        if app is not None:
+            app.installEventFilter(self)
+
+    def remove(self) -> None:
+        app = QtWidgets.QApplication.instance()
+        if app is not None:
+            app.removeEventFilter(self)
+        self._held, self._dragging = None, False
+
+    def eventFilter(self, watched: Any, event: Any) -> bool:  # noqa: N802
+        kind = event.type()
+        if kind == QtCore.QEvent.Type.MouseButtonPress:
+            if (isinstance(watched, QtWidgets.QToolBar)
+                    and watched.isMovable()
+                    and watched.window() is self._main
+                    and event.button() == QtCore.Qt.MouseButton.LeftButton):
+                self._held = watched
+        elif kind == QtCore.QEvent.Type.MouseMove:
+            if self._held is not None and not self._dragging \
+                    and event.buttons() & QtCore.Qt.MouseButton.LeftButton:
+                self._dragging = True
+                self._started()
+        elif kind == QtCore.QEvent.Type.MouseButtonRelease:
+            if self._dragging:
+                self._ended()
+            self._held, self._dragging = None, False
+        return False
 
 
 class ViewOverlay(QtCore.QObject):
@@ -58,6 +109,11 @@ class ViewOverlay(QtCore.QObject):
         self._shelf = QtWidgets.QWidget(dock)
         self._shelf.hide()
         self._strip: Any = None
+        self._toolbar_drag: ToolbarDrag | None = None
+        self._unstrip = QtCore.QTimer(self)
+        self._unstrip.setSingleShot(True)
+        self._unstrip.setInterval(STRIP_LINGER_MS)
+        self._unstrip.timeout.connect(self._hide_strip)
         #: FreeCAD's overlay panels, watched so the panel keeps clear.
         self._overlays: list[Any] = []
         self._replace = QtCore.QTimer(self)
@@ -113,6 +169,9 @@ class ViewOverlay(QtCore.QObject):
         with contextlib.suppress(RuntimeError, TypeError):
             self._dock.toggleViewAction().triggered.disconnect(self._toggled)
         self._remove_strip()
+        if self._toolbar_drag is not None:
+            self._toolbar_drag.remove()
+            self._toolbar_drag = None
         area = view3d.mdi_area()
         if area is not None:
             with contextlib.suppress(RuntimeError, TypeError):
@@ -153,22 +212,44 @@ class ViewOverlay(QtCore.QObject):
         # Not a panel to the user: kept out of View > Panels and the
         # toolbar area's menu.
         strip.toggleViewAction().setVisible(False)
+        # The height is the body's, with an empty title bar: a body of no
+        # height gave the dock no valid size hint (Qt warned of a negative
+        # size), so it was never laid out, and on macOS it showed as a
+        # stray box over the toolbars (#117).
         bar = QtWidgets.QWidget(strip)
-        bar.setFixedHeight(DROP_STRIP_HEIGHT)
+        bar.setFixedHeight(0)
         strip.setTitleBarWidget(bar)
         body = QtWidgets.QWidget(strip)
-        body.setFixedHeight(0)
+        body.setFixedHeight(DROP_STRIP_HEIGHT)
+        body.setMinimumWidth(1)
         strip.setWidget(body)
-        # Nothing drawn: the window shows through, as if no dock were there.
+        # Painted in the window's own colour, so it reads as no dock at
+        # all, rather than see-through, which no platform promises.
         for part in (strip, bar, body):
-            part.setAutoFillBackground(False)
-        strip.setStyleSheet("background: transparent; border: none;")
+            part.setAutoFillBackground(True)
+            part.setBackgroundRole(QtGui.QPalette.ColorRole.Window)
+        strip.setStyleSheet("QDockWidget { border: none; }")
         main.addDockWidget(QtCore.Qt.DockWidgetArea.TopDockWidgetArea,
                            strip)
-        strip.show()
+        # Shown only while a toolbar is dragged, so it takes no room from
+        # the 3D view otherwise.
+        strip.hide()
         self._strip = strip
+        self._toolbar_drag = ToolbarDrag(main, self._show_strip,
+                                         self._unstrip.start)
+        self._toolbar_drag.install()
+
+    def _show_strip(self) -> None:
+        self._unstrip.stop()
+        if widgets.alive(self._strip):
+            self._strip.show()
+
+    def _hide_strip(self) -> None:
+        if widgets.alive(self._strip):
+            self._strip.hide()
 
     def _remove_strip(self) -> None:
+        self._unstrip.stop()
         strip, self._strip = self._strip, None
         if not widgets.alive(strip):
             return
