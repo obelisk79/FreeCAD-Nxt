@@ -6,6 +6,7 @@ import FreeCADGui as Gui
 
 from ..core.qt import QtCore, QtGui, QtWidgets
 from ..resources import ICONS
+from . import toolbar_lock
 
 NAME = "NxtTesting"
 TITLE = "Nxt Fillet/Chamfer"
@@ -20,6 +21,7 @@ def _toolbar() -> QtWidgets.QToolBar:
     if toolbar is None:
         toolbar = window.addToolBar(TITLE)
         toolbar.setObjectName(NAME)
+        toolbar_lock.follow(toolbar)
         for command, text, icon in COMMANDS:
             # Icons only, as FreeCAD's toolbars: the name is the tooltip.
             action = QtGui.QAction(

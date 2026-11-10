@@ -57,6 +57,12 @@ def _leaving() -> None:
         App.Console.PrintError("Nxt: could not clean up its settings\n")
 
 
+# Before any setting is written: a first run is told by none being there.
+try:
+    from .app import welcome as _welcome
+    _welcome.schedule()
+except Exception:
+    App.Console.PrintError("Nxt: could not schedule the welcome\n")
 try:
     from .tools import gizmos as _gizmos
     _gizmos.apply_defaults_once()
@@ -77,6 +83,11 @@ try:
     _view_toolbar.install()
 except Exception:
     App.Console.PrintError("Nxt: could not add the View toolbar button\n")
+try:
+    from .app import menu_button as _menu_button
+    _menu_button.install()
+except Exception:
+    App.Console.PrintError("Nxt: could not add the menu button\n")
 try:
     from .app import test_toolbar as _test_toolbar
     _test_toolbar.install()

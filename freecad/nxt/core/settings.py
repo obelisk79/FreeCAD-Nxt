@@ -36,6 +36,8 @@ DEFAULTS: dict[str, bool | int | float | str] = {
     # "nxt" (drawn in the 3D view) or "freecad".
     "OverlayMode": "nxt",
     "ViewOverlay": False,
+    # FreeCAD's menus in a logo button; the menu bar hidden (not macOS).
+    "MenuInToolbar": True,
     # FreeCAD's own "Auto expand tree item" (see SHARED).
     "FollowSelection": True,
     "EditOnDoubleClick": True,

@@ -1,4 +1,5 @@
-<?xml version='1.0' encoding='utf-8'?>
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE TS>
 <TS version="2.1" language="de_DE">
 <context>
     <name>ContextMenu</name>
@@ -61,7 +62,7 @@
         <translation>In %1</translation>
     </message>
     <message>
-        <source>Can't move here</source>
+        <source>Can&apos;t move here</source>
         <translation>Hier nicht möglich</translation>
     </message>
     <message>
@@ -119,11 +120,11 @@
         <translation>Erneut wählen zum Entfernen. Über einen Chip fahren zeigt seine Kante.</translation>
     </message>
     <message>
-        <source>%1 of %2 edges won't chamfer at %3.</source>
+        <source>%1 of %2 edges won&apos;t chamfer at %3.</source>
         <translation>%1 von %2 Kanten lassen sich mit %3 nicht fasen.</translation>
     </message>
     <message>
-        <source>%1 of %2 edges won't fillet at %3.</source>
+        <source>%1 of %2 edges won&apos;t fillet at %3.</source>
         <translation>%1 von %2 Kanten lassen sich mit %3 nicht verrunden.</translation>
     </message>
     <message>
@@ -224,7 +225,7 @@
     <name>Nxt</name>
     <message>
         <source>Addons updated</source>
-        <extracomment>The running check; held so Qt doesn't lose the workers, and so the check runs once a session. FreeCAD's settings for bringing up a hidden Report view when a message arrives. The Addon Manager's workers report fetch problems as warnings and errors; during the check they are only logged. Longest the Report view is kept down, in case a worker never finishes.</extracomment>
+        <extracomment>The running check; held so Qt doesn&apos;t lose the workers, and so the check runs once a session. FreeCAD&apos;s settings for bringing up a hidden Report view when a message arrives. The Addon Manager&apos;s workers report fetch problems as warnings and errors; during the check they are only logged. Longest the Report view is kept down, in case a worker never finishes.</extracomment>
         <translation>Addons aktualisiert</translation>
     </message>
     <message>
@@ -249,7 +250,7 @@ FreeCAD jetzt neu starten, um die neuen Versionen zu nutzen?</translation>
         <translation>Schließen</translation>
     </message>
     <message>
-        <source>Show FreeCAD's property table</source>
+        <source>Show FreeCAD&apos;s property table</source>
         <translation>FreeCADs Eigenschaftstabelle zeigen</translation>
     </message>
     <message>
@@ -266,7 +267,7 @@ FreeCAD jetzt neu starten, um die neuen Versionen zu nutzen?</translation>
     </message>
     <message>
         <source>Taper 2</source>
-        <extracomment>The property each task panel field sets, where it is known. The scene nodes that hold a handle: an arrow, and a rotation handle. Per feature type, each kind of handle and the task fields its handles drag, in the order FreeCAD creates them. The task panel field a feature's arrow drags, by feature type. Any other type with an arrow falls back to the first length field shown. The number a field's text starts with, and its decimals.</extracomment>
+        <extracomment>The property each task panel field sets, where it is known. The scene nodes that hold a handle: an arrow, and a rotation handle. Per feature type, each kind of handle and the task fields its handles drag, in the order FreeCAD creates them. The task panel field a feature&apos;s arrow drags, by feature type. Any other type with an arrow falls back to the first length field shown. The number a field&apos;s text starts with, and its decimals.</extracomment>
         <translation>Verjüngung 2</translation>
     </message>
     <message>
@@ -392,7 +393,7 @@ FreeCAD jetzt neu starten, um die neuen Versionen zu nutzen?</translation>
     </message>
     <message>
         <source>conflicting constraints</source>
-        <extracomment>(attribute, severity, phrase), worst first. Properties on Sketcher::SketchObject holding the last solve's results.</extracomment>
+        <extracomment>(attribute, severity, phrase), worst first. Properties on Sketcher::SketchObject holding the last solve&apos;s results.</extracomment>
         <translation>widersprüchliche Bedingungen</translation>
     </message>
     <message>
@@ -409,7 +410,7 @@ FreeCAD jetzt neu starten, um die neuen Versionen zu nutzen?</translation>
     </message>
     <message>
         <source>solver findings unavailable in this build</source>
-        <extracomment>Names worth showing in a dump. Only these may be called: `autoRemoveRedundants` also matches "redund" and would edit the sketch.</extracomment>
+        <extracomment>Names worth showing in a dump. Only these may be called: `autoRemoveRedundants` also matches &quot;redund&quot; and would edit the sketch.</extracomment>
         <translation>Solver-Befunde in diesem Build nicht verfügbar</translation>
     </message>
     <message>
@@ -418,7 +419,7 @@ FreeCAD jetzt neu starten, um die neuen Versionen zu nutzen?</translation>
     </message>
     <message>
         <source>Activate overlay mode over the 3D view</source>
-        <extracomment>Events that mean "you may have been moved into, or out of, an overlay". Events that mean "the colours under you just changed". The stock tree (colour source) may not exist yet at startup. How far up the parent chain to look for FreeCAD's overlay container. Acts on the dock under the cursor, i.e. ours when our button is clicked.</extracomment>
+        <extracomment>Events that mean &quot;you may have been moved into, or out of, an overlay&quot;. Events that mean &quot;the colours under you just changed&quot;. The stock tree (colour source) may not exist yet at startup. How far up the parent chain to look for FreeCAD&apos;s overlay container. Acts on the dock under the cursor, i.e. ours when our button is clicked.</extracomment>
         <translation>Overlay-Modus über der 3D-Ansicht</translation>
     </message>
     <message>
@@ -430,7 +431,7 @@ FreeCAD jetzt neu starten, um die neuen Versionen zu nutzen?</translation>
         <translation>Panel schließen</translation>
     </message>
     <message>
-        <source>QtQuick is not available in this FreeCAD's Qt packaging.
+        <source>QtQuick is not available in this FreeCAD&apos;s Qt packaging.
 The panel needs PySide6.QtQuickWidgets.</source>
         <translation>QtQuick ist in der Qt-Paketierung dieses FreeCAD nicht verfügbar.
 Das Panel benötigt PySide6.QtQuickWidgets.</translation>
@@ -441,7 +442,7 @@ Das Panel benötigt PySide6.QtQuickWidgets.</translation>
     </message>
     <message>
         <source>Tip of %s moved to %s</source>
-        <extracomment>Where a Body's bar sets no tip: above its first feature. Objects made but not yet placed against the bar, at most. Objects just made: a Body's bar moves below each, as below a new feature, if it lands where the bar rests.</extracomment>
+        <extracomment>Where a Body&apos;s bar sets no tip: above its first feature. Objects made but not yet placed against the bar, at most. Objects just made: a Body&apos;s bar moves below each, as below a new feature, if it lands where the bar rests.</extracomment>
         <translation>Spitze von %s nach %s verschoben</translation>
     </message>
     <message>
@@ -450,7 +451,7 @@ Das Panel benötigt PySide6.QtQuickWidgets.</translation>
     </message>
     <message>
         <source>Expression rows</source>
-        <extracomment>The page's group in FreeCAD's Preferences dialog. What the quick panel offers. The page offers these and more. Settings the theme reads: changing one restyles the panel. Settings the snapshot reads: changing one rebuilds it. Every value a choice setting may take, in the order it is offered.</extracomment>
+        <extracomment>The page&apos;s group in FreeCAD&apos;s Preferences dialog. What the quick panel offers. The page offers these and more. Settings the theme reads: changing one restyles the panel. Settings the snapshot reads: changing one rebuilds it. Every value a choice setting may take, in the order it is offered.</extracomment>
         <translation>Ausdrücke</translation>
     </message>
     <message>
@@ -507,7 +508,7 @@ Das Panel benötigt PySide6.QtQuickWidgets.</translation>
         <translation>Unbestimmte Skizzen markieren</translation>
     </message>
     <message>
-        <source>Show tooltips on the tree's rows</source>
+        <source>Show tooltips on the tree&apos;s rows</source>
         <translation>Tooltips im Baum zeigen</translation>
     </message>
     <message>
@@ -519,7 +520,7 @@ Das Panel benötigt PySide6.QtQuickWidgets.</translation>
         <translation>Doppelklick auf Fläche bearbeitet ihr Feature</translation>
     </message>
     <message>
-        <source>Auto repair 'Wire not closed' errors</source>
+        <source>Auto repair &apos;Wire not closed&apos; errors</source>
         <translation>„Wire not closed“ automatisch reparieren</translation>
     </message>
     <message>
@@ -527,7 +528,7 @@ Das Panel benötigt PySide6.QtQuickWidgets.</translation>
         <translation>Neue Skizzen, Container und Features umbenennen</translation>
     </message>
     <message>
-        <source>When a new object's edit closes (or a container is made), its name opens for editing in the tree.</source>
+        <source>When a new object&apos;s edit closes (or a container is made), its name opens for editing in the tree.</source>
         <translation>Schließt die Bearbeitung eines neuen Objekts (oder entsteht ein Container), wird sein Name im Baum zum Bearbeiten geöffnet.</translation>
     </message>
     <message>
@@ -535,13 +536,13 @@ Das Panel benötigt PySide6.QtQuickWidgets.</translation>
         <translation>Neue Skizze ohne Rückfrage an drei Punkte heften</translation>
     </message>
     <message>
-        <source>Three points, or a straight edge and a point, give the sketch's plane.
+        <source>Three points, or a straight edge and a point, give the sketch&apos;s plane.
 Hold Shift to get the attachment dialog anyway.</source>
         <translation>Drei Punkte oder eine gerade Kante und ein Punkt bestimmen die Skizzenebene.
 Mit Umschalt erscheint trotzdem der Befestigungsdialog.</translation>
     </message>
     <message>
-        <source>Show the selection's dependencies as arrows</source>
+        <source>Show the selection&apos;s dependencies as arrows</source>
         <translation>Abhängigkeiten als Pfeile zeigen</translation>
     </message>
     <message>
@@ -553,7 +554,7 @@ Mit Umschalt erscheint trotzdem der Befestigungsdialog.</translation>
         <translation>Baumlinien zeigen</translation>
     </message>
     <message>
-        <source>Show a row's details when it is clicked</source>
+        <source>Show a row&apos;s details when it is clicked</source>
         <translation>Details per Klick zeigen</translation>
     </message>
     <message>
@@ -581,8 +582,16 @@ Mit Umschalt erscheint trotzdem der Befestigungsdialog.</translation>
         <translation>Beim Start nach Addon-Updates suchen</translation>
     </message>
     <message>
-        <source>Uses the Addon Manager's check, once per session, and lists any updates to review and apply.</source>
+        <source>Uses the Addon Manager&apos;s check, once per session, and lists any updates to review and apply.</source>
         <translation>Nutzt die Prüfung des Addon-Managers, einmal pro Sitzung, und listet Updates zum Prüfen und Anwenden.</translation>
+    </message>
+    <message>
+        <source>Menus in a FreeCAD button, menu bar hidden</source>
+        <translation>Menüs in FreeCAD-Schaltfläche, Menüleiste aus</translation>
+    </message>
+    <message>
+        <source>The menus open from the FreeCAD logo, first on the toolbars. Shortcuts keep working.</source>
+        <translation>Die Menüs öffnen sich über das FreeCAD-Logo, zuerst in den Werkzeugleisten. Tastenkürzel funktionieren weiter.</translation>
     </message>
     <message>
         <source>3D drag handles</source>
@@ -605,7 +614,7 @@ Mit Umschalt erscheint trotzdem der Befestigungsdialog.</translation>
         <translation>Halten zum Wechseln</translation>
     </message>
     <message>
-        <source>Kept with FreeCAD's dialog history: another tool, such as Transform, may change it.</source>
+        <source>Kept with FreeCAD&apos;s dialog history: another tool, such as Transform, may change it.</source>
         <translation>Wird in FreeCADs Dialogverlauf gespeichert: andere Werkzeuge wie Transformieren können ihn ändern.</translation>
     </message>
     <message>
@@ -629,7 +638,7 @@ Mit Umschalt erscheint trotzdem der Befestigungsdialog.</translation>
         <translation>Keine Griffe beim Bearbeiten aus dem Baum</translation>
     </message>
     <message>
-        <source>Double-clicking a feature's row opens it without the handles.
+        <source>Double-clicking a feature&apos;s row opens it without the handles.
 A new feature still gets them.</source>
         <translation>Doppelklick auf eine Feature-Zeile öffnet es ohne Griffe.
 Neue Features erhalten sie weiterhin.</translation>
@@ -659,7 +668,7 @@ Mit Alt beim Ziehen geht es hindurch.</translation>
     </message>
     <message>
         <source>Deleted %s from %s</source>
-        <extracomment>Selection and undo counts are polled; both are cheap to read. In a task of Nxt's own: what it edits, rather than FreeCAD's object in edit. Inside a task dialog (task_layout.py): the object it edits, never the selection; the Data tab, a template's cards only. What is wrong with the object, shown above its cards. Per panel list picking its reference: the item chosen before, its "Select reference..." item, and what has been picked. While picking for a link: its property and whose it is. The property whose field has the keyboard: a rebuild of the cards (Two sides adds one) gives it back, so arrows keep working.</extracomment>
+        <extracomment>Selection and undo counts are polled; both are cheap to read. In a task of Nxt&apos;s own: what it edits, rather than FreeCAD&apos;s object in edit. Inside a task dialog (task_layout.py): the object it edits, never the selection; the Data tab, a template&apos;s cards only. What is wrong with the object, shown above its cards. Per panel list picking its reference: the item chosen before, its &quot;Select reference...&quot; item, and what has been picked. While picking for a link: its property and whose it is. The property whose field has the keyboard: a rebuild of the cards (Two sides adds one) gives it back, so arrows keep working.</extracomment>
         <translation>%s aus %s gelöscht</translation>
     </message>
     <message>
@@ -670,6 +679,24 @@ Mit Alt beim Ziehen geht es hindurch.</translation>
     <message>
         <source>Expressions start with =</source>
         <translation>Ausdrücke beginnen mit =</translation>
+    </message>
+    <message>
+        <source>Accessible light and dark themes.</source>
+        <extracomment>Install states, as QML shows them. From FreeCAD&apos;s addon index (github.com/FreeCAD/Addons, Data/Index.json).</extracomment>
+        <translation>Barrierearme helle und dunkle Designs.</translation>
+    </message>
+    <message>
+        <source>Shares non-identifying usage data.</source>
+        <translation>Teilt nicht identifizierende Nutzungsdaten.</translation>
+    </message>
+    <message>
+        <source>Welcome to Nxt</source>
+        <extracomment>The open dialog, kept so Qt does not lose it.</extracomment>
+        <translation>Willkommen bei Nxt</translation>
+    </message>
+    <message>
+        <source>Menu</source>
+        <translation>Menü</translation>
     </message>
 </context>
 <context>
@@ -703,7 +730,7 @@ Mit Alt beim Ziehen geht es hindurch.</translation>
         <translation>Fehlerhaftes Feature zeigen</translation>
     </message>
     <message>
-        <source>Show the solver's findings</source>
+        <source>Show the solver&apos;s findings</source>
         <translation>Solver-Befunde zeigen</translation>
     </message>
     <message>
@@ -711,7 +738,7 @@ Mit Alt beim Ziehen geht es hindurch.</translation>
         <translation>Nutzer auswählen</translation>
     </message>
     <message>
-        <source>Select what it's built from</source>
+        <source>Select what it&apos;s built from</source>
         <translation>Grundlagen auswählen</translation>
     </message>
     <message>
@@ -763,7 +790,7 @@ Mit Alt beim Ziehen geht es hindurch.</translation>
         <translation>Gebundenes Objekt wählen</translation>
     </message>
     <message>
-        <source>FreeCAD's menu…</source>
+        <source>FreeCAD&apos;s menu…</source>
         <translation>FreeCAD-Menü…</translation>
     </message>
     <message>
@@ -784,7 +811,7 @@ Mit Alt beim Ziehen geht es hindurch.</translation>
     </message>
     <message>
         <source>Hide</source>
-        <extracomment>Short labels under the bar's icons.</extracomment>
+        <extracomment>Short labels under the bar&apos;s icons.</extracomment>
         <translation>Ausblenden</translation>
     </message>
     <message>
@@ -809,12 +836,12 @@ Mit Alt beim Ziehen geht es hindurch.</translation>
     </message>
     <message>
         <source>%1 %2</source>
-        <extracomment>Labels that show a count for several objects: "Delete 3". How a count is added to a label; %1 the label, %2 how many.</extracomment>
+        <extracomment>Labels that show a count for several objects: &quot;Delete 3&quot;. How a count is added to a label; %1 the label, %2 how many.</extracomment>
         <translation>%1 %2</translation>
     </message>
     <message>
         <source>Model</source>
-        <extracomment>FreeCAD command icons that Nxt's actions borrow. Group names, listed for translation extraction.</extracomment>
+        <extracomment>FreeCAD command icons that Nxt&apos;s actions borrow. Group names, listed for translation extraction.</extracomment>
         <translation>Modell</translation>
     </message>
     <message>
@@ -863,12 +890,12 @@ Mit Alt beim Ziehen geht es hindurch.</translation>
     </message>
     <message>
         <source>Edit %1</source>
-        <extracomment>An edit mode's label; %1 is the object's label.</extracomment>
+        <extracomment>An edit mode&apos;s label; %1 is the object&apos;s label.</extracomment>
         <translation>%1 bearbeiten</translation>
     </message>
     <message>
         <source>%1 objects</source>
-        <extracomment>The menu's title for a selection of several; %1 is how many.</extracomment>
+        <extracomment>The menu&apos;s title for a selection of several; %1 is how many.</extracomment>
         <translation>%1 Objekte</translation>
     </message>
     <message>
@@ -1456,7 +1483,7 @@ Mit Alt beim Ziehen geht es hindurch.</translation>
         <translation>Nxt-Fase</translation>
     </message>
     <message>
-        <source>Chamfer the selected edges by booleans, instead of Part Design's chamfer</source>
+        <source>Chamfer the selected edges by booleans, instead of Part Design&apos;s chamfer</source>
         <translation>Gewählte Kanten per Boolesche Operationen fasen, statt mit der Part-Design-Fase</translation>
     </message>
 </context>
@@ -1467,7 +1494,7 @@ Mit Alt beim Ziehen geht es hindurch.</translation>
         <translation>Nxt-Verrundung</translation>
     </message>
     <message>
-        <source>Fillet the selected edges by cutting a rolling-ball blend, instead of Part Design's fillet</source>
+        <source>Fillet the selected edges by cutting a rolling-ball blend, instead of Part Design&apos;s fillet</source>
         <translation>Gewählte Kanten mit einer Rollkugel-Verrundung abrunden, statt mit der Part-Design-Verrundung</translation>
     </message>
 </context>
@@ -1485,7 +1512,7 @@ Mit Alt beim Ziehen geht es hindurch.</translation>
 <context>
     <name>Nxt_Menu</name>
     <message>
-        <source>The Nxt model panel's commands</source>
+        <source>The Nxt model panel&apos;s commands</source>
         <translation>Befehle des Nxt-Modellpanels</translation>
     </message>
 </context>
@@ -1518,7 +1545,7 @@ Mit Alt beim Ziehen geht es hindurch.</translation>
         <translation>Nxt-Eigenschaften-Inspektor</translation>
     </message>
     <message>
-        <source>Show the selection's properties beside the model panel</source>
+        <source>Show the selection&apos;s properties beside the model panel</source>
         <translation>Eigenschaften der Auswahl neben dem Modellpanel zeigen</translation>
     </message>
 </context>
@@ -1529,7 +1556,7 @@ Mit Alt beim Ziehen geht es hindurch.</translation>
         <translation>Nxt neu laden</translation>
     </message>
     <message>
-        <source>Hot-reload the addon's Python modules</source>
+        <source>Hot-reload the addon&apos;s Python modules</source>
         <translation>Python-Module des Addons neu laden</translation>
     </message>
 </context>
@@ -1638,7 +1665,7 @@ Mit Alt beim Ziehen geht es hindurch.</translation>
     </message>
     <message>
         <source>Custom</source>
-        <extracomment>Gap between the bottom of the 3D view and the bar. Unit schemas offered first, by FreeCAD's name for them. Significant digits shown. kg/m³ in a kg/mm³, FreeCAD's internal density unit. The material setting's value while a custom density is used. Densities at least this large are shown as whole numbers. The QQuickWidget showing the bar, once there is one.</extracomment>
+        <extracomment>Gap between the bottom of the 3D view and the bar. Unit schemas offered first, by FreeCAD&apos;s name for them. Significant digits shown. kg/m³ in a kg/mm³, FreeCAD&apos;s internal density unit. The material setting&apos;s value while a custom density is used. Densities at least this large are shown as whole numbers. The QQuickWidget showing the bar, once there is one.</extracomment>
         <translation>Benutzerdefiniert</translation>
     </message>
 </context>
@@ -1805,7 +1832,7 @@ Mit Alt beim Ziehen geht es hindurch.</translation>
         <translation>Details ausblenden</translation>
     </message>
     <message>
-        <source>Can't drop on %1</source>
+        <source>Can&apos;t drop on %1</source>
         <translation>Ablegen auf %1 nicht möglich</translation>
     </message>
     <message>
@@ -1912,7 +1939,7 @@ Mit Alt beim Ziehen geht es hindurch.</translation>
         <translation>Schnellmasse in 3D zeigen</translation>
     </message>
     <message>
-        <source>Auto repair 'Wire not closed' errors</source>
+        <source>Auto repair &apos;Wire not closed&apos; errors</source>
         <translation>„Wire not closed“ automatisch reparieren</translation>
     </message>
     <message>
@@ -2031,6 +2058,77 @@ Mit Alt beim Ziehen geht es hindurch.</translation>
     <message>
         <source>Save</source>
         <translation>Speichern</translation>
+    </message>
+</context>
+<context>
+    <name>Welcome</name>
+    <message>
+        <source>Welcome to Nxt</source>
+        <translation>Willkommen bei Nxt</translation>
+    </message>
+    <message>
+        <source>A faster, clearer interface for FreeCAD.</source>
+        <translation>Eine schnellere, klarere Oberfläche für FreeCAD.</translation>
+    </message>
+    <message>
+        <source>Model tree with a rollback bar, problem marks and drag-and-drop</source>
+        <translation>Modellbaum mit Rollback-Leiste, Problemmarken und Drag-and-drop</translation>
+    </message>
+    <message>
+        <source>Property Inspector laid out for each feature</source>
+        <translation>Eigenschaftsinspektor, für jedes Feature gegliedert</translation>
+    </message>
+    <message>
+        <source>Part Design task panels built for speed and the keyboard</source>
+        <translation>Part-Design-Aufgabenbereiche für Tempo und Tastatur</translation>
+    </message>
+    <message>
+        <source>Nxt Fillet and Chamfer, with handles in the 3D view</source>
+        <translation>Nxt-Verrundung und -Fase mit Griffen in der 3D-Ansicht</translation>
+    </message>
+    <message>
+        <source>Section view, and values to type or scroll in the 3D view</source>
+        <translation>Schnittansicht und Werte zum Tippen oder Scrollen in der 3D-Ansicht</translation>
+    </message>
+    <message>
+        <source>Settings: Edit &gt; Preferences &gt; FreeCAD-Nxt</source>
+        <translation>Einstellungen: Bearbeiten &gt; Einstellungen &gt; FreeCAD-Nxt</translation>
+    </message>
+    <message>
+        <source>Recommended</source>
+        <translation>Empfohlen</translation>
+    </message>
+    <message>
+        <source>Not installed: %1</source>
+        <translation>Nicht installiert: %1</translation>
+    </message>
+    <message>
+        <source>Retry</source>
+        <translation>Erneut</translation>
+    </message>
+    <message>
+        <source>Install</source>
+        <translation>Installieren</translation>
+    </message>
+    <message>
+        <source>Installing…</source>
+        <translation>Installiere…</translation>
+    </message>
+    <message>
+        <source>Installed</source>
+        <translation>Installiert</translation>
+    </message>
+    <message>
+        <source>Restart FreeCAD to use what was installed.</source>
+        <translation>FreeCAD neu starten, um das Installierte zu nutzen.</translation>
+    </message>
+    <message>
+        <source>Restart now</source>
+        <translation>Jetzt neu starten</translation>
+    </message>
+    <message>
+        <source>Get started</source>
+        <translation>Los geht&apos;s</translation>
     </message>
 </context>
 </TS>

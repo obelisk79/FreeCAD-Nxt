@@ -586,6 +586,14 @@ Hold Shift to get the attachment dialog anyway.</source>
         <translation>每次会话通过插件管理器检查一次更新，并列出可供审查和应用的更新项。</translation>
     </message>
     <message>
+        <source>Menus in a FreeCAD button, menu bar hidden</source>
+        <translation>菜单放入 FreeCAD 按钮，隐藏菜单栏</translation>
+    </message>
+    <message>
+        <source>The menus open from the FreeCAD logo, first on the toolbars. Shortcuts keep working.</source>
+        <translation>菜单从工具栏最前的 FreeCAD 标志打开。快捷键仍然可用。</translation>
+    </message>
+    <message>
         <source>3D drag handles</source>
         <translation>3D 拖动操纵柄</translation>
     </message>
@@ -671,6 +679,24 @@ Hold Alt while dragging to pass through.</source>
     <message>
         <source>Expressions start with =</source>
         <translation>表达式以 = 开头</translation>
+    </message>
+    <message>
+        <source>Accessible light and dark themes.</source>
+        <extracomment>Install states, as QML shows them. From FreeCAD&apos;s addon index (github.com/FreeCAD/Addons, Data/Index.json).</extracomment>
+        <translation>无障碍的浅色和深色主题。</translation>
+    </message>
+    <message>
+        <source>Shares non-identifying usage data.</source>
+        <translation>共享不可识别身份的使用数据。</translation>
+    </message>
+    <message>
+        <source>Welcome to Nxt</source>
+        <extracomment>The open dialog, kept so Qt does not lose it.</extracomment>
+        <translation>欢迎使用 Nxt</translation>
+    </message>
+    <message>
+        <source>Menu</source>
+        <translation>菜单</translation>
     </message>
 </context>
 <context>
@@ -2032,6 +2058,77 @@ Hold Alt while dragging to pass through.</source>
     <message>
         <source>Save</source>
         <translation>保存</translation>
+    </message>
+</context>
+<context>
+    <name>Welcome</name>
+    <message>
+        <source>Welcome to Nxt</source>
+        <translation>欢迎使用 Nxt</translation>
+    </message>
+    <message>
+        <source>A faster, clearer interface for FreeCAD.</source>
+        <translation>更快、更清晰的 FreeCAD 界面。</translation>
+    </message>
+    <message>
+        <source>Model tree with a rollback bar, problem marks and drag-and-drop</source>
+        <translation>带回滚条、问题标记和拖放的模型树</translation>
+    </message>
+    <message>
+        <source>Property Inspector laid out for each feature</source>
+        <translation>按特征布局的属性检查器</translation>
+    </message>
+    <message>
+        <source>Part Design task panels built for speed and the keyboard</source>
+        <translation>为速度和键盘操作打造的 Part Design 任务面板</translation>
+    </message>
+    <message>
+        <source>Nxt Fillet and Chamfer, with handles in the 3D view</source>
+        <translation>带 3D 视图手柄的 Nxt 圆角和倒角</translation>
+    </message>
+    <message>
+        <source>Section view, and values to type or scroll in the 3D view</source>
+        <translation>剖视图，以及可在 3D 视图中输入或滚动的数值</translation>
+    </message>
+    <message>
+        <source>Settings: Edit &gt; Preferences &gt; FreeCAD-Nxt</source>
+        <translation>设置：编辑 &gt; 首选项 &gt; FreeCAD-Nxt</translation>
+    </message>
+    <message>
+        <source>Recommended</source>
+        <translation>推荐</translation>
+    </message>
+    <message>
+        <source>Not installed: %1</source>
+        <translation>未安装：%1</translation>
+    </message>
+    <message>
+        <source>Retry</source>
+        <translation>重试</translation>
+    </message>
+    <message>
+        <source>Install</source>
+        <translation>安装</translation>
+    </message>
+    <message>
+        <source>Installing…</source>
+        <translation>正在安装…</translation>
+    </message>
+    <message>
+        <source>Installed</source>
+        <translation>已安装</translation>
+    </message>
+    <message>
+        <source>Restart FreeCAD to use what was installed.</source>
+        <translation>重启 FreeCAD 以使用已安装的内容。</translation>
+    </message>
+    <message>
+        <source>Restart now</source>
+        <translation>立即重启</translation>
+    </message>
+    <message>
+        <source>Get started</source>
+        <translation>开始使用</translation>
     </message>
 </context>
 </TS>

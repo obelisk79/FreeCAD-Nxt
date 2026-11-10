@@ -1,4 +1,5 @@
-<?xml version='1.0' encoding='utf-8'?>
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE TS>
 <TS version="2.1" language="ja_JP">
 <context>
     <name>ContextMenu</name>
@@ -61,7 +62,7 @@
         <translation>%1 の中へ</translation>
     </message>
     <message>
-        <source>Can't move here</source>
+        <source>Can&apos;t move here</source>
         <translation>ここには移動できません</translation>
     </message>
     <message>
@@ -119,11 +120,11 @@
         <translation>再選択で除外。チップにカーソルを合わせるとエッジを表示します。</translation>
     </message>
     <message>
-        <source>%1 of %2 edges won't chamfer at %3.</source>
+        <source>%1 of %2 edges won&apos;t chamfer at %3.</source>
         <translation>%2 本中 %1 本のエッジは %3 で面取りできません。</translation>
     </message>
     <message>
-        <source>%1 of %2 edges won't fillet at %3.</source>
+        <source>%1 of %2 edges won&apos;t fillet at %3.</source>
         <translation>%2 本中 %1 本のエッジは %3 でフィレットできません。</translation>
     </message>
     <message>
@@ -224,7 +225,7 @@
     <name>Nxt</name>
     <message>
         <source>Addons updated</source>
-        <extracomment>The running check; held so Qt doesn't lose the workers, and so the check runs once a session. FreeCAD's settings for bringing up a hidden Report view when a message arrives. The Addon Manager's workers report fetch problems as warnings and errors; during the check they are only logged. Longest the Report view is kept down, in case a worker never finishes.</extracomment>
+        <extracomment>The running check; held so Qt doesn&apos;t lose the workers, and so the check runs once a session. FreeCAD&apos;s settings for bringing up a hidden Report view when a message arrives. The Addon Manager&apos;s workers report fetch problems as warnings and errors; during the check they are only logged. Longest the Report view is kept down, in case a worker never finishes.</extracomment>
         <translation>アドオンを更新しました</translation>
     </message>
     <message>
@@ -249,7 +250,7 @@ Restart FreeCAD now to use the new versions?</source>
         <translation>閉じる</translation>
     </message>
     <message>
-        <source>Show FreeCAD's property table</source>
+        <source>Show FreeCAD&apos;s property table</source>
         <translation>FreeCAD のプロパティ表を表示</translation>
     </message>
     <message>
@@ -266,7 +267,7 @@ Restart FreeCAD now to use the new versions?</source>
     </message>
     <message>
         <source>Taper 2</source>
-        <extracomment>The property each task panel field sets, where it is known. The scene nodes that hold a handle: an arrow, and a rotation handle. Per feature type, each kind of handle and the task fields its handles drag, in the order FreeCAD creates them. The task panel field a feature's arrow drags, by feature type. Any other type with an arrow falls back to the first length field shown. The number a field's text starts with, and its decimals.</extracomment>
+        <extracomment>The property each task panel field sets, where it is known. The scene nodes that hold a handle: an arrow, and a rotation handle. Per feature type, each kind of handle and the task fields its handles drag, in the order FreeCAD creates them. The task panel field a feature&apos;s arrow drags, by feature type. Any other type with an arrow falls back to the first length field shown. The number a field&apos;s text starts with, and its decimals.</extracomment>
         <translation>テーパー 2</translation>
     </message>
     <message>
@@ -392,7 +393,7 @@ Restart FreeCAD now to use the new versions?</source>
     </message>
     <message>
         <source>conflicting constraints</source>
-        <extracomment>(attribute, severity, phrase), worst first. Properties on Sketcher::SketchObject holding the last solve's results.</extracomment>
+        <extracomment>(attribute, severity, phrase), worst first. Properties on Sketcher::SketchObject holding the last solve&apos;s results.</extracomment>
         <translation>競合する拘束</translation>
     </message>
     <message>
@@ -409,7 +410,7 @@ Restart FreeCAD now to use the new versions?</source>
     </message>
     <message>
         <source>solver findings unavailable in this build</source>
-        <extracomment>Names worth showing in a dump. Only these may be called: `autoRemoveRedundants` also matches "redund" and would edit the sketch.</extracomment>
+        <extracomment>Names worth showing in a dump. Only these may be called: `autoRemoveRedundants` also matches &quot;redund&quot; and would edit the sketch.</extracomment>
         <translation>このビルドではソルバーの結果を取得できません</translation>
     </message>
     <message>
@@ -418,7 +419,7 @@ Restart FreeCAD now to use the new versions?</source>
     </message>
     <message>
         <source>Activate overlay mode over the 3D view</source>
-        <extracomment>Events that mean "you may have been moved into, or out of, an overlay". Events that mean "the colours under you just changed". The stock tree (colour source) may not exist yet at startup. How far up the parent chain to look for FreeCAD's overlay container. Acts on the dock under the cursor, i.e. ours when our button is clicked.</extracomment>
+        <extracomment>Events that mean &quot;you may have been moved into, or out of, an overlay&quot;. Events that mean &quot;the colours under you just changed&quot;. The stock tree (colour source) may not exist yet at startup. How far up the parent chain to look for FreeCAD&apos;s overlay container. Acts on the dock under the cursor, i.e. ours when our button is clicked.</extracomment>
         <translation>3D ビュー上のオーバーレイ表示</translation>
     </message>
     <message>
@@ -430,7 +431,7 @@ Restart FreeCAD now to use the new versions?</source>
         <translation>パネルを閉じる</translation>
     </message>
     <message>
-        <source>QtQuick is not available in this FreeCAD's Qt packaging.
+        <source>QtQuick is not available in this FreeCAD&apos;s Qt packaging.
 The panel needs PySide6.QtQuickWidgets.</source>
         <translation>この FreeCAD の Qt には QtQuick がありません。
 パネルには PySide6.QtQuickWidgets が必要です。</translation>
@@ -441,7 +442,7 @@ The panel needs PySide6.QtQuickWidgets.</source>
     </message>
     <message>
         <source>Tip of %s moved to %s</source>
-        <extracomment>Where a Body's bar sets no tip: above its first feature. Objects made but not yet placed against the bar, at most. Objects just made: a Body's bar moves below each, as below a new feature, if it lands where the bar rests.</extracomment>
+        <extracomment>Where a Body&apos;s bar sets no tip: above its first feature. Objects made but not yet placed against the bar, at most. Objects just made: a Body&apos;s bar moves below each, as below a new feature, if it lands where the bar rests.</extracomment>
         <translation>%s のチップを %s へ移動</translation>
     </message>
     <message>
@@ -450,7 +451,7 @@ The panel needs PySide6.QtQuickWidgets.</source>
     </message>
     <message>
         <source>Expression rows</source>
-        <extracomment>The page's group in FreeCAD's Preferences dialog. What the quick panel offers. The page offers these and more. Settings the theme reads: changing one restyles the panel. Settings the snapshot reads: changing one rebuilds it. Every value a choice setting may take, in the order it is offered.</extracomment>
+        <extracomment>The page&apos;s group in FreeCAD&apos;s Preferences dialog. What the quick panel offers. The page offers these and more. Settings the theme reads: changing one restyles the panel. Settings the snapshot reads: changing one rebuilds it. Every value a choice setting may take, in the order it is offered.</extracomment>
         <translation>式の行</translation>
     </message>
     <message>
@@ -507,7 +508,7 @@ The panel needs PySide6.QtQuickWidgets.</source>
         <translation>未拘束スケッチを表示</translation>
     </message>
     <message>
-        <source>Show tooltips on the tree's rows</source>
+        <source>Show tooltips on the tree&apos;s rows</source>
         <translation>ツリーにツールチップ</translation>
     </message>
     <message>
@@ -519,7 +520,7 @@ The panel needs PySide6.QtQuickWidgets.</source>
         <translation>面をダブルクリックで元のフィーチャーを編集</translation>
     </message>
     <message>
-        <source>Auto repair 'Wire not closed' errors</source>
+        <source>Auto repair &apos;Wire not closed&apos; errors</source>
         <translation>「Wire not closed」を自動修復</translation>
     </message>
     <message>
@@ -527,7 +528,7 @@ The panel needs PySide6.QtQuickWidgets.</source>
         <translation>新しいスケッチ、コンテナ、フィーチャーの名前を変更</translation>
     </message>
     <message>
-        <source>When a new object's edit closes (or a container is made), its name opens for editing in the tree.</source>
+        <source>When a new object&apos;s edit closes (or a container is made), its name opens for editing in the tree.</source>
         <translation>新しいオブジェクトの編集を閉じると (またはコンテナを作成すると)、ツリーで名前の編集が始まります。</translation>
     </message>
     <message>
@@ -535,13 +536,13 @@ The panel needs PySide6.QtQuickWidgets.</source>
         <translation>3 点へのスケッチのアタッチを確認しない</translation>
     </message>
     <message>
-        <source>Three points, or a straight edge and a point, give the sketch's plane.
+        <source>Three points, or a straight edge and a point, give the sketch&apos;s plane.
 Hold Shift to get the attachment dialog anyway.</source>
         <translation>3 点、または直線エッジと 1 点でスケッチ平面が決まります。
 Shift を押すとアタッチメントダイアログを表示します。</translation>
     </message>
     <message>
-        <source>Show the selection's dependencies as arrows</source>
+        <source>Show the selection&apos;s dependencies as arrows</source>
         <translation>依存関係を矢印で表示</translation>
     </message>
     <message>
@@ -553,7 +554,7 @@ Shift を押すとアタッチメントダイアログを表示します。</tra
         <translation>ツリー線を表示</translation>
     </message>
     <message>
-        <source>Show a row's details when it is clicked</source>
+        <source>Show a row&apos;s details when it is clicked</source>
         <translation>クリックで詳細を表示</translation>
     </message>
     <message>
@@ -581,8 +582,16 @@ Shift を押すとアタッチメントダイアログを表示します。</tra
         <translation>起動時に更新を確認</translation>
     </message>
     <message>
-        <source>Uses the Addon Manager's check, once per session, and lists any updates to review and apply.</source>
+        <source>Uses the Addon Manager&apos;s check, once per session, and lists any updates to review and apply.</source>
         <translation>アドオンマネージャーの確認をセッションごとに 1 回使い、確認と適用が必要な更新を一覧表示します。</translation>
+    </message>
+    <message>
+        <source>Menus in a FreeCAD button, menu bar hidden</source>
+        <translation>メニューをFreeCADボタンに、メニューバー非表示</translation>
+    </message>
+    <message>
+        <source>The menus open from the FreeCAD logo, first on the toolbars. Shortcuts keep working.</source>
+        <translation>メニューはツールバー先頭のFreeCADロゴから開きます。ショートカットは引き続き使えます。</translation>
     </message>
     <message>
         <source>3D drag handles</source>
@@ -605,7 +614,7 @@ Shift を押すとアタッチメントダイアログを表示します。</tra
         <translation>押して切替</translation>
     </message>
     <message>
-        <source>Kept with FreeCAD's dialog history: another tool, such as Transform, may change it.</source>
+        <source>Kept with FreeCAD&apos;s dialog history: another tool, such as Transform, may change it.</source>
         <translation>FreeCAD のダイアログ履歴に保存されます。「変換」など他のツールが変更することがあります。</translation>
     </message>
     <message>
@@ -629,7 +638,7 @@ Shift を押すとアタッチメントダイアログを表示します。</tra
         <translation>ツリーから編集時はハンドルなし</translation>
     </message>
     <message>
-        <source>Double-clicking a feature's row opens it without the handles.
+        <source>Double-clicking a feature&apos;s row opens it without the handles.
 A new feature still gets them.</source>
         <translation>フィーチャーの行をダブルクリックするとハンドルなしで開きます。
 新しいフィーチャーには表示されます。</translation>
@@ -659,7 +668,7 @@ Hold Alt while dragging to pass through.</source>
     </message>
     <message>
         <source>Deleted %s from %s</source>
-        <extracomment>Selection and undo counts are polled; both are cheap to read. In a task of Nxt's own: what it edits, rather than FreeCAD's object in edit. Inside a task dialog (task_layout.py): the object it edits, never the selection; the Data tab, a template's cards only. What is wrong with the object, shown above its cards. Per panel list picking its reference: the item chosen before, its "Select reference..." item, and what has been picked. While picking for a link: its property and whose it is. The property whose field has the keyboard: a rebuild of the cards (Two sides adds one) gives it back, so arrows keep working.</extracomment>
+        <extracomment>Selection and undo counts are polled; both are cheap to read. In a task of Nxt&apos;s own: what it edits, rather than FreeCAD&apos;s object in edit. Inside a task dialog (task_layout.py): the object it edits, never the selection; the Data tab, a template&apos;s cards only. What is wrong with the object, shown above its cards. Per panel list picking its reference: the item chosen before, its &quot;Select reference...&quot; item, and what has been picked. While picking for a link: its property and whose it is. The property whose field has the keyboard: a rebuild of the cards (Two sides adds one) gives it back, so arrows keep working.</extracomment>
         <translation>%s を %s から削除しました</translation>
     </message>
     <message>
@@ -670,6 +679,24 @@ Hold Alt while dragging to pass through.</source>
     <message>
         <source>Expressions start with =</source>
         <translation>式は = で始まります</translation>
+    </message>
+    <message>
+        <source>Accessible light and dark themes.</source>
+        <extracomment>Install states, as QML shows them. From FreeCAD&apos;s addon index (github.com/FreeCAD/Addons, Data/Index.json).</extracomment>
+        <translation>見やすいライト・ダークテーマ。</translation>
+    </message>
+    <message>
+        <source>Shares non-identifying usage data.</source>
+        <translation>個人を特定しない使用データを共有します。</translation>
+    </message>
+    <message>
+        <source>Welcome to Nxt</source>
+        <extracomment>The open dialog, kept so Qt does not lose it.</extracomment>
+        <translation>Nxt へようこそ</translation>
+    </message>
+    <message>
+        <source>Menu</source>
+        <translation>メニュー</translation>
     </message>
 </context>
 <context>
@@ -703,7 +730,7 @@ Hold Alt while dragging to pass through.</source>
         <translation>失敗したフィーチャーを表示</translation>
     </message>
     <message>
-        <source>Show the solver's findings</source>
+        <source>Show the solver&apos;s findings</source>
         <translation>ソルバーの結果</translation>
     </message>
     <message>
@@ -711,7 +738,7 @@ Hold Alt while dragging to pass through.</source>
         <translation>使用先を選択</translation>
     </message>
     <message>
-        <source>Select what it's built from</source>
+        <source>Select what it&apos;s built from</source>
         <translation>構成元を選択</translation>
     </message>
     <message>
@@ -763,7 +790,7 @@ Hold Alt while dragging to pass through.</source>
         <translation>バインド先を選択</translation>
     </message>
     <message>
-        <source>FreeCAD's menu…</source>
+        <source>FreeCAD&apos;s menu…</source>
         <translation>FreeCAD のメニュー…</translation>
     </message>
     <message>
@@ -784,7 +811,7 @@ Hold Alt while dragging to pass through.</source>
     </message>
     <message>
         <source>Hide</source>
-        <extracomment>Short labels under the bar's icons.</extracomment>
+        <extracomment>Short labels under the bar&apos;s icons.</extracomment>
         <translation>非表示</translation>
     </message>
     <message>
@@ -809,12 +836,12 @@ Hold Alt while dragging to pass through.</source>
     </message>
     <message>
         <source>%1 %2</source>
-        <extracomment>Labels that show a count for several objects: "Delete 3". How a count is added to a label; %1 the label, %2 how many.</extracomment>
+        <extracomment>Labels that show a count for several objects: &quot;Delete 3&quot;. How a count is added to a label; %1 the label, %2 how many.</extracomment>
         <translation>%1 %2</translation>
     </message>
     <message>
         <source>Model</source>
-        <extracomment>FreeCAD command icons that Nxt's actions borrow. Group names, listed for translation extraction.</extracomment>
+        <extracomment>FreeCAD command icons that Nxt&apos;s actions borrow. Group names, listed for translation extraction.</extracomment>
         <translation>モデル</translation>
     </message>
     <message>
@@ -863,12 +890,12 @@ Hold Alt while dragging to pass through.</source>
     </message>
     <message>
         <source>Edit %1</source>
-        <extracomment>An edit mode's label; %1 is the object's label.</extracomment>
+        <extracomment>An edit mode&apos;s label; %1 is the object&apos;s label.</extracomment>
         <translation>%1 を編集</translation>
     </message>
     <message>
         <source>%1 objects</source>
-        <extracomment>The menu's title for a selection of several; %1 is how many.</extracomment>
+        <extracomment>The menu&apos;s title for a selection of several; %1 is how many.</extracomment>
         <translation>%1 個のオブジェクト</translation>
     </message>
     <message>
@@ -1456,7 +1483,7 @@ Hold Alt while dragging to pass through.</source>
         <translation>Nxt 面取り</translation>
     </message>
     <message>
-        <source>Chamfer the selected edges by booleans, instead of Part Design's chamfer</source>
+        <source>Chamfer the selected edges by booleans, instead of Part Design&apos;s chamfer</source>
         <translation>Part Design の面取りではなく、ブーリアン演算で選択エッジを面取り</translation>
     </message>
 </context>
@@ -1467,7 +1494,7 @@ Hold Alt while dragging to pass through.</source>
         <translation>Nxt フィレット</translation>
     </message>
     <message>
-        <source>Fillet the selected edges by cutting a rolling-ball blend, instead of Part Design's fillet</source>
+        <source>Fillet the selected edges by cutting a rolling-ball blend, instead of Part Design&apos;s fillet</source>
         <translation>Part Design のフィレットではなく、転がり球ブレンドで選択エッジをフィレット</translation>
     </message>
 </context>
@@ -1485,7 +1512,7 @@ Hold Alt while dragging to pass through.</source>
 <context>
     <name>Nxt_Menu</name>
     <message>
-        <source>The Nxt model panel's commands</source>
+        <source>The Nxt model panel&apos;s commands</source>
         <translation>Nxt モデルパネルのコマンド</translation>
     </message>
 </context>
@@ -1518,7 +1545,7 @@ Hold Alt while dragging to pass through.</source>
         <translation>Nxt プロパティインスペクター</translation>
     </message>
     <message>
-        <source>Show the selection's properties beside the model panel</source>
+        <source>Show the selection&apos;s properties beside the model panel</source>
         <translation>選択のプロパティをモデルパネルの横に表示</translation>
     </message>
 </context>
@@ -1529,7 +1556,7 @@ Hold Alt while dragging to pass through.</source>
         <translation>Nxt を再読み込み</translation>
     </message>
     <message>
-        <source>Hot-reload the addon's Python modules</source>
+        <source>Hot-reload the addon&apos;s Python modules</source>
         <translation>アドオンの Python モジュールをホットリロード</translation>
     </message>
 </context>
@@ -1638,7 +1665,7 @@ Hold Alt while dragging to pass through.</source>
     </message>
     <message>
         <source>Custom</source>
-        <extracomment>Gap between the bottom of the 3D view and the bar. Unit schemas offered first, by FreeCAD's name for them. Significant digits shown. kg/m³ in a kg/mm³, FreeCAD's internal density unit. The material setting's value while a custom density is used. Densities at least this large are shown as whole numbers. The QQuickWidget showing the bar, once there is one.</extracomment>
+        <extracomment>Gap between the bottom of the 3D view and the bar. Unit schemas offered first, by FreeCAD&apos;s name for them. Significant digits shown. kg/m³ in a kg/mm³, FreeCAD&apos;s internal density unit. The material setting&apos;s value while a custom density is used. Densities at least this large are shown as whole numbers. The QQuickWidget showing the bar, once there is one.</extracomment>
         <translation>カスタム</translation>
     </message>
 </context>
@@ -1805,7 +1832,7 @@ Hold Alt while dragging to pass through.</source>
         <translation>詳細を隠す</translation>
     </message>
     <message>
-        <source>Can't drop on %1</source>
+        <source>Can&apos;t drop on %1</source>
         <translation>%1 にはドロップできません</translation>
     </message>
     <message>
@@ -1912,7 +1939,7 @@ Hold Alt while dragging to pass through.</source>
         <translation>3D にクイック質量</translation>
     </message>
     <message>
-        <source>Auto repair 'Wire not closed' errors</source>
+        <source>Auto repair &apos;Wire not closed&apos; errors</source>
         <translation>「Wire not closed」を自動修復</translation>
     </message>
     <message>
@@ -2031,6 +2058,77 @@ Hold Alt while dragging to pass through.</source>
     <message>
         <source>Save</source>
         <translation>保存</translation>
+    </message>
+</context>
+<context>
+    <name>Welcome</name>
+    <message>
+        <source>Welcome to Nxt</source>
+        <translation>Nxt へようこそ</translation>
+    </message>
+    <message>
+        <source>A faster, clearer interface for FreeCAD.</source>
+        <translation>FreeCAD のための、より速くわかりやすいインターフェース。</translation>
+    </message>
+    <message>
+        <source>Model tree with a rollback bar, problem marks and drag-and-drop</source>
+        <translation>ロールバックバー、問題マーク、ドラッグ＆ドロップ付きのモデルツリー</translation>
+    </message>
+    <message>
+        <source>Property Inspector laid out for each feature</source>
+        <translation>フィーチャーごとに整理されたプロパティインスペクター</translation>
+    </message>
+    <message>
+        <source>Part Design task panels built for speed and the keyboard</source>
+        <translation>速さとキーボード操作のための Part Design タスクパネル</translation>
+    </message>
+    <message>
+        <source>Nxt Fillet and Chamfer, with handles in the 3D view</source>
+        <translation>3D ビューのハンドル付き Nxt フィレットと面取り</translation>
+    </message>
+    <message>
+        <source>Section view, and values to type or scroll in the 3D view</source>
+        <translation>断面ビューと、3D ビューで入力・スクロールできる値</translation>
+    </message>
+    <message>
+        <source>Settings: Edit &gt; Preferences &gt; FreeCAD-Nxt</source>
+        <translation>設定: 編集 &gt; 設定 &gt; FreeCAD-Nxt</translation>
+    </message>
+    <message>
+        <source>Recommended</source>
+        <translation>おすすめ</translation>
+    </message>
+    <message>
+        <source>Not installed: %1</source>
+        <translation>インストールされていません: %1</translation>
+    </message>
+    <message>
+        <source>Retry</source>
+        <translation>再試行</translation>
+    </message>
+    <message>
+        <source>Install</source>
+        <translation>インストール</translation>
+    </message>
+    <message>
+        <source>Installing…</source>
+        <translation>インストール中…</translation>
+    </message>
+    <message>
+        <source>Installed</source>
+        <translation>インストール済み</translation>
+    </message>
+    <message>
+        <source>Restart FreeCAD to use what was installed.</source>
+        <translation>インストールしたものを使うには FreeCAD を再起動してください。</translation>
+    </message>
+    <message>
+        <source>Restart now</source>
+        <translation>今すぐ再起動</translation>
+    </message>
+    <message>
+        <source>Get started</source>
+        <translation>はじめる</translation>
     </message>
 </context>
 </TS>

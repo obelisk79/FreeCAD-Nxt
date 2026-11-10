@@ -8,6 +8,7 @@ from typing import Any
 import FreeCAD as App
 
 from .. import resources
+from ..app import menu_button
 from ..app.i18n import follow, translate
 from ..core import settings
 from ..core.qt import QtCore, QtGui, QtWidgets
@@ -61,6 +62,8 @@ def apply(keys: set[str] | frozenset[str]) -> None:
             bridge = panel.bridge()
             if bridge is not None:
                 bridge.refresh_auto_detail()
+    if menu_button.SETTING in keys:
+        menu_button.apply()
     if "QuickMass" in keys:
         from ..app import services
         live = services.instance()
@@ -225,6 +228,13 @@ class NxtPreferencesPage:
             "Nxt", "Uses the Addon Manager's check, once per session, and "
                    "lists any updates to review and apply."))
         layout.addRow(self._updates)
+        self._menu_button = QtWidgets.QCheckBox(translate(
+            "Nxt", "Menus in a FreeCAD button, menu bar hidden"), panel)
+        self._menu_button.setToolTip(translate(
+            "Nxt", "The menus open from the FreeCAD logo, first on the "
+                   "toolbars. Shortcuts keep working."))
+        self._menu_button.setVisible(menu_button.supported())
+        layout.addRow(self._menu_button)
         outer.addWidget(panel)
 
         # FreeCAD's own gizmo preferences, which no FreeCAD page shows.
@@ -317,6 +327,7 @@ class NxtPreferencesPage:
         self._min_width.setValue(int(settings.get("HeaderMinWidth")))
         self._pinned.setChecked(bool(settings.get("InspectorPinned")))
         self._updates.setChecked(bool(settings.get("CheckAddonUpdates")))
+        self._menu_button.setChecked(bool(settings.get(menu_button.SETTING)))
         self._show_drag(gizmos.read())
         self._floating.setChecked(bool(settings.get("FloatingValues")))
         self._no_handles.setChecked(
@@ -346,6 +357,7 @@ class NxtPreferencesPage:
         settings.put("HeaderMinWidth", self._min_width.value())
         settings.put("InspectorPinned", self._pinned.isChecked())
         settings.put("CheckAddonUpdates", self._updates.isChecked())
+        settings.put(menu_button.SETTING, self._menu_button.isChecked())
         settings.put("FloatingValues", self._floating.isChecked())
         settings.put("TreeEditHidesHandles", self._no_handles.isChecked())
         settings.put("SnapToFaces", self._snap.isChecked())
@@ -388,6 +400,8 @@ class NxtPreferencesPage:
         self._pinned.setChecked(bool(settings.DEFAULTS["InspectorPinned"]))
         self._updates.setChecked(
             bool(settings.DEFAULTS["CheckAddonUpdates"]))
+        self._menu_button.setChecked(
+            bool(settings.DEFAULTS[menu_button.SETTING]))
         self._show_drag(gizmos.DEFAULTS)
         self._floating.setChecked(bool(settings.DEFAULTS["FloatingValues"]))
         self._no_handles.setChecked(

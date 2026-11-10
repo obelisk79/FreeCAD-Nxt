@@ -582,6 +582,14 @@ Hold Shift to get the attachment dialog anyway.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <source>Menus in a FreeCAD button, menu bar hidden</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The menus open from the FreeCAD logo, first on the toolbars. Shortcuts keep working.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>3D drag handles</source>
         <translation type="unfinished"></translation>
     </message>
@@ -664,6 +672,24 @@ Hold Alt while dragging to pass through.</source>
     </message>
     <message>
         <source>Expressions start with =</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Accessible light and dark themes.</source>
+        <extracomment>Install states, as QML shows them. From FreeCAD&apos;s addon index (github.com/FreeCAD/Addons, Data/Index.json).</extracomment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Shares non-identifying usage data.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Welcome to Nxt</source>
+        <extracomment>The open dialog, kept so Qt does not lose it.</extracomment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Menu</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -2025,6 +2051,77 @@ Hold Alt while dragging to pass through.</source>
     </message>
     <message>
         <source>Save</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>Welcome</name>
+    <message>
+        <source>Welcome to Nxt</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>A faster, clearer interface for FreeCAD.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Model tree with a rollback bar, problem marks and drag-and-drop</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Property Inspector laid out for each feature</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Part Design task panels built for speed and the keyboard</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Nxt Fillet and Chamfer, with handles in the 3D view</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Section view, and values to type or scroll in the 3D view</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Settings: Edit &gt; Preferences &gt; FreeCAD-Nxt</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Recommended</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Not installed: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Retry</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Install</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Installing…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Installed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Restart FreeCAD to use what was installed.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Restart now</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Get started</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
