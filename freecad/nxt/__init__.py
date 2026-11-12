@@ -40,6 +40,7 @@ _RELOAD_ORDER = (
     "freecad.nxt.tools.face_edit",
     "freecad.nxt.tools.gizmos",
     "freecad.nxt.tools.float_input",
+    "freecad.nxt.tools.drag_guard",
     "freecad.nxt.tree.saved_expansion",
     "freecad.nxt.tree.models",
     "freecad.nxt.tree.links",

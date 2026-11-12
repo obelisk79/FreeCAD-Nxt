@@ -106,6 +106,13 @@ class Services(QtCore.QObject):
         except Exception:
             log.error("could not install Space in the 3D view")
             self._space = None
+        try:
+            from ..tools.drag_guard import StaleDragGuard
+            self._drag_guard: Any = StaleDragGuard(self)
+            self._drag_guard.install()
+        except Exception:
+            log.error("could not install the stale drag guard")
+            self._drag_guard = None
         self.quick_mass_changed()
 
     def remove(self) -> None:
@@ -127,7 +134,8 @@ class Services(QtCore.QObject):
         for part in (self._double_click, self._floating,
                      self._sketch_repair, self._sketch_attach,
                      self._face_snap, self._space,
-                     getattr(self, "_task_layout", None)):
+                     getattr(self, "_task_layout", None),
+                     getattr(self, "_drag_guard", None)):
             if part is not None:
                 try:
                     part.remove()
@@ -136,7 +144,7 @@ class Services(QtCore.QObject):
         self._double_click = self._floating = None
         self._sketch_repair = self._sketch_attach = None
         self._face_snap = self._space = None
-        self._task_layout = None
+        self._task_layout = self._drag_guard = None
         with contextlib.suppress(RuntimeError):
             self._main_window.removeEventFilter(self)
 

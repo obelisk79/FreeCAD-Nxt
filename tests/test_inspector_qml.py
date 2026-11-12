@@ -373,6 +373,22 @@ long_label = next(t for f in fields for t in items_of(f, "QQuickText")
                   if (t.property("text") or "").startswith("Spindle"))
 check("a long name is shortened, not the value", long_label.property(
     "truncated"))
+# Wider: the names take the room first and show whole, then the values
+# grow with the panel, still lined up.
+narrow = root.property("width")
+view.resize(900, 900)
+root.setProperty("width", 890)
+settle()
+widths = {e.property("width") for e in values}
+lefts = {round(e.mapToScene(QtCore.QPointF(0, 0)).x()) for e in values}
+check("widened, every name shows whole",
+      not long_label.property("truncated"))
+check("widened, the values grow together and line up",
+      len(widths) == 1 and widths.pop() > theme.valueWidth
+      and len(lefts) == 1)
+root.setProperty("width", narrow)
+view.resize(340, 900)
+settle()
 check("its tooltip names it in full", next(
     f for f in fields if f.property("spec")["name"].startswith("Spindle")
 ).property("tipText") == ("SpindleClearanceHeightAboveTheSpoilboard\n"

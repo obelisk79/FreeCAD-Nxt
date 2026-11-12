@@ -30,9 +30,23 @@ Item {
     readonly property var lead: editor.spec.lead || null
     readonly property bool hasExpression:
         !!editor.spec.expression && editor.spec.expression.length > 0
+    //: What is edited: an expression as typed, else the value.
     readonly property string shown: editor.hasExpression
                                     ? "= " + editor.spec.expression
                                     : (editor.spec.text || "")
+    //: What is read at rest: the value, with the expression that sets it
+    //: after it, as FreeCAD's own editor shows it.
+    readonly property string resting: editor.spec.mixed ? ""
+                                      : (editor.spec.text || "")
+    readonly property string worked: editor.resting
+                                     + (editor.spec.unit
+                                        ? " " + editor.spec.unit : "")
+    readonly property bool editing: field.input.activeFocus
+
+    function escaped(text) {
+        return text.replace(/&/g, "&amp;").replace(/</g, "&lt;")
+                   .replace(/>/g, "&gt;");
+    }
     readonly property bool isField: editor.kind === "quantity"
                                     || editor.kind === "number"
                                     || editor.kind === "text"
@@ -238,6 +252,13 @@ Item {
                 // The unit sits inside the field, after the number.
                 suffix: !!editor.spec.unit && !editor.hasExpression
                         ? editor.spec.unit : ""
+                // A value an expression sets: the value in the accent,
+                // the expression after it; the field edits the expression.
+                styled: editor.hasExpression && !editor.spec.mixed
+                        ? "<font color=\"%1\">%2</font>  (%3)"
+                          .arg(theme.accent).arg(editor.escaped(editor.worked))
+                          .arg(editor.escaped(editor.spec.expression))
+                        : ""
                 placeholder: editor.spec.mixed ? qsTr("— mixed") : ""
                 stepFor: (editor.kind === "quantity" || editor.kind === "number")
                          && !editor.hasExpression && !editor.spec.mixed
@@ -245,6 +266,12 @@ Item {
                 onStepped: editor.edited(field.text)
                 Component.onCompleted: field.text = editor.spec.mixed
                                                     ? "" : editor.shown
+                HoverHandler { id: fieldHover }
+                NxtToolTip {
+                    shown: fieldHover.hovered && field.styledTruncated
+                           && !editor.editing
+                    text: editor.worked + "  (" + editor.spec.expression + ")"
+                }
                 onAccepted: {
                     editor.edited(field.text);
                     field.input.focus = false;
@@ -587,8 +614,9 @@ Item {
                                 parent.width - (edit.visible
                                                 ? edit.width + 6 : 0))
                 visible: editor.kind !== "link"
-                text: editor.shown + (editor.spec.unit
-                                      ? " " + editor.spec.unit : "")
+                text: editor.hasExpression
+                      ? editor.worked + "  (" + editor.spec.expression + ")"
+                      : editor.worked
                 elide: Text.ElideRight
                 font.pixelSize: theme.fontSmall
                 font.italic: editor.locked

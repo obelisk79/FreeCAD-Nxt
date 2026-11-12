@@ -535,8 +535,14 @@ def run(overlay):
     # shown in their fields, and the link to the inspector with its count.
     texts = {c.property("text") for c in visual_tree(root)
              if c.metaObject().className().startswith(("QQuickText",
-                                                       "QQuickTextInput"))}
-    for want in ("10 mm", "= Sketch.Width * 2", "Dimension  ▾", "on",
+                                                       "QQuickTextInput"))
+             and c.property("visible") and c.property("opacity") > 0}
+    expression_shown = any("4 mm</font>  (Sketch.Width * 2)" in t
+                           for t in texts if isinstance(t, str))
+    if not expression_shown:
+        problems.append("overlay=%s: an expression's value not shown with "
+                        "it" % overlay)
+    for want in ("10 mm", "Dimension  ▾", "on",
                  "All properties · 31…"):
         if want not in texts:
             problems.append("overlay=%s: key value %r not shown"
