@@ -431,12 +431,32 @@ def _bend(edge: Any) -> float:
     return 1 / most if most > 1e-12 else math.inf
 
 
-def _crossed(solid: Any) -> bool:
-    """Whether the solid's faces run through each other."""
-    try:
-        solid.check(True)
-    except Exception:  # noqa: BLE001 - what the check reports
-        return True
+#: Sections nearer than this share of the radius to their neighbour's
+#: plane count as through it: a loft that close folds all the same.
+CROSS_MARGIN = 1e-3
+
+
+def _sections_cross(stations: list[Station], wires: list[Any],
+                    radius: float, closed: bool) -> bool:
+    """Whether a loft through the sections would fold through itself.
+
+    It does where a section reaches through its neighbour's plane: each
+    must lie wholly behind the next one's and ahead of the one before's.
+    Told from the corners alone, hundreds of times faster than checking
+    the lofted solid's faces against each other.
+    """
+    least = radius * CROSS_MARGIN
+    pairs = list(zip(range(len(stations)), range(1, len(stations))))
+    if closed:
+        pairs.append((len(stations) - 1, 0))
+    for a, b in pairs:
+        behind, ahead = stations[a], stations[b]
+        if any((v.Point - ahead.point).dot(ahead.tangent) > -least
+               for v in wires[a].Vertexes):
+            return True
+        if any((v.Point - behind.point).dot(behind.tangent) < least
+               for v in wires[b].Vertexes):
+            return True
     return False
 
 
@@ -1286,11 +1306,12 @@ def _lofted(shape: Any, faces: list[Any], edge: Any,
     bend = _bend(edge)
     for push in (radius, bend / 2, bend / 4, bend / 8):
         wires = [_wide_section(s, radius, push) for s in stations]
-        tool = Part.makeLoft(wires, True, False, closed)
-        if tool.Volume < 0:
-            tool.reverse()
-        if bend >= radius * 2 or not _crossed(tool):
+        if bend >= radius * 2 or not _sections_cross(stations, wires,
+                                                     radius, closed):
             break
+    tool = Part.makeLoft(wires, True, False, closed)
+    if tool.Volume < 0:
+        tool.reverse()
     for wire, station, length in ((wires[0], stations[0], -back),
                                   (wires[-1], stations[-1], forth)):
         if not length:
@@ -1723,6 +1744,7 @@ def fillet(shape: Any, edges: list[Any], radius: float | list[float],
         return result, problems
     if limits is not None:
         limits.clear()
+    _untooled()
     return rescued, []
 
 
@@ -1754,6 +1776,7 @@ def _ours(shape: Any, edges: list[Any], radius: float | list[float],
             try:
                 with timed("fading round"):
                     result = fade.applied(shape, result, edges[i], sizes[i])
+                _untooled()
             except Exception as exc:  # noqa: BLE001 - without it then
                 result, reason, dropped = None, str(exc), i
                 break
@@ -1768,6 +1791,8 @@ def _ours(shape: Any, edges: list[Any], radius: float | list[float],
         App.Console.PrintLog("Nxt fillet: fading rounds dropped: %s\n"
                              % reason)
         rest = [i for i in range(len(edges)) if i != dropped]
+        if _tools:
+            _tools[-1].clear()
         found: dict[int, float] = {}
         result, problems = _ours(
             shape, [edges[i] for i in rest], [sizes[i] for i in rest],
@@ -2271,6 +2296,7 @@ def _joined_up(shape: Any, edges: list[Any], sizes: list[float],
         for plan in plans:
             with timed("junction blended"):
                 result = junction.applied(result, plan)
+                _untooled()
         if result.isValid() and len(result.Solids) == len(shape.Solids):
             result = _tolerant(result)
             if _sound(result):
@@ -2780,6 +2806,24 @@ def _without_slivers(shape: Any, count: int, smallest: float) -> Any:
     return kept[0] if len(kept) == 1 else Part.makeCompound(kept)
 
 
+#: The tools that went into the round being made: each with whether it
+#: was cut away. Cleared where the result came some other way.
+_tools: list[list[tuple[Any, bool]]] = []
+
+
+def _noted(result: Any, tool: Any, cutting: bool) -> Any:
+    if _tools:
+        _tools[-1].append((tool, cutting))
+    return result
+
+
+def _untooled() -> None:
+    """The result is not, or not only, the noted tools' doing."""
+    if _tools:
+        _tools[-1].clear()
+        _tools[-1].append((None, False))
+
+
 def _applied(shape: Any, tool: Any, cutting: bool) -> Any:
     """`shape` with `tool` cut away or added; None if that is unsound.
 
@@ -2800,7 +2844,7 @@ def _applied(shape: Any, tool: Any, cutting: bool) -> Any:
                     and result.isValid()
                     and -slack <= change <= tool.Volume + slack):
                 if _held and _held[-1]:
-                    return result
+                    return _noted(result, tool, cutting)
                 # Only where the tool reached can a face have gone wrong;
                 # the rest is the shape's as it was (and the whole is made
                 # tolerant once the rounds are done).
@@ -2809,7 +2853,7 @@ def _applied(shape: Any, tool: Any, cutting: bool) -> Any:
                 result, sound = _tolerant_sound(result, near)
                 # Valid but with faces running through each other: no.
                 if sound or not _sound_as_made(shape):
-                    return result
+                    return _noted(result, tool, cutting)
     return None
 
 
@@ -2926,6 +2970,7 @@ class BlendFillet:
 
     def complete(self, obj: Any) -> None:
         """The properties added since the first release, on older files."""
+        watch_patterns()
         if not hasattr(obj, "UseAllEdges"):
             obj.addProperty("App::PropertyBool", "UseAllEdges", self.GROUP,
                             "Every edge of the base feature")
@@ -2982,13 +3027,17 @@ class BlendFillet:
         editing = getattr(self, "editing", False)
         dragging = editing and getattr(self, "dragging", False)
         found: dict[int, float] = {}
-        with timed("%s: all" % obj.Label):
-            result, problems = fillet(
-                shape, edges, sizes, self.FLAT,
-                getattr(obj, "Refine", True) and not editing,
-                found if editing and not dragging and shape is own
-                else None,
-                mended=not dragging)
+        _tools.append([])
+        try:
+            with timed("%s: all" % obj.Label):
+                result, problems = fillet(
+                    shape, edges, sizes, self.FLAT,
+                    getattr(obj, "Refine", True) and not editing,
+                    found if editing and not dragging and shape is own
+                    else None,
+                    mended=not dragging)
+        finally:
+            tools = _tools.pop()
         self.problems = problems
         if not dragging:
             #: Edges left sharp: the largest size that fits each, 0 if none.
@@ -2999,13 +3048,19 @@ class BlendFillet:
             result.fix(1e-7, 1e-7, 1e-7)
         obj.Shape = result
         if not editing:
-            self.transform_problem = set_tool(obj, own, result)
-            if self.transform_problem and any(
-                    o.isDerivedFrom("PartDesign::Transformed")
-                    for o in obj.InList):
-                App.Console.PrintWarning(
-                    "%s cannot be mirrored or patterned: %s\n"
-                    % (obj.Label, self.transform_problem))
+            self.transform_problem = ""
+            if _transformed(obj):
+                with timed("%s: tool" % obj.Label):
+                    self.transform_problem = set_tool(
+                        obj, own, result, tools if shape is own else None)
+                if self.transform_problem:
+                    App.Console.PrintWarning(
+                        "%s cannot be mirrored or patterned: %s\n"
+                        % (obj.Label, self.transform_problem))
+            elif hasattr(obj, "AddSubShape") and not obj.AddSubShape.isNull():
+                # None rather than a stale one: made when first needed
+                # (PatternWatch).
+                obj.AddSubShape = Part.Shape()
         if editing and hasattr(obj, "PreviewShape"):
             # Part Design's own preview shows this, as for its dress-ups.
             with timed("preview faces"):
@@ -3226,7 +3281,92 @@ def _invalid_from(base: Any) -> str:
 TOOL_SHARE = 1e-9
 
 
-def set_tool(obj: Any, base: Any, result: Any) -> str:
+def _transformed(obj: Any) -> bool:
+    """Whether a mirror or pattern copies this feature."""
+    return any(o.isDerivedFrom("PartDesign::Transformed")
+               for o in obj.InList)
+
+
+class PatternWatch:
+    """Has a round's material made once a mirror or pattern takes it up.
+
+    A round used by none goes without (set_tool is two booleans of the
+    whole part). Touched here, it is recomputed, ahead of the pattern,
+    by the recompute that follows the pattern's own change.
+    """
+
+    def slotChangedObject(self, obj: Any, prop: str) -> None:  # noqa: N802
+        if prop != "Originals" \
+                or not obj.isDerivedFrom("PartDesign::Transformed"):
+            return
+        for original in obj.Originals:
+            if (isinstance(getattr(original, "Proxy", None), BlendFillet)
+                    and hasattr(original, "AddSubShape")
+                    and original.AddSubShape.isNull()):
+                original.touch()
+
+
+_pattern_watch: PatternWatch | None = None
+
+
+def watch_patterns() -> None:
+    global _pattern_watch
+    if _pattern_watch is None:
+        _pattern_watch = PatternWatch()
+        App.addDocumentObserver(_pattern_watch)
+
+
+#: Whether the material comes from the round's own tools where it can
+#: (a few small booleans), not from the whole part before and after.
+FROM_TOOLS = True
+#: The tools' material must account for the part's change in volume to
+#: within this share of their own volume, or it is not trusted.
+TOOLS_MATCH = 1e-3
+
+
+def _one(pieces: list[Any]) -> Any:
+    pieces = [p for p in pieces if not p.isNull() and p.Solids]
+    if not pieces:
+        return Part.Shape()
+    return pieces[0] if len(pieces) == 1 else pieces[0].fuse(pieces[1:])
+
+
+def _from_tools(base: Any, result: Any,
+                tools: list[tuple[Any, bool]] | None
+                ) -> tuple[Any, Any] | None:
+    """What the tools removed from `base` and added to it; None if unsure.
+
+    Unsure: something other than these tools shaped the result, or their
+    material does not account for the change in the part's volume.
+    """
+    if (not FROM_TOOLS or not tools or any(t is None for t, _c in tools)
+            or not base.Placement.isIdentity()):
+        return None
+    try:
+        removed = _one([base.common(t) for t, cutting in tools if cutting])
+        added = _one([t.cut(base) for t, cutting in tools if not cutting])
+        if not (removed.isNull() or removed.isValid()) \
+                or not (added.isNull() or added.isValid()):
+            return None
+        gone = 0.0 if removed.isNull() else removed.Volume
+        come = 0.0 if added.isNull() else added.Volume
+    except Exception:  # noqa: BLE001 - the long way then
+        return None
+    change = base.Volume - result.Volume
+    if abs(change - (gone - come)) > (gone + come) * TOOLS_MATCH:
+        return None
+    return removed, added
+
+
+def _from_parts(base: Any, result: Any) -> tuple[Any, Any]:
+    plain = App.Placement()
+    start, end = base.copy(), result.copy()
+    start.Placement = end.Placement = plain
+    return start.cut(end), end.cut(start)
+
+
+def set_tool(obj: Any, base: Any, result: Any,
+             tools: list[tuple[Any, bool]] | None = None) -> str:
     """Record the material this feature adds or removes, for patterns.
 
     Mirrored and the patterns copy a feature by its AddSubShape, fused
@@ -3236,16 +3376,16 @@ def set_tool(obj: Any, base: Any, result: Any) -> str:
     """
     if not hasattr(obj, "AddSubShape"):
         return ""
-    plain = App.Placement()
-    start, end = base.copy(), result.copy()
-    start.Placement = end.Placement = plain
+    start = base
     try:
-        removed, added = start.cut(end), end.cut(start)
+        removed, added = (_from_tools(base, result, tools)
+                          or _from_parts(base, result))
     except Exception as exc:  # noqa: BLE001 - patterns go without it
         obj.AddSubShape = Part.Shape()
         return "its material could not be worked out (%s)" % exc
     least = max(abs(start.Volume), 1.0) * TOOL_SHARE
-    removes, adds = removed.Volume > least, added.Volume > least
+    removes = not removed.isNull() and removed.Volume > least
+    adds = not added.isNull() and added.Volume > least
     if removes and adds:
         obj.AddSubShape = Part.Shape()
         return ("it both removes and adds material; mirror or pattern "

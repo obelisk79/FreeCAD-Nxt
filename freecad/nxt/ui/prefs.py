@@ -370,7 +370,7 @@ class NxtPreferencesPage:
             "rotation": self._rotation.value(),
         })
         try:
-            apply(set(QUICK) | _VIEW)
+            apply(set(QUICK) | _VIEW | {menu_button.SETTING})
         except Exception as exc:
             App.Console.PrintError("Nxt: could not apply preferences: %s\n"
                                    % exc)

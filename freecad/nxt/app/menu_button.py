@@ -51,6 +51,20 @@ class MenuButton(QtCore.QObject):
         button.setStyleSheet(
             "QToolButton::menu-indicator { image: none; width: 0; }")
         self.toolbar.addWidget(button)
+        # FreeCAD restores its saved toolbar layout at startup and on
+        # workbench switches, at times after our own pass (Windows: after
+        # the window is first shown), hiding a toolbar it does not list.
+        self.toolbar.installEventFilter(self)
+        main.installEventFilter(self)
+
+    def eventFilter(self, watched: QtCore.QObject,  # noqa: N802
+                    event: QtCore.QEvent) -> bool:
+        kind = event.type()
+        if (watched is self.toolbar and kind == QtCore.QEvent.Type.Hide
+                and self._main.isVisible()) or (
+                watched is self._main and kind == QtCore.QEvent.Type.Show):
+            _later()
+        return False
 
     def _fill(self) -> None:
         """The menu bar's menus, as they are now (workbenches change them)."""
@@ -86,6 +100,8 @@ class MenuButton(QtCore.QObject):
         self._main.insertToolBar(first, self.toolbar)
 
     def remove(self) -> None:
+        self._main.removeEventFilter(self)
+        self.toolbar.removeEventFilter(self)
         self._main.menuBar().setVisible(True)
         self._main.removeToolBar(self.toolbar)
         self.toolbar.deleteLater()
