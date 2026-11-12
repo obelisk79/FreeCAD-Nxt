@@ -9,3 +9,6 @@ __pycache__/
 # Scratch copies made while testing in the cloud; never committed.
 .nxt_sync/
 tests/results/
+
+# graphify knowledge graph
+graphify-out/
