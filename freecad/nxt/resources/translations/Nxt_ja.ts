@@ -690,12 +690,25 @@ Hold Alt while dragging to pass through.</source>
         <translation>個人を特定しない使用データを共有します。</translation>
     </message>
     <message>
+        <source>pip did not run: %s</source>
+        <translation>pip を実行できません: %s</translation>
+    </message>
+    <message>
+        <source>no Python found to run pip</source>
+        <translation>pip を実行する Python が見つかりません</translation>
+    </message>
+    <message>
+        <source>its Python packages were not installed</source>
+        <translation>Python パッケージがインストールされませんでした</translation>
+    </message>
+    <message>
         <source>Welcome to Nxt</source>
         <extracomment>The open dialog, kept so Qt does not lose it.</extracomment>
         <translation>Nxt へようこそ</translation>
     </message>
     <message>
         <source>Menu</source>
+        <extracomment>After the window first shows, the button is checked this often for this long: FreeCAD may still be restoring its toolbar layout.</extracomment>
         <translation>メニュー</translation>
     </message>
 </context>

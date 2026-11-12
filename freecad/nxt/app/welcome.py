@@ -92,15 +92,37 @@ def _package_name(folder: Path) -> str:
     return ""
 
 
-def installed(name: str) -> bool:
-    """Whether an addon of this name is in a Mod folder."""
+def _folder(name: str) -> Path | None:
+    """The Mod folder holding the addon of this name, if any."""
     wanted = name.lower()
     for mod in _mod_dirs():
         for folder in mod.iterdir():
             if folder.is_dir() and wanted in (
                     folder.name.lower(), _package_name(folder).lower()):
-                return True
-    return False
+                return folder
+    return None
+
+
+def installed(name: str) -> bool:
+    """Whether an addon of this name is in a Mod folder."""
+    return _folder(name) is not None
+
+
+def python_needs(name: str) -> tuple[list[str], list[str]]:
+    """The installed addon's Python packages: required, then optional.
+
+    As its package.xml lists them; the Addon Manager installs these
+    itself, but not when its installer is used on its own.
+    """
+    folder = _folder(name)
+    if folder is None or not (folder / "package.xml").is_file():
+        return [], []
+    from addonmanager_metadata import DependencyType, MetadataReader
+    metadata = MetadataReader.from_file(str(folder / "package.xml"))
+    needs = [d for d in metadata.depend
+             if d.dependency_type == DependencyType.python]
+    return ([d.package for d in needs if not d.optional],
+            [d.package for d in needs if d.optional])
 
 
 class _Job(QtCore.QObject):
@@ -116,14 +138,60 @@ class _Job(QtCore.QObject):
         self.welcome = welcome
         self.thread: Any = None
         self.installer: Any = None
+        self.pip_thread: Any = None
+        self.pip: Any = None
+        self.pip_error = ""
 
     @QtCore.Slot(object)
     def succeeded(self, _addon: Any) -> None:
-        self.welcome._set(self.name, INSTALLED)
+        try:
+            self._python_packages()
+        except Exception as exc:  # noqa: BLE001 - shown on the dialog
+            App.Console.PrintLog(traceback.format_exc())
+            self.welcome._failed(self.name, str(exc))
 
     @QtCore.Slot(object, str)
     def failed(self, _addon: Any, why: str) -> None:
         self.welcome._failed(self.name, why)
+
+    def _python_packages(self) -> None:
+        """Install the addon's Python packages, as the Addon Manager would."""
+        required, optional = python_needs(self.name)
+        if not required and not optional:
+            self.welcome._set(self.name, INSTALLED)
+            return
+        from addonmanager_dependency_installer import DependencyInstaller
+        self.pip_thread = QtCore.QThread(self)
+        self.pip = DependencyInstaller([], required, optional)
+        self.pip.moveToThread(self.pip_thread)
+        self.pip.failure.connect(self.pip_failed)
+        self.pip.no_pip.connect(self.no_pip)
+        self.pip.no_python_exe.connect(self.no_python)
+        self.pip.finished.connect(self.pip_finished)
+        self.pip.finished.connect(self.pip_thread.quit)
+        self.pip_thread.started.connect(self.pip.run)
+        self.pip_thread.start()
+
+    @QtCore.Slot(str, str)
+    def pip_failed(self, short: str, detail: str) -> None:
+        App.Console.PrintLog("Nxt: %s\n%s\n" % (short, detail))
+        self.pip_error = short
+
+    @QtCore.Slot(str)
+    def no_pip(self, command: str) -> None:
+        self.pip_error = translate("Nxt", "pip did not run: %s") % command
+
+    @QtCore.Slot()
+    def no_python(self) -> None:
+        self.pip_error = translate("Nxt", "no Python found to run pip")
+
+    @QtCore.Slot(bool)
+    def pip_finished(self, ok: bool) -> None:
+        if ok:
+            self.welcome._set(self.name, INSTALLED)
+        else:
+            self.welcome._failed(self.name, self.pip_error or translate(
+                "Nxt", "its Python packages were not installed"))
 
 
 class Welcome(QtCore.QObject):

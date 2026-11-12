@@ -561,7 +561,7 @@ class ModelPanel(QtWidgets.QDockWidget):
 
     @QtCore.Slot(result=QtCore.QRectF)
     def menuRoom(self) -> QtCore.QRectF:  # noqa: N802 - QML API
-        """The panel's corner in FreeCAD's window, and the window's size."""
+        """Where a menu may go, in the panel's scene coordinates."""
         return quick_host.room_in_window(self._view)
 
     @QtCore.Slot()

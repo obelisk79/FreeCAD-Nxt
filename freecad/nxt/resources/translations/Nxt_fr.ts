@@ -591,7 +591,7 @@ Maintenez Maj pour obtenir quand même le dialogue d&apos;attachement.</translat
     </message>
     <message>
         <source>The menus open from the FreeCAD logo, first on the toolbars. Shortcuts keep working.</source>
-        <translation>Les menus s'ouvrent depuis le logo FreeCAD, en tête des barres d'outils. Les raccourcis restent actifs.</translation>
+        <translation>Les menus s&apos;ouvrent depuis le logo FreeCAD, en tête des barres d&apos;outils. Les raccourcis restent actifs.</translation>
     </message>
     <message>
         <source>3D drag handles</source>
@@ -690,12 +690,25 @@ Maintenez Alt en glissant pour traverser.</translation>
         <translation>Partage des données d&apos;usage non identifiantes.</translation>
     </message>
     <message>
+        <source>pip did not run: %s</source>
+        <translation>pip ne s'est pas lancé : %s</translation>
+    </message>
+    <message>
+        <source>no Python found to run pip</source>
+        <translation>aucun Python trouvé pour lancer pip</translation>
+    </message>
+    <message>
+        <source>its Python packages were not installed</source>
+        <translation>ses paquets Python n'ont pas été installés</translation>
+    </message>
+    <message>
         <source>Welcome to Nxt</source>
         <extracomment>The open dialog, kept so Qt does not lose it.</extracomment>
         <translation>Bienvenue dans Nxt</translation>
     </message>
     <message>
         <source>Menu</source>
+        <extracomment>After the window first shows, the button is checked this often for this long: FreeCAD may still be restoring its toolbar layout.</extracomment>
         <translation>Menu</translation>
     </message>
 </context>

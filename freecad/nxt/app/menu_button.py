@@ -10,6 +10,7 @@ from __future__ import annotations
 import sys
 from typing import Any
 
+import FreeCAD as App
 import FreeCADGui as Gui
 
 from ..core import settings
@@ -18,6 +19,10 @@ from .i18n import translate
 
 TOOLBAR = "NxtMenuToolbar"
 SETTING = "MenuInToolbar"
+#: After the window first shows, the button is checked this often for
+#: this long: FreeCAD may still be restoring its toolbar layout.
+WATCH_MS = 500
+WATCH_FOR_MS = 15000
 
 _button: MenuButton | None = None
 
@@ -57,14 +62,30 @@ class MenuButton(QtCore.QObject):
         self.toolbar.installEventFilter(self)
         main.installEventFilter(self)
 
+        self._watch = QtCore.QTimer(self)
+        self._watch.setInterval(WATCH_MS)
+        self._watch.timeout.connect(self._check)
+        self._watched_ms = 0
+
     def eventFilter(self, watched: QtCore.QObject,  # noqa: N802
                     event: QtCore.QEvent) -> bool:
         kind = event.type()
-        if (watched is self.toolbar and kind == QtCore.QEvent.Type.Hide
-                and self._main.isVisible()) or (
-                watched is self._main and kind == QtCore.QEvent.Type.Show):
+        if watched is self.toolbar and kind == QtCore.QEvent.Type.Hide \
+                and self._main.isVisible():
             _later()
+        elif watched is self._main and kind == QtCore.QEvent.Type.Show:
+            _later()
+            if self._watched_ms == 0:
+                self._watch.start()
         return False
+
+    def _check(self) -> None:
+        self._watched_ms += WATCH_MS
+        if self._watched_ms >= WATCH_FOR_MS:
+            self._watch.stop()
+        if bool(settings.get(SETTING)) and not self.toolbar.isVisible():
+            App.Console.PrintLog("Nxt: menu button was hidden; shown again\n")
+            self.apply()
 
     def _fill(self) -> None:
         """The menu bar's menus, as they are now (workbenches change them)."""
@@ -76,7 +97,11 @@ class MenuButton(QtCore.QObject):
         if on:
             self._place_first()
         self.toolbar.setVisible(on)
-        self._main.menuBar().setVisible(not on)
+        # Never both gone: the menu bar stays until the button is shown
+        # (before the window is, it cannot be; the window's showing
+        # applies this again).
+        shown = self.toolbar.isVisible() or not self._main.isVisible()
+        self._main.menuBar().setVisible(not (on and shown))
 
     def _place_first(self) -> None:
         """Put the toolbar first on the top row, if it is not already.

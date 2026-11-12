@@ -690,12 +690,25 @@ Hold Alt while dragging to pass through.</source>
         <translation>共享不可识别身份的使用数据。</translation>
     </message>
     <message>
+        <source>pip did not run: %s</source>
+        <translation>pip 未能运行：%s</translation>
+    </message>
+    <message>
+        <source>no Python found to run pip</source>
+        <translation>未找到可运行 pip 的 Python</translation>
+    </message>
+    <message>
+        <source>its Python packages were not installed</source>
+        <translation>其 Python 包未安装</translation>
+    </message>
+    <message>
         <source>Welcome to Nxt</source>
         <extracomment>The open dialog, kept so Qt does not lose it.</extracomment>
         <translation>欢迎使用 Nxt</translation>
     </message>
     <message>
         <source>Menu</source>
+        <extracomment>After the window first shows, the button is checked this often for this long: FreeCAD may still be restoring its toolbar layout.</extracomment>
         <translation>菜单</translation>
     </message>
 </context>

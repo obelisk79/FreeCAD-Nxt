@@ -690,12 +690,25 @@ Tieni premuto Alt mentre trascini per attraversarle.</translation>
         <translation>Condivide dati d&apos;uso non identificativi.</translation>
     </message>
     <message>
+        <source>pip did not run: %s</source>
+        <translation>pip non è partito: %s</translation>
+    </message>
+    <message>
+        <source>no Python found to run pip</source>
+        <translation>nessun Python trovato per eseguire pip</translation>
+    </message>
+    <message>
+        <source>its Python packages were not installed</source>
+        <translation>i suoi pacchetti Python non sono stati installati</translation>
+    </message>
+    <message>
         <source>Welcome to Nxt</source>
         <extracomment>The open dialog, kept so Qt does not lose it.</extracomment>
         <translation>Benvenuto in Nxt</translation>
     </message>
     <message>
         <source>Menu</source>
+        <extracomment>After the window first shows, the button is checked this often for this long: FreeCAD may still be restoring its toolbar layout.</extracomment>
         <translation>Menu</translation>
     </message>
 </context>

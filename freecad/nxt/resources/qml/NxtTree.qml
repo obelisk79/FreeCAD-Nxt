@@ -363,17 +363,26 @@ Rectangle {
             ? rowItem.mapToItem(root, theme.rowPad + theme.indent,
                                 rowItem.height)
             : Qt.point(x, y);
-        // Kept inside FreeCAD's window: under Wayland Qt cannot tell
-        // where the window is on screen, so it cannot move a menu that
-        // runs off the bottom. Below the row if it fits, else above it,
-        // else as low as it fits.
+        // Kept inside the visible room (host.menuRoom): Qt cannot move a
+        // menu back on screen under Wayland, nor clamp it on X11 and
+        // Windows across monitors of mixed sizes. Below the row if it
+        // fits, else above it, else as low as it fits; never wider or
+        // taller than the room (a menu cut short scrolls).
         var room = host.menuRoom();
-        var tall = menu.implicitHeight;
-        if (room.height > 0 && room.y + at.y + tall > room.height) {
-            var top = rowItem ? at.y - rowItem.height : at.y;
-            at.y = room.y + top - tall >= 0
-                ? top - tall
-                : Math.max(0, room.height - tall) - room.y;
+        if (room.width > 0 && room.height > 0) {
+            menu.contentItem.forceLayout();
+            var tall = Math.min(menu.implicitHeight, room.height);
+            var wide = Math.min(menu.implicitWidth, room.width);
+            if (tall < menu.implicitHeight)
+                menu.height = tall;
+            if (at.y + tall > room.y + room.height) {
+                var top = rowItem ? at.y - rowItem.height : at.y;
+                at.y = top - tall >= room.y
+                    ? top - tall
+                    : room.y + room.height - tall;
+            }
+            at.x = Math.max(room.x,
+                            Math.min(at.x, room.x + room.width - wide));
         }
         var offset = host.menuAnchorOffset();
         menuAnchor.x = at.x + offset.x;

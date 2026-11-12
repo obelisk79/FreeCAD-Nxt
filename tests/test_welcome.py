@@ -77,6 +77,27 @@ class InstalledTests(unittest.TestCase):
             "<package><name> Telemetry </name></package>", encoding="utf-8")
         self.assertTrue(welcome.installed("Telemetry"))
 
+    def test_python_packages_read_from_package_xml(self) -> None:
+        try:
+            import addonmanager_metadata  # noqa: F401
+        except Exception:  # noqa: BLE001 - outside FreeCAD it cannot load
+            self.skipTest("needs FreeCAD's Addon Manager")
+        folder = self.mod / "Telemetry"
+        folder.mkdir()
+        (folder / "package.xml").write_text(
+            '<?xml version="1.0" encoding="UTF-8"?>'
+            '<package format="1" xmlns="https://wiki.freecad.org/'
+            'Package_Metadata"><name>Telemetry</name>'
+            '<depend type="python">posthog</depend>'
+            '<depend type="python" optional="true">rich</depend>'
+            '</package>', encoding="utf-8")
+        self.assertEqual(welcome.python_needs("Telemetry"),
+                         (["posthog"], ["rich"]))
+
+    def test_no_package_xml_needs_nothing(self) -> None:
+        (self.mod / "OpenTheme").mkdir()
+        self.assertEqual(welcome.python_needs("OpenTheme"), ([], []))
+
     def test_only_missing_addons_are_offered(self) -> None:
         (self.mod / "OpenTheme").mkdir()
         offered = [a["name"] for a in welcome.Welcome().addons]

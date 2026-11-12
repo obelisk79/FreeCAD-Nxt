@@ -59,17 +59,23 @@ def window_offset(view: Any) -> QtCore.QPointF:
 
 
 def room_in_window(view: Any) -> QtCore.QRectF:
-    """Where `view` sits in its top-level window, and that window's size.
+    """Where a menu opened from `view` may go, in the view's coordinates.
 
-    (x, y): the view's corner in the window; (width, height): the
-    window's. Menus are kept inside it: under Wayland Qt cannot see
-    where the window is on screen, so it cannot keep them on screen.
+    The screen's available area, less any part the window does not show
+    of it. Under Wayland nobody can see where the window is on screen,
+    so only the window itself is known to be visible.
     """
     if view is None:
         return QtCore.QRectF()
     top = view.window()
     corner = view.mapTo(top, QtCore.QPoint(0, 0))
-    return QtCore.QRectF(corner.x(), corner.y(), top.width(), top.height())
+    room = QtCore.QRect(-corner.x(), -corner.y(), top.width(), top.height())
+    screen = view.screen()
+    if screen is not None and not QtGui.QGuiApplication.platformName() \
+            .startswith("wayland"):
+        origin = view.mapToGlobal(QtCore.QPoint(0, 0))
+        room = screen.availableGeometry().translated(-origin)
+    return QtCore.QRectF(room)
 
 
 def view_of(window: Any) -> Any:
