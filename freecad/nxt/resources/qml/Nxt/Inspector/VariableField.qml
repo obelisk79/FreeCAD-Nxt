@@ -16,6 +16,21 @@ Column {
     property bool expanded: false
     property string error: ""
     property string typeId: ""
+    //: The widest name in the card: names take the room first, so they
+    //: line up and show whole; the value has the rest. -1: a fixed value.
+    property real nameWidth: -1
+    //: Gaps: name to value, value to the edit button.
+    readonly property real rowGaps: label.anchors.rightMargin
+                                    + value.anchors.rightMargin
+    readonly property real rowRoom: field.width - editButton.width
+                                    - field.rowGaps
+    readonly property real valueWidth: {
+        if (field.nameWidth < 0)
+            return theme.valueWidth;
+        var names = Math.min(field.nameWidth,
+                             field.rowRoom - theme.valueWidth);
+        return Math.max(theme.valueWidth, field.rowRoom - names);
+    }
 
     readonly property string tipText: {
         var tip = field.spec.tip || "";
@@ -109,7 +124,7 @@ Column {
             anchors.right: editButton.left
             anchors.rightMargin: 2
             anchors.verticalCenter: parent.verticalCenter
-            width: theme.valueWidth
+            width: field.valueWidth
             spec: field.spec
             owner: inspector.owner
             labelled: false

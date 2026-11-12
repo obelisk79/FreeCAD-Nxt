@@ -14,6 +14,12 @@ Item {
     property bool clearable: false
     //: Shown after the text inside the field, not editable (a unit).
     property string suffix: ""
+    //: Shown in place of the text while the field is not focused
+    //: (StyledText); "" shows the text itself.
+    property string styled: ""
+    readonly property bool styledShown: field.styled.length > 0
+                                        && !input.activeFocus
+    readonly property alias styledTruncated: styledLabel.truncated
     //: Room kept at the start for something drawn over the field.
     property real leading: 0
     //: The wheel's step on the number, given its modifiers; null: none.
@@ -143,6 +149,7 @@ Item {
         verticalAlignment: TextInput.AlignVCenter
         font.pixelSize: theme.fontSmall
         color: theme.text
+        opacity: field.styledShown ? 0 : 1
         selectionColor: theme.accent
         selectedTextColor: theme.accentText
         selectByMouse: true
@@ -174,6 +181,18 @@ Item {
         Keys.onDownPressed: function (event) {
             if (!assist.handleKey(event)) field.downPressed();
         }
+    }
+
+    Text {
+        id: styledLabel
+        visible: field.styledShown
+        anchors.fill: input
+        verticalAlignment: Text.AlignVCenter
+        textFormat: Text.StyledText
+        elide: Text.ElideRight
+        text: field.styled
+        font.pixelSize: theme.fontSmall
+        color: theme.textDim
     }
 
     ExpressionAssist {

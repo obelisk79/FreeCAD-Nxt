@@ -220,9 +220,23 @@ Rectangle {
                 // A VarSet's variables (a template's variables card), and
                 // a way to add one when a single VarSet is selected.
                 Column {
+                    id: variablesColumn
                     visible: group.opened && !!group.modelData.variables
                     width: parent.width
                     spacing: root.gap
+
+                    FontMetrics {
+                        id: nameMetrics
+                        font.pixelSize: theme.fontSmall
+                    }
+                    readonly property real widestName: {
+                        var widest = 0;
+                        var items = group.modelData.variables || [];
+                        for (var i = 0; i < items.length; ++i)
+                            widest = Math.max(widest, nameMetrics.advanceWidth(
+                                                  items[i].label || ""));
+                        return Math.ceil(widest);
+                    }
 
                     Repeater {
                         model: group.opened && group.modelData.variables
@@ -231,6 +245,7 @@ Rectangle {
                             required property var modelData
                             spec: modelData
                             width: groupBody.width
+                            nameWidth: variablesColumn.widestName
                             editable: !!group.modelData.editable
                         }
                     }
