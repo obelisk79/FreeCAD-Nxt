@@ -74,10 +74,12 @@ def build_header() -> dict[str, Any]:
 
 #: Prefix of the documents menu's commands; the document's Name follows.
 DOCUMENT_PREFIX = "doc:"
+#: Prefix of each document's Close link.
+CLOSE_PREFIX = "close:"
 
 
 def build_documents() -> dict[str, Any]:
-    """The open documents as a menu; the active one is marked, not offered."""
+    """The open documents as a menu; the active one is checked."""
     active = App.ActiveDocument
     documents = sorted(App.listDocuments().values(),
                        key=lambda d: str(getattr(d, "Label", d.Name)).lower())
@@ -89,7 +91,11 @@ def build_documents() -> dict[str, Any]:
             "command": DOCUMENT_PREFIX + doc.Name,
             "label": ("\u2713 " if current else "") + label,
             "shortcut": "", "icon": "",
-            "enabled": not current})
+            # Enabled even when current, so its Close link can be clicked;
+            # choosing the current document does nothing.
+            "enabled": True,
+            "link": {"label": translate(present.CONTEXT, "Close"),
+                     "command": CLOSE_PREFIX + doc.Name}})
     if not items:
         return {}
     return {"title": translate(present.CONTEXT, "Open documents"),
@@ -112,22 +118,60 @@ def switch_document(name: str) -> None:
         Gui.setActiveDocument(name)
 
 
-def _document_window(gui: Any, label: str) -> Any:
-    """The MDI window showing this document, if any.
+def close_document(name: str) -> None:
+    """Close a document as closing its windows would: unsaved changes ask.
 
-    Its title is the label, optionally ` : <n>` for a second view, and
-    `[*]` while modified.
+    If no document is left, the Start page comes up.
+    """
+    doc = App.listDocuments().get(name)
+    if doc is None:
+        return
+    import FreeCADGui as Gui
+    label = str(getattr(doc, "Label", doc.Name))
+    windows = _document_windows(Gui, label)
+    if windows:
+        # The last view's close asks to save; a cancel keeps it open.
+        for window in windows:
+            if not window.close():
+                return
+    else:
+        switch_document(name)
+        Gui.runCommand("Std_CloseActiveWindow")
+    if not App.listDocuments():
+        _show_start_page(Gui)
+
+
+def _show_start_page(gui: Any) -> None:
+    """Bring up FreeCAD's Start page, where the Start workbench exists."""
+    try:
+        gui.runCommand("Start_Start")
+    except Exception:
+        App.Console.PrintLog("Nxt: no Start page to show\n")
+
+
+def _document_window(gui: Any, label: str) -> Any:
+    """The first MDI window showing this document, if any."""
+    windows = _document_windows(gui, label)
+    return windows[0] if windows else None
+
+
+def _document_windows(gui: Any, label: str) -> list[Any]:
+    """The MDI windows showing this document.
+
+    A window's title is the label, optionally ` : <n>` for a second
+    view, and `[*]` while modified.
     """
     from ..core.qt import QtWidgets
     main = gui.getMainWindow()
     area = main.findChild(QtWidgets.QMdiArea) if main is not None else None
     if area is None:
-        return None
+        return []
+    found = []
     for window in area.subWindowList():
         title = window.windowTitle().replace("[*]", "").strip()
         if title == label or title.startswith(label + " : "):
-            return window
-    return None
+            found.append(window)
+    return found
 
 
 def _kind(objects: list[Any]) -> str:
@@ -138,9 +182,20 @@ def _kind(objects: list[Any]) -> str:
 
 def run(bridge: TreeBridge, command: str, names: list[str]) -> None:
     """Run one menu item on the objects the menu was opened for."""
-    if command.startswith(DOCUMENT_PREFIX):
+    if command.startswith(CLOSE_PREFIX):
         try:
-            switch_document(command[len(DOCUMENT_PREFIX):])
+            close_document(command[len(CLOSE_PREFIX):])
+        except Exception as exc:
+            App.Console.PrintError("Nxt: could not close document: %s\n"
+                                   % exc)
+        return
+    if command.startswith(DOCUMENT_PREFIX):
+        name = command[len(DOCUMENT_PREFIX):]
+        active = App.ActiveDocument
+        if active is not None and active.Name == name:
+            return
+        try:
+            switch_document(name)
         except Exception as exc:
             App.Console.PrintError("Nxt: could not switch document: %s\n"
                                    % exc)

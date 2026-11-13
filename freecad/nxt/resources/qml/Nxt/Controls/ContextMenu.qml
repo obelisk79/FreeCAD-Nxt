@@ -110,6 +110,8 @@ Menu {
             implicitWidth: rowLabel.implicitWidth
                            + (row.shortcutText
                               ? rowShortcut.implicitWidth + 24 : 0)
+                           + (rowLink.visible
+                              ? rowLink.implicitWidth + 24 : 0)
                            + (row.subMenu ? 16 : 0)
             implicitHeight: rowLabel.implicitHeight
 
@@ -118,6 +120,8 @@ Menu {
                 anchors.verticalCenter: parent.verticalCenter
                 width: parent.width - (row.shortcutText
                                        ? rowShortcut.width + 12 : 0)
+                                    - (rowLink.visible
+                                       ? rowLink.width + 12 : 0)
                 elide: Text.ElideRight
                 text: row.text
                 font: row.font
@@ -134,6 +138,32 @@ Menu {
                 text: row.shortcutText
                 font.pixelSize: theme.fontAside
                 color: theme.textDim
+            }
+            // A link at the row's end, e.g. "Close" on a document; its
+            // own action, not the row's.
+            Text {
+                id: rowLink
+                anchors.verticalCenter: parent.verticalCenter
+                anchors.right: parent.right
+                visible: !!(row.spec && row.spec.link)
+                text: visible ? row.spec.link.label : ""
+                font.pixelSize: theme.fontAside
+                font.underline: linkHover.hovered
+                color: linkHover.hovered ? theme.text : theme.accent
+
+                HoverHandler {
+                    id: linkHover
+                    cursorShape: Qt.PointingHandCursor
+                }
+                MouseArea {
+                    anchors.fill: parent
+                    anchors.margins: -4
+                    onClicked: {
+                        var command = row.spec.link.command;
+                        contextMenu.dismiss();
+                        contextMenu.choose(command);
+                    }
+                }
             }
         }
 

@@ -106,6 +106,7 @@ GROUPS: tuple[str, ...] = (
     QT_TRANSLATE_NOOP("NxtMenu", "File"),
     QT_TRANSLATE_NOOP("NxtMenu", "Document"),
     QT_TRANSLATE_NOOP("NxtMenu", "Open documents"),
+    QT_TRANSLATE_NOOP("NxtMenu", "Close"),
     #: An edit mode's label; %1 is the object's label.
     QT_TRANSLATE_NOOP("NxtMenu", "Edit %1"),
     #: The menu's title for a selection of several; %1 is how many.
