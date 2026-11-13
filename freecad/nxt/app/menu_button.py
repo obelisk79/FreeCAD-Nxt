@@ -23,16 +23,16 @@ SETTING = "MenuInToolbar"
 #: this long: FreeCAD may still be restoring its toolbar layout.
 WATCH_MS = 500
 WATCH_FOR_MS = 15000
-#: Off while the button goes missing for some users (seen with the
-#: Start page active, Linux Mint Cinnamon and Windows 11).
-ENABLED = False
+
+#: What FreeCAD's toolbar layout does to the button's toolbar.
+_DISPLACED = (QtCore.QEvent.Type.Hide, QtCore.QEvent.Type.Move)
 
 _button: MenuButton | None = None
 
 
 def supported() -> bool:
     """Whether the menus may move into a button here (not on macOS)."""
-    return ENABLED and sys.platform != "darwin"
+    return sys.platform != "darwin"
 
 
 class MenuButton(QtCore.QObject):
@@ -73,7 +73,9 @@ class MenuButton(QtCore.QObject):
     def eventFilter(self, watched: QtCore.QObject,  # noqa: N802
                     event: QtCore.QEvent) -> bool:
         kind = event.type()
-        if watched is self.toolbar and kind == QtCore.QEvent.Type.Hide \
+        # Moved too: FreeCAD re-lays its toolbars out without hiding
+        # this one (a document activated, a toolbar shown beside it).
+        if watched is self.toolbar and kind in _DISPLACED \
                 and self._main.isVisible():
             _later()
         elif watched is self._main and kind == QtCore.QEvent.Type.Show:
@@ -125,6 +127,8 @@ class MenuButton(QtCore.QObject):
                 and (self.toolbar.y(), self.toolbar.x())
                 <= (first.y(), first.x())):
             return
+        App.Console.PrintLog(
+            "Nxt: menu button moved from first place; put back\n")
         self._main.insertToolBar(first, self.toolbar)
 
     def remove(self) -> None:
