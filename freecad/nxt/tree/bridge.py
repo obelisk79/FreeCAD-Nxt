@@ -652,6 +652,17 @@ class TreeBridge(QtCore.QObject):
             log.error("the header menu could not be built")
             return {}
 
+    @QtCore.Slot(result="QVariant")
+    def documentsMenu(self) -> dict[str, Any]:
+        """The open documents, to switch between."""
+        from . import menu_actions
+        self._menu_names = []
+        try:
+            return menu_actions.build_documents()
+        except Exception:
+            log.error("the documents menu could not be built")
+            return {}
+
     @QtCore.Slot(str)
     def runMenuItem(self, command: str) -> None:
         # Outside QML's call stack: a command's dialog runs its own event

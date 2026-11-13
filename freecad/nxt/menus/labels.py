@@ -36,6 +36,8 @@ ACTIONS: dict[str, str] = {
     "nxt:show_all": QT_TRANSLATE_NOOP("NxtMenu", "Show all objects"),
     "nxt:show_contents": QT_TRANSLATE_NOOP("NxtMenu", "Show all"),
     "nxt:collapse_all": QT_TRANSLATE_NOOP("NxtMenu", "Collapse all"),
+    "nxt:open_file_location": QT_TRANSLATE_NOOP(
+        "NxtMenu", "Open file location"),
     "nxt:synchronize_binder": QT_TRANSLATE_NOOP("NxtMenu", "Synchronize"),
     "nxt:select_bound": QT_TRANSLATE_NOOP("NxtMenu", "Select bound object"),
     "nxt:native_menu": QT_TRANSLATE_NOOP("NxtMenu", "FreeCAD's menu…"),
@@ -80,6 +82,7 @@ ICONS: dict[str, str] = {
     "nxt:select_instances": "Std_TreeSelectAllInstances",
     "nxt:set_tip": "PartDesign_MoveTip",
     "nxt:roll_forward": "PartDesign_MoveTip",
+    "nxt:open_file_location": "Std_Open",
 }
 
 #: Group names, listed for translation extraction.
@@ -98,6 +101,12 @@ GROUPS: tuple[str, ...] = (
     QT_TRANSLATE_NOOP("NxtMenu", "Draft"),
     QT_TRANSLATE_NOOP("NxtMenu", "More"),
     QT_TRANSLATE_NOOP("NxtMenu", "Delete"),
+    #: The tree header's menu: its sections and subtitle.
+    QT_TRANSLATE_NOOP("NxtMenu", "Visibility"),
+    QT_TRANSLATE_NOOP("NxtMenu", "File"),
+    QT_TRANSLATE_NOOP("NxtMenu", "Document"),
+    QT_TRANSLATE_NOOP("NxtMenu", "Open documents"),
+    QT_TRANSLATE_NOOP("NxtMenu", "Close"),
     #: An edit mode's label; %1 is the object's label.
     QT_TRANSLATE_NOOP("NxtMenu", "Edit %1"),
     #: The menu's title for a selection of several; %1 is how many.

@@ -43,6 +43,9 @@ def build(bridge: TreeBridge, names: list[str]) -> dict[str, Any]:
 #: The header's menu: visibility for the whole document.
 HEADER_ITEMS = ("nxt:show_all", "Std_ToggleObjects", "Std_HideObjects")
 
+#: The header's menu: the document's file.
+HEADER_FILE_ITEMS = ("nxt:open_file_location",)
+
 
 def build_header() -> dict[str, Any]:
     """The tree header's menu, as QML draws it."""
@@ -51,11 +54,125 @@ def build_header() -> dict[str, Any]:
         return {}
     subject = present.Subject(title=doc.Label,
                               subtitle=translate(present.CONTEXT, "Document"))
-    items = [e for e in (present.entry(Item(c), subject, runner.lookup)
-                         for c in HEADER_ITEMS) if e is not None]
+
+    def entries(commands: tuple[str, ...]) -> list[dict[str, Any]]:
+        return [e for e in (present.entry(Item(c), subject, runner.lookup)
+                            for c in commands) if e is not None]
+
+    files = entries(HEADER_FILE_ITEMS)
+    for item in files:
+        # A document never saved has no folder to open.
+        if item["command"] == "nxt:open_file_location":
+            item["enabled"] = bool(_document_folder(doc))
     return {"title": subject.title, "subtitle": subject.subtitle,
-            "bar": [], "sections": [{"name": translate(
-                present.CONTEXT, "Visibility"), "items": items}]}
+            "bar": [], "sections": [
+                {"name": translate(present.CONTEXT, "Visibility"),
+                 "items": entries(HEADER_ITEMS)},
+                {"name": translate(present.CONTEXT, "File"),
+                 "items": files}]}
+
+
+#: Prefix of the documents menu's commands; the document's Name follows.
+DOCUMENT_PREFIX = "doc:"
+#: Prefix of each document's Close link.
+CLOSE_PREFIX = "close:"
+
+
+def build_documents() -> dict[str, Any]:
+    """The open documents as a menu; the active one is checked."""
+    active = App.ActiveDocument
+    documents: list[Any] = sorted(App.listDocuments().values(),
+                                  key=lambda d: str(getattr(
+                                      d, "Label", d.Name)).lower())
+    items = []
+    for doc in documents:
+        label = str(getattr(doc, "Label", doc.Name))
+        current = active is not None and doc.Name == active.Name
+        items.append({
+            "command": DOCUMENT_PREFIX + doc.Name,
+            "label": ("\u2713 " if current else "") + label,
+            "shortcut": "", "icon": "",
+            # Enabled even when current, so its Close link can be clicked;
+            # choosing the current document does nothing.
+            "enabled": True,
+            "link": {"label": translate(present.CONTEXT, "Close"),
+                     "command": CLOSE_PREFIX + doc.Name}})
+    if not items:
+        return {}
+    return {"title": translate(present.CONTEXT, "Open documents"),
+            "subtitle": "", "bar": [],
+            "sections": [{"name": "", "items": items}]}
+
+
+def switch_document(name: str) -> None:
+    """Make this document active, and bring its 3D view to the front."""
+    doc: Any = App.listDocuments().get(name)
+    if doc is None:
+        return
+    import FreeCADGui as Gui
+    label = str(getattr(doc, "Label", doc.Name))
+    window = _document_window(Gui, label)
+    if window is not None:
+        # Activating its window makes FreeCAD switch the active document.
+        window.mdiArea().setActiveSubWindow(window)
+    if App.ActiveDocument is None or App.ActiveDocument.Name != name:
+        Gui.setActiveDocument(name)
+
+
+def close_document(name: str) -> None:
+    """Close a document as closing its windows would: unsaved changes ask.
+
+    If no document is left, the Start page comes up.
+    """
+    doc: Any = App.listDocuments().get(name)
+    if doc is None:
+        return
+    import FreeCADGui as Gui
+    label = str(getattr(doc, "Label", doc.Name))
+    windows = _document_windows(Gui, label)
+    if windows:
+        # The last view's close asks to save; a cancel keeps it open.
+        for window in windows:
+            if not window.close():
+                return
+    else:
+        switch_document(name)
+        Gui.runCommand("Std_CloseActiveWindow")
+    if not App.listDocuments():
+        _show_start_page(Gui)
+
+
+def _show_start_page(gui: Any) -> None:
+    """Bring up FreeCAD's Start page, where the Start workbench exists."""
+    try:
+        gui.runCommand("Start_Start")
+    except Exception:
+        App.Console.PrintLog("Nxt: no Start page to show\n")
+
+
+def _document_window(gui: Any, label: str) -> Any:
+    """The first MDI window showing this document, if any."""
+    windows = _document_windows(gui, label)
+    return windows[0] if windows else None
+
+
+def _document_windows(gui: Any, label: str) -> list[Any]:
+    """The MDI windows showing this document.
+
+    A window's title is the label, optionally ` : <n>` for a second
+    view, and `[*]` while modified.
+    """
+    from ..core.qt import QtWidgets
+    main = gui.getMainWindow()
+    area = main.findChild(QtWidgets.QMdiArea) if main is not None else None
+    if area is None:
+        return []
+    found = []
+    for window in area.subWindowList():
+        title = window.windowTitle().replace("[*]", "").strip()
+        if title == label or title.startswith(label + " : "):
+            found.append(window)
+    return found
 
 
 def _kind(objects: list[Any]) -> str:
@@ -66,6 +183,24 @@ def _kind(objects: list[Any]) -> str:
 
 def run(bridge: TreeBridge, command: str, names: list[str]) -> None:
     """Run one menu item on the objects the menu was opened for."""
+    if command.startswith(CLOSE_PREFIX):
+        try:
+            close_document(command[len(CLOSE_PREFIX):])
+        except Exception as exc:
+            App.Console.PrintError("Nxt: could not close document: %s\n"
+                                   % exc)
+        return
+    if command.startswith(DOCUMENT_PREFIX):
+        name = command[len(DOCUMENT_PREFIX):]
+        active = App.ActiveDocument
+        if active is not None and active.Name == name:
+            return
+        try:
+            switch_document(name)
+        except Exception as exc:
+            App.Console.PrintError("Nxt: could not switch document: %s\n"
+                                   % exc)
+        return
     doc = App.ActiveDocument
     if doc is None:
         return
@@ -271,6 +406,34 @@ def _show_all(bridge: TreeBridge, objects: list[Any]) -> None:
     show_all.run()
 
 
+def _document_folder(doc: Any) -> str:
+    """The folder the document is saved in; "" if it was never saved."""
+    import os
+    path = str(getattr(doc, "FileName", "") or "")
+    folder = os.path.dirname(os.path.abspath(path)) if path else ""
+    return folder if folder and os.path.isdir(folder) else ""
+
+
+def _open_file_location(bridge: TreeBridge, objects: list[Any]) -> None:
+    """Open the system's file browser at the active document's folder.
+
+    QDesktopServices hands a local folder URL to the platform's handler:
+    Explorer on Windows, Finder on macOS, the desktop's default file
+    manager (xdg-open / portal) on Linux and the BSDs. No subprocess,
+    so nothing for Bandit to flag.
+    """
+    from ..core.qt import QtCore, QtGui
+    doc = App.ActiveDocument
+    folder = _document_folder(doc) if doc is not None else ""
+    if not folder:
+        App.Console.PrintWarning(
+            "Nxt: the document has not been saved; no folder to open.\n")
+        return
+    url = QtCore.QUrl.fromLocalFile(folder)
+    if not QtGui.QDesktopServices.openUrl(url):
+        App.Console.PrintError("Nxt: could not open %s\n" % folder)
+
+
 def _show_contents(bridge: TreeBridge, objects: list[Any]) -> None:
     from ..tools import show_all
     if len(objects) == 1:
@@ -368,6 +531,7 @@ _ACTIONS: dict[str, Action] = {
     "collapse_all": _collapse_all,
     "show_all": _show_all,
     "show_contents": _show_contents,
+    "open_file_location": _open_file_location,
     "synchronize_binder": _synchronize,
     "select_bound": _select_bound,
     "edit_attachment": _edit_attachment,

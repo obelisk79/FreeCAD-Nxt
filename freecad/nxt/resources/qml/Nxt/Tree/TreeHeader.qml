@@ -7,6 +7,7 @@ Item {
 
     property Item ghost
     property bool settingsOpen: false
+    property bool documentsOpen: false
     readonly property alias gear: gear
     // The room between the name's start and the buttons: all the search
     // field's with no name. It keeps at least half of it.
@@ -15,6 +16,7 @@ Item {
 
     signal settingsClicked()
     signal menuRequested(real x, real y)
+    signal documentsRequested(real x, real y)
 
     TapHandler {
         acceptedButtons: Qt.RightButton
@@ -59,6 +61,7 @@ Item {
         // The name takes what it needs; the elastic search field gives way first.
         width: Math.min(implicitWidth,
                         Math.max(52, header.searchRoom - header.searchFloor
+                                 - docSwitch.width - 2
                                  - (problems.visible ? problems.width + 8
                                                      : 0)))
         text: nxt.hasDocument ? nxt.documentLabel : qsTr("No document")
@@ -81,9 +84,35 @@ Item {
         }
     }
 
+    // Lists the open documents; picking one makes it active.
+    IconButton {
+        id: docSwitch
+        objectName: "documentSwitch"
+        anchors.verticalCenter: parent.verticalCenter
+        anchors.left: docLabel.right
+        anchors.leftMargin: 2
+        // The standard button size, for an easy target; the glyph stays small.
+        enabled: nxt.hasDocument
+        tip: qsTr("Switch document")
+        highlighted: header.documentsOpen
+        iconScale: 0.4
+        paint: function (ctx, w, h, ink) {
+            ctx.strokeStyle = ink;
+            ctx.lineWidth = Math.max(1.2, w / 7);
+            ctx.lineCap = "round";
+            ctx.lineJoin = "round";
+            ctx.beginPath();
+            ctx.moveTo(w * 0.15, h * 0.35);
+            ctx.lineTo(w * 0.5, h * 0.7);
+            ctx.lineTo(w * 0.85, h * 0.35);
+            ctx.stroke();
+        }
+        onClicked: header.documentsRequested(docLabel.x, header.height)
+    }
+
     Row {
         id: problems
-        anchors.left: docLabel.right
+        anchors.left: docSwitch.right
         anchors.leftMargin: 8
         anchors.verticalCenter: parent.verticalCenter
         spacing: 4
@@ -110,7 +139,7 @@ Item {
         id: search
         objectName: "treeSearch"
         anchors.verticalCenter: parent.verticalCenter
-        anchors.left: problems.visible ? problems.right : docLabel.right
+        anchors.left: problems.visible ? problems.right : docSwitch.right
         anchors.leftMargin: 10
         anchors.right: collapseButton.left
         anchors.rightMargin: 4
