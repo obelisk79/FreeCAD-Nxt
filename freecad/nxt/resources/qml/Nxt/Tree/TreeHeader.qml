@@ -90,11 +90,10 @@ Item {
         anchors.verticalCenter: parent.verticalCenter
         anchors.left: docLabel.right
         anchors.leftMargin: 2
-        width: 16
-        height: 16
+        // The standard button size, for an easy target; the glyph stays small.
         enabled: nxt.hasDocument
         tip: qsTr("Switch document")
-        iconScale: 0.5
+        iconScale: 0.4
         paint: function (ctx, w, h, ink) {
             ctx.strokeStyle = ink;
             ctx.lineWidth = Math.max(1.2, w / 7);
