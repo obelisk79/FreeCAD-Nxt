@@ -25,6 +25,7 @@ from ..core.transaction import transaction
 from ..core.view3d import active_viewport
 from ..ui.view_notice import TopNotice
 from . import sketch_state
+from .sketch_contents_model import ContentsModel
 from .task_layout import RENEW_MS, TaskLayout, fitted_view, tab_in_order
 
 SETTING = "SketchPanel"
@@ -103,6 +104,32 @@ def settle(sketch: Any) -> None:
         sketch.solve()
 
 
+def run_command(name: str) -> None:
+    """Run a Sketcher command as its menu would.
+
+    Sketcher's commands are inactive while the sketch is in some other
+    mode (dragging, a tool open). FreeCAD then does nothing and says
+    nothing, so this says so in the Report view.
+    """
+    command = Gui.Command.get(name)
+    if command is None or not command.isActive():
+        App.Console.PrintMessage("Nxt: %s is not available now\n" % name)
+        return
+    Gui.runCommand(name)
+
+
+def _vertex_geo(sketch: Any, names: list[str]) -> dict[str, int]:
+    """Each selected point's element, by its selection name."""
+    found: dict[str, int] = {}
+    for name in names:
+        number = name[len("Vertex"):]
+        if name.startswith("Vertex") and number.isdigit():
+            with contextlib.suppress(Exception):  # gone since selected
+                found[name] = int(sketch.getGeoVertexIndex(
+                    int(number) - 1)[0])
+    return found
+
+
 def selected_names(sketch: Any) -> list[str]:
     """What is selected in `sketch`, as Sketcher names it ("Edge3")."""
     names: list[str] = []
@@ -110,7 +137,8 @@ def selected_names(sketch: Any) -> list[str]:
     for picked in Gui.Selection.getSelectionEx():
         # Inside a Body the selection may be filed under the Body.
         own = getattr(picked, "ObjectName", "") == sketch.Name
-        names.extend(name for name in picked.SubElementNames
+        names.extend(name.rsplit(".", 1)[-1]
+                     for name in picked.SubElementNames
                      if own or inside in name)
     return names
 
@@ -151,6 +179,7 @@ class SketchBridge(QtCore.QObject):
         # while it solves, and a row must not be rebuilt under its click.
         self._work = self._deferral(self._run)
         self._later = self._deferral(self.refresh)
+        self._contents = ContentsModel(edited_sketch, self)
 
     def _deferral(self, slot: Any) -> QtCore.QTimer:
         timer = QtCore.QTimer(self)
@@ -168,16 +197,24 @@ class SketchBridge(QtCore.QObject):
         """Something the panel shows may have changed."""
         self._later.start()
 
+    def edited(self, *_args: Any) -> None:
+        """The sketch itself changed: its contents are read again too."""
+        self._contents.stale()
+        self._later.start()
+
     def refresh(self) -> None:
         """Read the edited sketch afresh; tell QML only of a change."""
         state = self._IDLE
         sketch = edited_sketch() if settings.get(SETTING) else None
-        if sketch is not None:
+        if sketch is None:
+            self._contents.clear()
+        else:
             try:
+                names = selected_names(sketch)
+                self._contents.reselect(names, _vertex_geo(sketch, names))
                 state = (True, sketch_state.status(sketch),
                          sketch_state.issues(sketch),
-                         sketch_state.selection(sketch,
-                                                selected_names(sketch)),
+                         sketch_state.selection(sketch, names),
                          _switches(sketch.ViewObject),
                          {"constraints": int(sketch.ConstraintCount),
                           "elements": int(sketch.GeometryCount)})
@@ -209,6 +246,10 @@ class SketchBridge(QtCore.QObject):
     @QtCore.Property("QVariantMap", notify=changed)  # type: ignore[arg-type]
     def switches(self) -> dict[str, Any]:
         return dict(self._state[4])
+
+    @QtCore.Property(QtCore.QObject, constant=True)
+    def contents(self) -> ContentsModel:
+        return self._contents
 
     @QtCore.Property("QVariantMap", notify=changed)  # type: ignore[arg-type]
     def counts(self) -> dict[str, Any]:
@@ -259,7 +300,7 @@ class SketchBridge(QtCore.QObject):
         """Select what a status link names, as FreeCAD's own link does."""
         command = SELECTS.get(action)
         if command:
-            self._queue("select", lambda _sketch: Gui.runCommand(command))
+            self._queue("select", lambda _sketch: run_command(command))
 
     @QtCore.Slot(str)
     def pick(self, name: str) -> None:
@@ -270,9 +311,50 @@ class SketchBridge(QtCore.QObject):
                                        name)
         self._queue("select", only)
 
+    @QtCore.Slot(str, bool)
+    def toggle(self, name: str, on: bool) -> None:
+        """Add one element or constraint to the selection, or take it out."""
+        def one(sketch: Any) -> None:
+            change = Gui.Selection.addSelection if on \
+                else Gui.Selection.removeSelection
+            change(sketch.Document.Name, sketch.Name, name)
+        self._queue("select", one)
+
+    @QtCore.Slot()
+    def selectConstraints(self) -> None:  # noqa: N802
+        """The constraints on the selected elements, as FreeCAD selects."""
+        self._queue("select", lambda _sketch: run_command(
+            "Sketcher_SelectConstraints"))
+
+    @QtCore.Slot()
+    def deleteSelected(self) -> None:  # noqa: N802
+        self._queue("delete", lambda _sketch: run_command("Std_Delete"))
+
+    @QtCore.Slot()
+    def constructSelected(self) -> None:  # noqa: N802
+        """Selected elements to construction, or all back if all were."""
+        def construct(sketch: Any) -> None:
+            names = selected_names(sketch)
+            geos = sorted(set(_vertex_geo(sketch, names).values()) | {
+                int(n[4:]) - 1 for n in names
+                if n.startswith("Edge") and n[4:].isdigit()})
+            if not geos:
+                return
+            on = not all(sketch.getConstruction(geo) for geo in geos)
+            for geo in geos:
+                sketch.setConstruction(geo, on)
+        self._edit("Toggle construction geometry", construct)
+
+    @QtCore.Slot(int, str)
+    def setValue(self, index: int, text: str) -> None:  # noqa: N802
+        """A dimension's value, as typed with its unit."""
+        def datum(sketch: Any) -> None:
+            sketch.setDatum(index, App.Units.Quantity(text))
+        self._edit("Modify sketch constraints", datum)
+
     @QtCore.Slot()
     def validate(self) -> None:
-        self._queue("validate", lambda _sketch: Gui.runCommand(
+        self._queue("validate", lambda _sketch: run_command(
             "Sketcher_ValidateSketch"))
 
     @QtCore.Slot(int)
@@ -394,7 +476,7 @@ class _Documents:
         self._touch = touch
 
     def slotChangedObject(self, obj: Any, prop: str) -> None:  # noqa: N802
-        if prop in ("Constraints", "Geometry"):
+        if prop in ("Constraints", "Geometry", "ExternalGeo"):
             self._touch()
 
     def slotRecomputedObject(self, _obj: Any) -> None:  # noqa: N802
@@ -421,9 +503,9 @@ class SketchPanel(TaskLayout):
             (Gui.Selection.addObserver, Gui.Selection.removeObserver,
              _Selection(touch)),
             (App.addDocumentObserver, App.removeDocumentObserver,
-             _Documents(touch)),
+             _Documents(self._bridge.edited)),
             (Gui.addDocumentObserver, Gui.removeDocumentObserver,
-             _Edits(touch)))
+             _Edits(self._bridge.edited)))
         self._watching = False
         self._bridge.changed.connect(self.pill.sync)
         self._bridge.browsed.connect(self._later.start)

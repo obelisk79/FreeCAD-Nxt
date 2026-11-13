@@ -66,6 +66,8 @@ _RELOAD_ORDER = (
     "freecad.nxt.tools.sketch_repair",
     "freecad.nxt.tools.sketch_attach",
     "freecad.nxt.tools.sketch_state",
+    "freecad.nxt.tools.sketch_contents",
+    "freecad.nxt.tools.sketch_contents_model",
     "freecad.nxt.tools.sketch_panel",
     "freecad.nxt.tools.face_snap",
     "freecad.nxt.core.fc",

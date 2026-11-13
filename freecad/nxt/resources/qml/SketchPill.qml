@@ -212,22 +212,47 @@ Item {
                 font.pixelSize: theme.fontSmall
                 color: theme.text
             }
-            Text {
+            // Built as IconButton is, which works over the 3D view: a
+            // MouseArea (a TapHandler leaves the press to the view, which
+            // starts a box selection), and the action a frame after the
+            // release.
+            Item {
+                id: link
                 anchors.verticalCenter: parent.verticalCenter
-                visible: text.length > 0
-                text: root.status.link || ""
-                font.pixelSize: theme.fontSmall
-                font.underline: true
-                color: theme.link
+                visible: linkText.text.length > 0
+                width: linkText.implicitWidth
+                height: Math.max(linkText.implicitHeight, theme.rowHeight)
                 Accessible.role: Accessible.Link
-                Accessible.name: text
+                Accessible.name: linkText.text
 
-                // A MouseArea, not a TapHandler: a press no item accepts
-                // goes on to the 3D view, which starts a box selection.
+                Text {
+                    id: linkText
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: root.status.link || ""
+                    font.pixelSize: theme.fontSmall
+                    font.underline: true
+                    color: theme.link
+                }
+                // Ctrl: list what is free in Contents, without selecting.
                 MouseArea {
                     anchors.fill: parent
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: sketch.select(root.status.action)
+                    onClicked: function (mouse) {
+                        follow.listing = root.status.action === "dof"
+                            && (mouse.modifiers & Qt.ControlModifier) !== 0;
+                        follow.restart();
+                    }
+                }
+                Timer {
+                    id: follow
+                    property bool listing: false
+                    interval: 30
+                    onTriggered: {
+                        if (listing)
+                            sketch.contents.showFree();
+                        else
+                            sketch.select(root.status.action);
+                    }
                 }
             }
             IconButton {
