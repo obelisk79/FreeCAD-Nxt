@@ -330,19 +330,27 @@ class TaskLayout(QtCore.QObject):
 
 def make_cards(holder: Any, bridge: Any) -> Any:
     """The template's cards for what `bridge` edits, sized to fit."""
+    cards = fitted_view(
+        holder, "TaskLayout.qml",
+        {"expressions": expressions.helper(), "inspector": bridge,
+         "nativeChoices": None},
+        prepare=_with_choices)
+    bridge.setParent(cards)
+    return cards
+
+
+def fitted_view(holder: Any, source: str, context: dict[str, Any],
+                prepare: Any = None) -> Any:
+    """A task panel's view of `source`, as tall as its QML asks to be."""
     from ..app import services
     reference = holder if holder is not None else Gui.getMainWindow()
     theme = services.theme() or theme_mod.Theme(
         reference, theme_mod.find_reference_widget(reference))
     cards = quick_host.make_view(
-        holder, "TaskLayout.qml",
-        {"expressions": expressions.helper(), "inspector": bridge,
-         "theme": theme, "nativeChoices": None},
-        prepare=_with_choices)
+        holder, source, {"theme": theme, **context}, prepare=prepare)
     cards.setFocusPolicy(QtCore.Qt.FocusPolicy.StrongFocus)
     cards.nxt_keys = _Keyboard(cards)  # type: ignore[attr-defined]
     cards.nxt_paint = _Repaint(cards)  # type: ignore[attr-defined]
-    bridge.setParent(cards)
     cards.setClearColor(QtGui.QColor(theme.background))
     root = cards.rootObject()
 

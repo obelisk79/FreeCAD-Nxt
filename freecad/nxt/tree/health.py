@@ -74,6 +74,16 @@ def _finding(obj: DocObject, name: str) -> bool | list[int] | None:
         return []
 
 
+def findings(obj: DocObject) -> list[tuple[str, int, list[int]]]:
+    """(accessor, severity, constraint numbers) of each list not empty."""
+    found = []
+    for accessor, level, _phrase in CHECKS:
+        result = _finding(obj, accessor)
+        if isinstance(result, list) and result:
+            found.append((accessor, level, result))
+    return found
+
+
 def status_lines(obj: DocObject) -> list[str]:
     """FreeCAD's own status text (`getStatusString()`), as lines."""
     getter = getattr(obj, "getStatusString", None)

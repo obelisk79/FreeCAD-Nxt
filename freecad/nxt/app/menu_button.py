@@ -23,13 +23,16 @@ SETTING = "MenuInToolbar"
 #: this long: FreeCAD may still be restoring its toolbar layout.
 WATCH_MS = 500
 WATCH_FOR_MS = 15000
+#: Off while the button goes missing for some users (seen with the
+#: Start page active, Linux Mint Cinnamon and Windows 11).
+ENABLED = False
 
 _button: MenuButton | None = None
 
 
 def supported() -> bool:
     """Whether the menus may move into a button here (not on macOS)."""
-    return sys.platform != "darwin"
+    return ENABLED and sys.platform != "darwin"
 
 
 class MenuButton(QtCore.QObject):

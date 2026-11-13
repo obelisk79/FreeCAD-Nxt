@@ -90,6 +90,7 @@ for qmldir in sorted((QML / "Nxt").glob("*/qmldir")):
         if len(parts) == 3:
             module_of[parts[0]] = module
     present |= {path.stem for path in qmldir.parent.glob("*.qml")}
+    present |= {path.stem for path in qmldir.parent.glob("*.js")}
 registered = set(module_of)
 #: Root views, usable from their neighbours (TaskLayout uses Inspector).
 roots = {path.stem for path in QML.glob("*.qml")}
