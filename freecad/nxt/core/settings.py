@@ -44,6 +44,9 @@ DEFAULTS: dict[str, bool | int | float | str] = {
     "AttachSketchByPoints": True,
     "SnapToFaces": True,
     "RepairProfiles": True,
+    # Experimental: Nxt's task panel while a sketch is edited
+    # (tools/sketch_panel.py). Off until it has proved itself.
+    "SketchPanel": False,
     # A new sketch, container or feature opens in rename.
     "AutoRename": False,
     # Look for addon updates after startup (app/update_check.py).

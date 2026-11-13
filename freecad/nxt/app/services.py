@@ -42,6 +42,7 @@ class Services(QtCore.QObject):
         self._toasts: Any = None
         self._escape: Any = None
         self._mass_bar: Any = None
+        self._sketch_panel: Any = None
         self._pending_edit: tuple[str, str] | None = None
         self._edit_timer = self._deferral(self._enter_pending_edit)
         self._restyle_timer = self._deferral(self._restyle)
@@ -114,9 +115,16 @@ class Services(QtCore.QObject):
             log.error("could not install the stale drag guard")
             self._drag_guard = None
         self.quick_mass_changed()
+        self.sketch_panel_changed()
 
     def remove(self) -> None:
         self._remove_isolation()
+        if self._sketch_panel is not None:
+            try:
+                self._sketch_panel.remove()
+            except Exception:
+                log.error("could not remove the sketch task panel")
+            self._sketch_panel = None
         if self._mass_bar is not None:
             try:
                 self._mass_bar.remove()
@@ -220,14 +228,50 @@ class Services(QtCore.QObject):
         except Exception:
             log.error("could not update Quick Mass")
 
+    # -- experimental sketch task panel -- #
+
+    def sketch_panel_changed(self) -> None:
+        """Start or stop sketch_panel.py to match its setting."""
+        from ..core import settings
+        if self._sketch_panel is None:
+            if not settings.get("SketchPanel"):
+                return
+            try:
+                from ..tools import sketch_panel
+                self._sketch_panel = sketch_panel.SketchPanel(
+                    self.theme(), lambda: self._notice, self)
+                self._sketch_panel.pill.placed.connect(self._restack)
+                self._sketch_panel.install()
+            except Exception:
+                log.error("could not set up the sketch task panel")
+                self._sketch_panel = None
+            return
+        try:
+            self._sketch_panel.sync()
+        except Exception:
+            log.error("could not update the sketch task panel")
+
+    def _restack(self) -> None:
+        """The sketch pill moved: what is under it follows."""
+        if self._toasts is not None:
+            self._toasts.reposition()
+
     # -- undo toast -- #
 
+    def _lowest_notice(self) -> Any:
+        """The notice a toast goes under: isolate's or the sketch pill."""
+        pill = (self._sketch_panel.pill if self._sketch_panel is not None
+                else None)
+        shown = [notice for notice in (self._notice, pill)
+                 if notice is not None and notice.bottom()]
+        return max(shown, key=lambda notice: notice.bottom(), default=None)
+
     def toasts(self) -> Any:
-        """The undo toast (toast.py), under the isolate notice if any."""
+        """The undo toast (toast.py), under the notices above it."""
         if self._toasts is None:
             from ..ui import toast as toast_mod
             self._toasts = toast_mod.Toast(
-                self.theme(), lambda: self._notice, self)
+                self.theme(), self._lowest_notice, self)
             self._toasts.install()
         return self._toasts
 

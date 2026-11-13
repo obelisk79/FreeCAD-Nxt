@@ -49,6 +49,10 @@ class TopNotice(QtCore.QObject):
                 self._area.subWindowActivated.disconnect(self._view_changed)
         self._drop()
 
+    def reposition(self) -> None:
+        """Place the notice again: one above it moved or went."""
+        self._place()
+
     def bottom(self) -> int:
         """Where a notice under this one starts; 0 while it is not shown."""
         if not (widgets.alive(self._widget) and self._widget.isVisible()):
