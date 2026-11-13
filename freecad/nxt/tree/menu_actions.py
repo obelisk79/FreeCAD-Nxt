@@ -81,8 +81,9 @@ CLOSE_PREFIX = "close:"
 def build_documents() -> dict[str, Any]:
     """The open documents as a menu; the active one is checked."""
     active = App.ActiveDocument
-    documents = sorted(App.listDocuments().values(),
-                       key=lambda d: str(getattr(d, "Label", d.Name)).lower())
+    documents: list[Any] = sorted(App.listDocuments().values(),
+                                  key=lambda d: str(getattr(
+                                      d, "Label", d.Name)).lower())
     items = []
     for doc in documents:
         label = str(getattr(doc, "Label", doc.Name))
@@ -105,7 +106,7 @@ def build_documents() -> dict[str, Any]:
 
 def switch_document(name: str) -> None:
     """Make this document active, and bring its 3D view to the front."""
-    doc = App.listDocuments().get(name)
+    doc: Any = App.listDocuments().get(name)
     if doc is None:
         return
     import FreeCADGui as Gui
@@ -123,7 +124,7 @@ def close_document(name: str) -> None:
 
     If no document is left, the Start page comes up.
     """
-    doc = App.listDocuments().get(name)
+    doc: Any = App.listDocuments().get(name)
     if doc is None:
         return
     import FreeCADGui as Gui
