@@ -313,6 +313,7 @@ class ShowIfTests(unittest.TestCase):
         ids = [t.id for t in templates.loaded()]
         self.assertIn("pd-extrude", ids)
         self.assertIn("pd-fillet", ids)
+        self.assertIn("sketch", ids)
 
 
 class Fillet(Feature):
@@ -464,6 +465,67 @@ class LoftTests(unittest.TestCase):
             bridge._whole_sketches([(sketch, "Edge1"), (sketch, "Edge2"),
                                     (pad, "Face3")]),
             [(sketch, ""), (pad, "Face3")])
+
+
+MODES = ["Deactivated", "FlatFace", "ObjectXY", "ObjectX", "Vertex"]
+
+
+class Sketch(Feature):
+    """A sketch's shown properties, attached or not."""
+
+    def __init__(self, **values: Any) -> None:
+        super().__init__("Sketcher::SketchObject")
+        self._props = {
+            "Label": ("Base", "App::PropertyString", "Sketch"),
+            "AttachmentSupport": ("Attachment", "App::PropertyLinkSubList",
+                                  None),
+            "MapMode": ("Attachment", "App::PropertyEnumeration",
+                        "Deactivated"),
+            "MapReversed": ("Attachment", "App::PropertyBool", False),
+            "AttachmentOffset": ("Attachment", "App::PropertyPlacement",
+                                 fakes.Placement()),
+            "Constraints": ("Sketch", "Sketcher::PropertyConstraintList",
+                            None),
+            "ExternalGeometry": ("Sketch", "App::PropertyLinkSubList", None),
+            "ArcFitTolerance": ("Sketch", "App::PropertyFloat", 0.0),
+            "MakeInternals": ("Internal Geometry", "App::PropertyBool",
+                              False),
+        }
+        self.PropertiesList = list(self._props)
+        for name, (_g, _t, value) in self._props.items():
+            setattr(self, name, values.get(name, value))
+
+    def getEnumerationsOfProperty(self, _prop: str) -> list[str]:  # noqa: N802
+        return MODES
+
+
+class SketchTests(unittest.TestCase):
+
+    def test_cards_in_order(self) -> None:
+        groups = layout(Sketch())
+        self.assertEqual([g["name"] for g in groups[:3]],
+                         ["Attachment", "External geometry", "Profiles"])
+        self.assertEqual(names(groups[0]), ["AttachmentSupport", "MapMode",
+                                            "AttachmentOffset"])
+
+    def test_unattached_is_closed(self) -> None:
+        self.assertFalse(layout(Sketch())[0]["open"])
+        self.assertTrue(layout(Sketch(MapMode="FlatFace"))[0]["open"])
+
+    def test_modes_are_plane_modes_only(self) -> None:
+        mode = layout(Sketch(MapMode="FlatFace"))[0]["items"][1]
+        self.assertEqual(mode["options"],
+                         ["Deactivated", "FlatFace", "ObjectXY"])
+        self.assertEqual(mode["trail"]["name"], "MapReversed")
+
+    def test_inner_profiles_switch(self) -> None:
+        item = layout(Sketch())[2]["items"][0]
+        self.assertEqual((item["name"], item["editor"]),
+                         ("MakeInternals", "switch"))
+
+    def test_constraints_stay_under_everything_else(self) -> None:
+        shown = [i["name"] for g in layout(Sketch())[3:] for i in g["items"]]
+        self.assertIn("Constraints", shown)
 
 
 if __name__ == "__main__":
