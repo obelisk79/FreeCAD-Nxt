@@ -59,8 +59,9 @@ Menu {
                                                      style: "state"}));
         var sections = spec.sections || [];
         for (var i = 0; i < sections.length; ++i) {
-            addItem(label.createObject(null,
-                                       {text: sections[i].name}));
+            if (sections[i].name)
+                addItem(label.createObject(null,
+                                           {text: sections[i].name}));
             for (var j = 0; j < sections[i].items.length; ++j)
                 addEntry(contextMenu, sections[i].items[j], "plain");
         }

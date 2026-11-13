@@ -89,6 +89,10 @@ Rectangle {
             var at = header.mapToItem(root, x, y);
             root.openContextMenu(null, at.x, at.y, nxt.headerMenu());
         }
+        onDocumentsRequested: function (x, y) {
+            var at = header.mapToItem(root, x, y);
+            root.openContextMenu(null, at.x, at.y, nxt.documentsMenu());
+        }
     }
 
     // -- tree --

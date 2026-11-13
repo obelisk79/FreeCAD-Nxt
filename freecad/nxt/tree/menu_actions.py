@@ -72,6 +72,64 @@ def build_header() -> dict[str, Any]:
                  "items": files}]}
 
 
+#: Prefix of the documents menu's commands; the document's Name follows.
+DOCUMENT_PREFIX = "doc:"
+
+
+def build_documents() -> dict[str, Any]:
+    """The open documents as a menu; the active one is marked, not offered."""
+    active = App.ActiveDocument
+    documents = sorted(App.listDocuments().values(),
+                       key=lambda d: str(getattr(d, "Label", d.Name)).lower())
+    items = []
+    for doc in documents:
+        label = str(getattr(doc, "Label", doc.Name))
+        current = active is not None and doc.Name == active.Name
+        items.append({
+            "command": DOCUMENT_PREFIX + doc.Name,
+            "label": ("\u2713 " if current else "") + label,
+            "shortcut": "", "icon": "",
+            "enabled": not current})
+    if not items:
+        return {}
+    return {"title": translate(present.CONTEXT, "Open documents"),
+            "subtitle": "", "bar": [],
+            "sections": [{"name": "", "items": items}]}
+
+
+def switch_document(name: str) -> None:
+    """Make this document active, and bring its 3D view to the front."""
+    doc = App.listDocuments().get(name)
+    if doc is None:
+        return
+    import FreeCADGui as Gui
+    label = str(getattr(doc, "Label", doc.Name))
+    window = _document_window(Gui, label)
+    if window is not None:
+        # Activating its window makes FreeCAD switch the active document.
+        window.mdiArea().setActiveSubWindow(window)
+    if App.ActiveDocument is None or App.ActiveDocument.Name != name:
+        Gui.setActiveDocument(name)
+
+
+def _document_window(gui: Any, label: str) -> Any:
+    """The MDI window showing this document, if any.
+
+    Its title is the label, optionally ` : <n>` for a second view, and
+    `[*]` while modified.
+    """
+    from ..core.qt import QtWidgets
+    main = gui.getMainWindow()
+    area = main.findChild(QtWidgets.QMdiArea) if main is not None else None
+    if area is None:
+        return None
+    for window in area.subWindowList():
+        title = window.windowTitle().replace("[*]", "").strip()
+        if title == label or title.startswith(label + " : "):
+            return window
+    return None
+
+
 def _kind(objects: list[Any]) -> str:
     """"Pad", or the common kind of several objects, or nothing."""
     kinds = {str(o.TypeId).split("::")[-1] for o in objects}
@@ -80,6 +138,13 @@ def _kind(objects: list[Any]) -> str:
 
 def run(bridge: TreeBridge, command: str, names: list[str]) -> None:
     """Run one menu item on the objects the menu was opened for."""
+    if command.startswith(DOCUMENT_PREFIX):
+        try:
+            switch_document(command[len(DOCUMENT_PREFIX):])
+        except Exception as exc:
+            App.Console.PrintError("Nxt: could not switch document: %s\n"
+                                   % exc)
+        return
     doc = App.ActiveDocument
     if doc is None:
         return
