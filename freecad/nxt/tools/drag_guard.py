@@ -15,9 +15,7 @@ from __future__ import annotations
 import contextlib
 from typing import Any
 
-import FreeCADGui as Gui
-
-from ..core import view3d
+from ..core import fc, view3d
 from ..core.events import ApplicationEventFilter
 from ..core.qt import QtCore, QtGui, QtWidgets
 
@@ -64,7 +62,7 @@ class StaleDragGuard(ApplicationEventFilter):
             return False
         self._armed = False
         with contextlib.suppress(Exception):
-            view = Gui.ActiveDocument.ActiveView
+            view = fc.active_view()
             if stale_dragger(view) is not None:
                 release(watched, event.position())
                 if stale_dragger(view) is not None:
