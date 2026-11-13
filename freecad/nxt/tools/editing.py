@@ -43,6 +43,8 @@ def edit_attachment(doc_name: str, name: str) -> None:
         return
     if gui_doc.getInEdit() is not None:
         gui_doc.resetEdit()
+    if open_nxt_attachment(obj):
+        return
     try:
         from AttachmentEditor import Commands
         Commands.editAttachment(obj, take_selection=False,
@@ -59,6 +61,15 @@ def edit_attachment(doc_name: str, name: str) -> None:
         App.Console.PrintError("Nxt: could not open the attachment of %s\n"
                                % name)
         App.Console.PrintError(traceback.format_exc())
+
+
+def open_nxt_attachment(obj: Any) -> bool:
+    """Nxt's attachment panel for `obj`, if it is on; False if not shown."""
+    from ..core import settings
+    if not settings.get("AttachPanel"):
+        return False
+    from . import attach_task
+    return attach_task.open_for(obj)
 
 
 def is_reference_pick(obj: Any) -> bool:

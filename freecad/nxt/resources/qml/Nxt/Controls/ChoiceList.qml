@@ -45,6 +45,17 @@ Item {
 
     Keys.onEscapePressed: popup.dismiss()
 
+    // A click outside the view, or the view hidden, never reaches the
+    // MouseArea below: the list would stay over the view, eating input.
+    onActiveFocusChanged: if (!activeFocus && visible) popup.dismiss()
+    Connections {
+        target: popup.Window.window
+        function onVisibleChanged() {
+            if (!popup.Window.window.visible)
+                popup.dismiss();
+        }
+    }
+
     MouseArea {
         anchors.fill: parent
         onPressed: popup.dismiss()

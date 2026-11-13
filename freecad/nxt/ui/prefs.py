@@ -21,7 +21,7 @@ GROUP = "FreeCAD-Nxt"
 QUICK = ("PartLayout", "RowDensity", "ReferenceChips",
          "EditOnDoubleClick", "DependencyArrows", "HighlightRelated",
          "DetailAutoShow", "TreeLines", "RepairProfiles", "OverlayMode",
-         "QuickMass", "AutoRename", "SketchPanel")
+         "QuickMass", "AutoRename", "SketchPanel", "AttachPanel")
 
 #: Settings the theme reads: changing one restyles the panel.
 _VIEW = frozenset({"RowDensity", "ReferenceChips", "UnderConstrainedMarks",
@@ -195,6 +195,13 @@ class NxtPreferencesPage:
                    "shows only problems and what is selected; FreeCAD's "
                    "lists stay one click away."))
         layout.addRow(self._sketch_panel)
+        self._attach_panel = QtWidgets.QCheckBox(translate(
+            "Nxt", "Experimental: Nxt's attachment task panel"), tree)
+        self._attach_panel.setToolTip(translate(
+            "Nxt", "Edit attachment opens Nxt's panel: picks named for "
+                   "what they are, ways grouped by what they do, and the "
+                   "offset shut until wanted."))
+        layout.addRow(self._attach_panel)
         self._attach = QtWidgets.QCheckBox(translate(
             "Nxt", "Attach a new sketch to three picked points without "
                    "asking"), tree)
@@ -332,6 +339,7 @@ class NxtPreferencesPage:
         self._repair.setChecked(bool(settings.get("RepairProfiles")))
         self._rename.setChecked(bool(settings.get("AutoRename")))
         self._sketch_panel.setChecked(bool(settings.get("SketchPanel")))
+        self._attach_panel.setChecked(bool(settings.get("AttachPanel")))
         self._attach.setChecked(bool(settings.get("AttachSketchByPoints")))
         self._arrows.setChecked(bool(settings.get("DependencyArrows")))
         self._related.setChecked(bool(settings.get("HighlightRelated")))
@@ -363,6 +371,7 @@ class NxtPreferencesPage:
         settings.put("RepairProfiles", self._repair.isChecked())
         settings.put("AutoRename", self._rename.isChecked())
         settings.put("SketchPanel", self._sketch_panel.isChecked())
+        settings.put("AttachPanel", self._attach_panel.isChecked())
         settings.put("AttachSketchByPoints", self._attach.isChecked())
         settings.put("DependencyArrows", self._arrows.isChecked())
         settings.put("HighlightRelated", self._related.isChecked())
@@ -404,6 +413,8 @@ class NxtPreferencesPage:
         self._rename.setChecked(bool(settings.DEFAULTS["AutoRename"]))
         self._sketch_panel.setChecked(
             bool(settings.DEFAULTS["SketchPanel"]))
+        self._attach_panel.setChecked(
+            bool(settings.DEFAULTS["AttachPanel"]))
         self._attach.setChecked(
             bool(settings.DEFAULTS["AttachSketchByPoints"]))
         self._arrows.setChecked(bool(settings.DEFAULTS["DependencyArrows"]))

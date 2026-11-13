@@ -128,6 +128,10 @@ Popup {
             text: qsTr("Experimental sketch task panel")
         }
         Setting {
+            key: "AttachPanel"
+            text: qsTr("Experimental attachment panel")
+        }
+        Setting {
             key: "AutoRename"
             text: qsTr("Rename new objects")
         }

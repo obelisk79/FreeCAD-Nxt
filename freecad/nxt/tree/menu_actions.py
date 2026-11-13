@@ -390,6 +390,9 @@ def _select_bound(bridge: TreeBridge, objects: list[Any]) -> None:
 
 
 def _edit_attachment(bridge: TreeBridge, objects: list[Any]) -> None:
+    from ..tools.editing import open_nxt_attachment
+    if open_nxt_attachment(objects[0]):
+        return
     try:
         from AttachmentEditor import Commands
         Commands.editAttachment(objects[0])
