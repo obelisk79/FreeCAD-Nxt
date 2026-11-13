@@ -37,7 +37,9 @@ DEFAULTS: dict[str, bool | int | float | str] = {
     "OverlayMode": "nxt",
     "ViewOverlay": False,
     # FreeCAD's menus in a logo button; the menu bar hidden (not macOS).
-    "MenuInToolbar": True,
+    # Off unless chosen: renamed from "MenuInToolbar", which was on by
+    # default, so values saved under that name no longer count.
+    "MenuButton": False,
     # FreeCAD's own "Auto expand tree item" (see SHARED).
     "FollowSelection": True,
     "EditOnDoubleClick": True,

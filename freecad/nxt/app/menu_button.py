@@ -18,7 +18,9 @@ from ..core.qt import QtCore, QtWidgets
 from .i18n import translate
 
 TOOLBAR = "NxtMenuToolbar"
-SETTING = "MenuInToolbar"
+SETTING = "MenuButton"
+#: The setting's name while it was on by default; dropped at startup.
+OLD_SETTING = "MenuInToolbar"
 #: After the window first shows, the button is checked this often for
 #: this long: FreeCAD may still be restoring its toolbar layout.
 WATCH_MS = 500
@@ -153,6 +155,7 @@ def _later(*_args: Any) -> None:
 
 def install() -> None:
     global _button
+    App.ParamGet(settings.GROUP).RemBool(OLD_SETTING)
     if not supported():
         return
     main = Gui.getMainWindow()
