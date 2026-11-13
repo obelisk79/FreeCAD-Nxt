@@ -575,6 +575,14 @@ class TreeBridge(QtCore.QObject):
         if obj is not None and properties.apply(obj, prop, value):
             self.invalidate()
 
+    @QtCore.Slot(str)
+    def editAttachment(self, name: str) -> None:  # noqa: N802 - QML API
+        """Open the attachment task for `name`, as the menu item does."""
+        from . import menu_actions
+        # Outside QML's call stack: the task dialog may rebuild the tree.
+        QtCore.QTimer.singleShot(0, partial(
+            menu_actions.run, self, "nxt:edit_attachment", [name]))
+
     @QtCore.Slot(str, float, float)
     def openPropertyInspector(self, name: str, left: float,
                               top: float) -> None:

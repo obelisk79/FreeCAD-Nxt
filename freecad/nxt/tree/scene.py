@@ -94,6 +94,12 @@ def _derived(obj: DocObject, bases: Iterable[str]) -> bool:
     return False
 
 
+def _has_attacher(obj: DocObject) -> bool:
+    with contextlib.suppress(Exception):
+        return bool(obj.hasExtension("Part::AttachExtension"))
+    return False
+
+
 def is_joint(obj: DocObject) -> bool:
     """An Assembly joint; they carry no common type, only properties."""
     return any(hasattr(obj, prop) for prop in JOINT_PROPERTIES)
@@ -344,6 +350,8 @@ class Node:
     filed: bool = False             # lives in a Sketches/Datum compartment
     is_virtual: bool = False        # a panel-only group, not an object
     is_binder: bool = False
+    #: A binder, sketch or datum with an attachment: the strip links to it.
+    attachable: bool = False
     #: What this reads: (name, label, severity, sub-elements).
     refs: list[tuple[str, str, int, str]] = field(default_factory=list)
     #: What reads this: (name, label, [properties]).
@@ -436,6 +444,11 @@ class Snapshot:
             node.is_datum = (_derived(obj, DATUM_BASES)
                              and not _derived(obj, ORIGIN_BASES)
                              and not _in_coordinate_system(obj))
+            # Binders need no AttachExtension yet: the attachment editor
+            # offers to add one (a SubShapeBinder has none by default).
+            node.attachable = node.is_binder or (
+                (node.is_datum or _derived(obj, PROFILE_BASES))
+                and _has_attacher(obj))
             if _derived(obj, BODY_BASES):
                 bodies.append(name)
 
