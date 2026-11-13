@@ -1,0 +1,63 @@
+# Property Inspector template for sketches. Keys: see partdesign.toml.
+#
+# FreeCAD hides MapPathParameter, MapReversed and AttachmentOffset until a
+# sketch is attached, so the attachment card shrinks to its mode then.
+# Geometry and Constraints are edited in the sketch, and stay under
+# "Everything else".
+
+version = 1
+
+[[template]]
+id = "sketch"
+types = ["Sketcher::SketchObject*"]
+
+[template.choices]
+Deactivated = "Not attached"
+Translate = "Translate origin"
+ObjectXY = "XY of object"
+ObjectXZ = "XZ of object"
+ObjectYZ = "YZ of object"
+FlatFace = "Plane face"
+TangentPlane = "Tangent to surface"
+NormalToEdge = "Normal to edge"
+FrenetNB = "Frenet NB"
+FrenetTN = "Frenet TN"
+FrenetTB = "Frenet TB"
+Concentric = "Concentric"
+SectionOfRevolution = "Revolution section"
+ThreePointsPlane = "Plane by 3 points"
+ThreePointsNormal = "Normal to 3 points"
+Folding = "Folding"
+InertialCS = "Inertia axes"
+OXY = "Align O-X-Y"
+OXZ = "Align O-X-Z"
+OYZ = "Align O-Y-Z"
+OYX = "Align O-Y-X"
+OZX = "Align O-Z-X"
+OZY = "Align O-Z-Y"
+
+[[template.card]]
+title = "Attachment"
+closed_when = { MapMode = "Deactivated" }
+items = [
+    { prop = "AttachmentSupport", label = "Attached to" },
+    # Line and point modes are for other attach engines than a sketch's.
+    { prop = "MapMode", label = "Mode", editor = "dropdown", trail = "MapReversed", omit_if = { ObjectX = "MapMode", ObjectY = "MapMode", ObjectZ = "MapMode", AxisOfCurvature = "MapMode", Directrix1 = "MapMode", Directrix2 = "MapMode", Asymptote1 = "MapMode", Asymptote2 = "MapMode", Tangent = "MapMode", Normal = "MapMode", Binormal = "MapMode", TangentU = "MapMode", TangentV = "MapMode", TwoPointLine = "MapMode", IntersectionLine = "MapMode", ProximityLine = "MapMode", ObjectOrigin = "MapMode", Focus1 = "MapMode", Focus2 = "MapMode", OnEdge = "MapMode", CenterOfCurvature = "MapMode", CenterOfMass = "MapMode", IntersectionPoint = "MapMode", Vertex = "MapMode", ProximityPoint1 = "MapMode", ProximityPoint2 = "MapMode", AxisOfInertia1 = "MapMode", AxisOfInertia2 = "MapMode", AxisOfInertia3 = "MapMode", FaceNormal = "MapMode", MidPoint = "MapMode" } },
+    { prop = "MapPathParameter", label = "Along path", narrow = true },
+    { prop = "AttachmentOffset", label = "Offset" },
+]
+
+[[template.card]]
+title = "External geometry"
+heading = false
+items = [
+    { prop = "ExternalGeometry", label = "External geometry" },
+    { prop = "ArcFitTolerance", label = "Arc fit tolerance", narrow = true },
+]
+
+[[template.card]]
+title = "Profiles"
+heading = false
+items = [
+    { prop = "MakeInternals", label = "Inner profiles", editor = "switch" },
+]
