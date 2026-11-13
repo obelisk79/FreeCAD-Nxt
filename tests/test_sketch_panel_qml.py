@@ -24,13 +24,13 @@ sys.path.insert(0, str(ROOT / "tests"))
 import fakes  # noqa: E402
 from PySide6 import QtCore, QtGui, QtQuick, QtWidgets  # noqa: E402
 from PySide6.QtTest import QTest  # noqa: E402
-from sketch_fakes import Sketch  # noqa: E402
+from sketch_fakes import Constraint, LineSegment, Sketch  # noqa: E402
 
 store: dict[str, Any] = {}
 App, Gui = fakes.install(ParamGet=fakes.params(store))
 
 from freecad.nxt.core import settings  # noqa: E402
-from freecad.nxt.tools import sketch_panel  # noqa: E402
+from freecad.nxt.tools import sketch_contents, sketch_panel  # noqa: E402
 from freecad.nxt.ui.theme import Theme  # noqa: E402
 
 QML = ROOT / "freecad" / "nxt" / "resources" / "qml"
@@ -65,6 +65,8 @@ Gui.Selection = types.SimpleNamespace(
         ObjectName="Sketch", SubElementNames=selected)],
     clearSelection=selected.clear, addSelection=_add)
 Gui.runCommand = commands.append
+Gui.Command = types.SimpleNamespace(get=lambda _name: types.SimpleNamespace(
+    isActive=lambda: True))
 
 
 def settle(seconds: float = 0.15) -> None:
@@ -152,9 +154,9 @@ cards = load("SketchPanel.qml")
 pill = load("SketchPill.qml")
 
 print("quiet")
-check("the cards show only the two lists' rows",
-      sorted(texts(cards)) == ["4", "4", "Browse constraints",
-                               "Browse elements"])
+check("the cards show only the closed Contents card",
+      sorted(texts(cards)) == ["4 elements · 4 constraints", "Contents",
+                               "Show FreeCAD's lists"])
 check("the pill links the degrees of freedom", "3 DoF" in texts(pill))
 click(pill, text_item(pill, "3 DoF"))
 check("the link selects what is free",
@@ -269,6 +271,83 @@ print("lists")
 bridge.browse("constraints", True)
 check("a list can be asked for", bridge.shows("constraints")
       and not bridge.shows("elements"))
+
+print("contents")
+App.Units = types.SimpleNamespace(Quantity=fakes.Quantity)
+pick()
+model = bridge.contents
+reads: list[int] = []
+original_read = sketch_contents.read
+
+
+def counted_read(target: Any) -> Any:
+    reads.append(1)
+    return original_read(target)
+
+
+sketch_contents.read = counted_read
+check("closed, the list reads nothing", model.rowCount() == 0)
+click(cards, text_item(cards, "Contents"))
+check("open, it lists the elements",
+      {"Line 1", "Line 2", "Circle 4", "External 1"} <= set(texts(cards)))
+check("with a ring on what can move", any(
+    i.inherits("QQuickItem") and i.property("level") == 1 and shown(i)
+    for i in items_of(cards.contentItem())))
+click(cards, text_item(cards, "Line 2"))
+settle(0.2)
+check("a row selects what it names", selected == ["Edge2"])
+bridge.touch()
+settle()
+check("and opens its strip", "Construction" in texts(cards))
+sketch.Constraints[1].Driving = True     # made a reference above
+bridge.edited()
+model.setTab("constraints")
+settle(0.4)
+check("the constraints tab leads with dimensions",
+      {"Dimensions  1", "Width"} <= set(texts(cards)))
+field = next(i for i in items_of(cards.contentItem())
+             if i.inherits("QQuickTextInput") and shown(i)
+             and i.property("text") == "32.00 mm")
+cards.requestActivate()
+field.forceActiveFocus()
+field.setProperty("text", "40 mm")
+field.setProperty("cursorPosition", 5)
+QTest.keyClick(cards, QtCore.Qt.Key.Key_Space)
+QTest.keyClick(cards, QtCore.Qt.Key.Key_Backspace)
+QTest.keyClick(cards, QtCore.Qt.Key.Key_Return)
+settle()
+check("a typed value is set in one undo step",
+      sketch.Constraints[1].Value == 40.0
+      and sketch.Document.steps[-2:]
+      == ["Modify sketch constraints", "commit"])
+reads.clear()
+for _ in range(5):
+    bridge.edited()
+    app.processEvents()
+settle(0.4)
+# The first change is read at once; the rest once they stop, as a drag.
+check("a burst of changes is read at its start and end", len(reads) == 2)
+model.setOpen(False)
+settle()
+bridge.edited()
+settle(0.3)
+check("while closed nothing is read", len(reads) == 2)
+sketch_contents.read = original_read
+
+print("large")
+big = Sketch()
+big.Geometry = [LineSegment() for _ in range(3000)]
+big.construction = set()
+big.Constraints = [Constraint("Coincident", i, i + 1) for i in range(2999)]
+Gui.ActiveDocument = types.SimpleNamespace(getInEdit=lambda: big.ViewObject)
+model.setOpen(True)
+model.setTab("elements")
+bridge.edited()
+settle(0.4)
+made = [i for i in items_of(cards.contentItem())
+        if i.property("kind") == "element"]
+check("3000 rows make only the delegates on screen",
+      model.rowCount() > 3000 and 0 < len(made) < 60)
 
 print("leaving")
 Gui.ActiveDocument = types.SimpleNamespace(getInEdit=lambda: None)

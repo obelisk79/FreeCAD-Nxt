@@ -62,6 +62,11 @@ class Sketch:
         self.MalformedConstraints: list[int] = []
         self.PartiallyRedundantConstraints: list[int] = []
         self.solved = 0
+        #: The axes, then one external edge.
+        self.ExternalGeo: list[Any] = [LineSegment(), LineSegment(),
+                                       LineSegment()]
+        #: (element, part) the solver says are free: Sketcher's PointPos.
+        self.dependent = [(2, 2), (3, 0)]
         self.ViewObject = types.SimpleNamespace(
             Object=self, ShowGrid=True, GridAuto=True, Autoconstraints=True,
             GridSize=types.SimpleNamespace(UserString="10.00 mm"))
@@ -86,6 +91,12 @@ class Sketch:
 
     def setConstruction(self, geo: int, on: bool) -> None:
         (self.construction.add if on else self.construction.discard)(geo)
+
+    def getGeometryWithDependentParameters(self) -> list[tuple[int, int]]:
+        return list(self.dependent)
+
+    def setDatum(self, index: int, value: Any) -> None:
+        self.Constraints[index].Value = float(value.UserString.split()[0])
 
     def solve(self) -> int:
         self.solved += 1

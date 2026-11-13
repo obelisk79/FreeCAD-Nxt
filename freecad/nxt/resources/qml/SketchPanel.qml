@@ -4,8 +4,9 @@ import Nxt.Tree
 
 // Experimental: the sketch dialog's cards (tools/sketch_panel.py puts this
 // in place of FreeCAD's solver message). `sketch` is its bridge. Nothing
-// but the two Browse rows shows until the solver finds a problem, or one
-// element or constraint is selected. The chips on a selection's card
+// but the closed Contents card shows until the solver finds a problem, or
+// one element or constraint is selected; with Contents open, a selection
+// shows under its row there instead. The chips on a selection's card
 // select what they name.
 Item {
     id: root
@@ -13,58 +14,13 @@ Item {
     readonly property int gap: 10
     readonly property var picked: sketch.selection
     readonly property var groups: sketch.issues
+    //: The selection shows in the Contents list, under its row.
+    readonly property bool listing: sketch.contents.open
 
     implicitWidth: 300
     implicitHeight: column.implicitHeight + 2 * gap
 
     Rectangle { anchors.fill: parent; color: theme.background }
-
-    // Icons, drawn as IconButton asks: (context, width, height, ink).
-    function strokes(ctx, w, ink) {
-        ctx.strokeStyle = ink;
-        ctx.lineWidth = Math.max(1.2, w * 0.1);
-        ctx.lineCap = "round";
-        ctx.lineJoin = "round";
-        ctx.beginPath();
-    }
-    function paintOff(ctx, w, h, ink) {
-        strokes(ctx, w, ink);
-        ctx.arc(w / 2, h / 2, w * 0.4, 0, 2 * Math.PI);
-        ctx.moveTo(w * 0.22, h * 0.78);
-        ctx.lineTo(w * 0.78, h * 0.22);
-        ctx.stroke();
-    }
-    function paintOn(ctx, w, h, ink) {
-        strokes(ctx, w, ink);
-        ctx.arc(w / 2, h / 2, w * 0.4, 0, 2 * Math.PI);
-        ctx.stroke();
-    }
-    function paintReference(ctx, w, h, ink) {
-        strokes(ctx, w, ink);
-        ctx.moveTo(w * 0.3, h * 0.15);
-        ctx.lineTo(w * 0.12, h * 0.15);
-        ctx.lineTo(w * 0.12, h * 0.85);
-        ctx.lineTo(w * 0.3, h * 0.85);
-        ctx.moveTo(w * 0.7, h * 0.15);
-        ctx.lineTo(w * 0.88, h * 0.15);
-        ctx.lineTo(w * 0.88, h * 0.85);
-        ctx.lineTo(w * 0.7, h * 0.85);
-        ctx.stroke();
-    }
-    function paintDelete(ctx, w, h, ink) {
-        strokes(ctx, w, ink);
-        ctx.moveTo(w * 0.12, h * 0.26);
-        ctx.lineTo(w * 0.88, h * 0.26);
-        ctx.moveTo(w * 0.38, h * 0.26);
-        ctx.lineTo(w * 0.38, h * 0.1);
-        ctx.lineTo(w * 0.62, h * 0.1);
-        ctx.lineTo(w * 0.62, h * 0.26);
-        ctx.moveTo(w * 0.24, h * 0.26);
-        ctx.lineTo(w * 0.3, h * 0.9);
-        ctx.lineTo(w * 0.7, h * 0.9);
-        ctx.lineTo(w * 0.76, h * 0.26);
-        ctx.stroke();
-    }
 
     component Card: Rectangle {
         default property alias content: inner.children
@@ -133,8 +89,8 @@ Item {
             spacing: 2
 
             IconButton {
-                paint: line.known && line.row.active ? root.paintOff
-                                                     : root.paintOn
+                paint: line.known && line.row.active ? Glyphs.deactivate
+                                                     : Glyphs.activate
                 tip: line.known && line.row.active ? qsTr("Deactivate")
                                                    : qsTr("Activate")
                 onClicked: sketch.setActive(line.row.index,
@@ -143,12 +99,12 @@ Item {
             IconButton {
                 visible: line.known && line.row.dimensional
                          && line.row.driving
-                paint: root.paintReference
+                paint: Glyphs.reference
                 tip: qsTr("Make reference")
                 onClicked: sketch.setDriving(line.row.index, false)
             }
             IconButton {
-                paint: root.paintDelete
+                paint: Glyphs.remove
                 tip: qsTr("Delete")
                 onClicked: sketch.remove(line.row.index)
             }
@@ -172,66 +128,6 @@ Item {
                 onClicked: sketch.pick(item.name)
             }
         }
-    }
-
-    // A stock list of FreeCAD's, shown below on request.
-    component Browse: Item {
-        id: browse
-
-        required property string list
-        property alias text: label.text
-        property int count: 0
-        readonly property bool on: sketch.browsing.indexOf(list) >= 0
-
-        function toggle() { sketch.browse(list, !on); }
-
-        width: parent.width
-        height: theme.rowHeight
-        activeFocusOnTab: true
-        Keys.onSpacePressed: toggle()
-        Keys.onReturnPressed: toggle()
-        Accessible.role: Accessible.Button
-        Accessible.name: label.text
-
-        Rectangle {
-            anchors.fill: parent
-            radius: 4
-            color: tap.pressed ? theme.pressed : theme.hover
-            visible: hover.hovered || tap.pressed
-        }
-        Rectangle {
-            anchors.fill: parent
-            radius: 4
-            color: "transparent"
-            border.width: 2
-            border.color: theme.accent
-            visible: browse.activeFocus
-        }
-        Disclosure {
-            id: dart
-            anchors.verticalCenter: parent.verticalCenter
-            x: 4
-            expanded: browse.on
-            onToggled: browse.toggle()
-        }
-        Text {
-            id: label
-            anchors.verticalCenter: parent.verticalCenter
-            anchors.left: dart.right
-            anchors.leftMargin: 6
-            font.pixelSize: theme.fontSmall
-            color: theme.text
-        }
-        Text {
-            anchors.verticalCenter: parent.verticalCenter
-            anchors.left: label.right
-            anchors.leftMargin: 8
-            text: browse.count
-            font.pixelSize: theme.fontSmall
-            color: theme.textDim
-        }
-        HoverHandler { id: hover }
-        TapHandler { id: tap; onTapped: browse.toggle() }
     }
 
     Column {
@@ -290,7 +186,7 @@ Item {
 
             readonly property var rows: root.picked.rows || []
 
-            visible: root.picked.kind === "element"
+            visible: root.picked.kind === "element" && !root.listing
 
             Text {
                 text: root.picked.title || ""
@@ -322,7 +218,7 @@ Item {
 
         // -- the constraint selected --
         Card {
-            visible: root.picked.kind === "constraint"
+            visible: root.picked.kind === "constraint" && !root.listing
 
             Item {
                 width: parent.width
@@ -414,19 +310,19 @@ Item {
             }
         }
 
-        // -- FreeCAD's own lists --
-        Column {
+        // -- the sketch's elements and constraints --
+        SketchContents {
             width: parent.width
+        }
 
-            Browse {
-                list: "constraints"
-                text: qsTr("Browse constraints")
-                count: sketch.counts.constraints || 0
-            }
-            Browse {
-                list: "elements"
-                text: qsTr("Browse elements")
-                count: sketch.counts.elements || 0
+        // FreeCAD's own lists, below the panel, while this is experimental.
+        TextButton {
+            readonly property bool on: sketch.browsing.length > 0
+            text: on ? qsTr("Hide FreeCAD's lists")
+                     : qsTr("Show FreeCAD's lists")
+            onClicked: {
+                sketch.browse("constraints", !on);
+                sketch.browse("elements", !on);
             }
         }
     }
