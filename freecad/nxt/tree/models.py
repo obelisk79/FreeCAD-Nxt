@@ -89,6 +89,7 @@ class TreeRowModel(QtCore.QAbstractListModel):
     IsTotalRole = _ROLE + 34
     IsCamRole = _ROLE + 35
     SuppressedRole = _ROLE + 36
+    AttachableRole = _ROLE + 37
 
     _ROLE_NAMES = {
         NameRole: "name",
@@ -133,6 +134,8 @@ class TreeRowModel(QtCore.QAbstractListModel):
         # In a CAM Operations group: references there are icon chips.
         IsCamRole: "isCam",
         SuppressedRole: "suppressed",
+        # Detail strip: offers "Edit attachment", even with no support.
+        AttachableRole: "attachable",
     }
 
     countChanged = QtCore.Signal()
@@ -540,6 +543,8 @@ class TreeRowModel(QtCore.QAbstractListModel):
             return node.is_feature
         if role == self.AfterTipRole:
             return node.after_tip
+        if role == self.AttachableRole:
+            return node.attachable
         if role == self.SuppressedRole:
             return node.suppressed
         if role == self.IsProfileRole:
@@ -596,7 +601,7 @@ class TreeRowModel(QtCore.QAbstractListModel):
         BodyRole: "", ConsumersRole: [], IsLiftedRole: False,
         ActiveRole: False, ActivePartRole: False, KeyPropsRole: [],
         PropertyCountRole: 0, IsTotalRole: True, IsCamRole: True,
-        SuppressedRole: False,
+        SuppressedRole: False, AttachableRole: False,
     }
 
     def _total_data(self, role: int, name: str, depth: int) -> Any:

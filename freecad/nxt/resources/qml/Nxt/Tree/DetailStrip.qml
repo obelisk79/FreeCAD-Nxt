@@ -17,6 +17,7 @@ Column {
     property var keyProps: []           // see properties.describe
     property string owner: ""           // the row's object, for expressions
     property int propertyCount: 0
+    property bool attachable: false     // binder, sketch or datum
 
     signal consumerClicked(string name)
     signal referenceClicked(string name)
@@ -24,6 +25,7 @@ Column {
     signal chipHovered(string name, bool hovered)
     signal keyEdited(string prop, var value)
     signal allPropertiesRequested()
+    signal attachmentRequested()
 
     spacing: 2
     topPadding: 2
@@ -40,6 +42,7 @@ Column {
     readonly property bool hasContent: hasFindings || hasUses || hasUsers
                                     || strip.isProfile || strip.isLifted
                                     || hasValues || strip.propertyCount > 0
+                                    || strip.attachable
 
 
     //: Variables (a VarSet's): two columns, each name over its value.
@@ -70,7 +73,7 @@ Column {
 
     Flow {
         visible: (strip.hasValues && !strip.stackedValues)
-                 || strip.propertyCount > 0
+                 || strip.propertyCount > 0 || strip.attachable
         width: parent.width
         spacing: 10
 
@@ -105,6 +108,25 @@ Column {
                 cursorShape: Qt.PointingHandCursor
             }
             TapHandler { onTapped: strip.allPropertiesRequested() }
+        }
+
+        // Shown with or without a support: attaching starts here too.
+        Text {
+            height: theme.fieldHeight
+            verticalAlignment: Text.AlignVCenter
+            visible: strip.attachable
+            text: qsTr("Edit attachment…")
+            font.pixelSize: theme.fontSmall
+            font.underline: attachHover.hovered
+            color: theme.link
+            Accessible.role: Accessible.Link
+            Accessible.name: qsTr("Edit attachment")
+
+            HoverHandler {
+                id: attachHover
+                cursorShape: Qt.PointingHandCursor
+            }
+            TapHandler { onTapped: strip.attachmentRequested() }
         }
     }
 

@@ -27,6 +27,7 @@ Item {
     readonly property bool inert: afterTip || suppressed
     required property bool isProfile
     required property bool isLifted
+    required property bool attachable
     required property bool isActive
     required property bool isActivePart
     required property string typeId
@@ -175,6 +176,7 @@ Item {
         || row.isProfile || row.isLifted
         || (row.keyProps && row.keyProps.length > 0)
         || row.propertyCount > 0
+        || row.attachable
     readonly property bool showDetail: row.detailOpen && row.hasDetail
 
     // A failure owned by a profile reddens the chip, not the label.
@@ -1078,6 +1080,8 @@ Item {
                     isLifted: row.isLifted
                     keyProps: row.keyProps
                     propertyCount: row.propertyCount
+                    attachable: row.attachable
+                    onAttachmentRequested: nxt.editAttachment(row.name)
                     onKeyEdited: function (prop, value) {
                         nxt.setKeyProperty(row.name, prop, value);
                     }
