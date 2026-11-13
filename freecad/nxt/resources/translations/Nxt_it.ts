@@ -2,6 +2,89 @@
 <!DOCTYPE TS>
 <TS version="2.1" language="it_IT">
 <context>
+    <name>AttachTask</name>
+    <message>
+        <source>Attached</source>
+        <translation>Collegato</translation>
+    </message>
+    <message>
+        <source>Not attached yet</source>
+        <translation>Non ancora collegato</translation>
+    </message>
+    <message>
+        <source>Not attached</source>
+        <translation>Non collegato</translation>
+    </message>
+    <message>
+        <source>Detach</source>
+        <translation>Scollega</translation>
+    </message>
+    <message>
+        <source>Pick a face, edge or point</source>
+        <translation>Scegli una faccia, uno spigolo o un punto</translation>
+    </message>
+    <message>
+        <source>Done</source>
+        <translation>Fatto</translation>
+    </message>
+    <message>
+        <source>+ Pick</source>
+        <translation>+ Scegli</translation>
+    </message>
+    <message>
+        <source>Pick in the 3D view or the tree. A whole object takes its position.</source>
+        <translation>Scegli nella vista 3D o nell&apos;albero. Un oggetto intero ne prende la posizione.</translation>
+    </message>
+    <message>
+        <source>Way</source>
+        <translation>Modo</translation>
+    </message>
+    <message>
+        <source>Choose</source>
+        <translation>Scegli</translation>
+    </message>
+    <message>
+        <source>Flip sides</source>
+        <translation>Inverti lati</translation>
+    </message>
+    <message>
+        <source>Along path</source>
+        <translation>Lungo il percorso</translation>
+    </message>
+    <message>
+        <source>0 start, 1 end</source>
+        <translation>0 inizio, 1 fine</translation>
+    </message>
+    <message>
+        <source>Offset</source>
+        <translation>Offset</translation>
+    </message>
+    <message>
+        <source>None</source>
+        <translation>Nessuno</translation>
+    </message>
+    <message>
+        <source>Reset</source>
+        <translation>Ripristina</translation>
+    </message>
+    <message>
+        <source>Move</source>
+        <translation>Sposta</translation>
+    </message>
+    <message>
+        <source>Turn</source>
+        <translation>Ruota</translation>
+    </message>
+    <message>
+        <source>Measured along the attached axes.</source>
+        <translation>Misurato lungo gli assi collegati.</translation>
+    </message>
+    <message>
+        <source>Remove</source>
+        <translation>Rimuovi</translation>
+    </message>
+</context>
+<context>
     <name>ContextMenu</name>
     <message>
         <source>More</source>
@@ -17,6 +100,14 @@
     <message>
         <source>All properties</source>
         <translation>Tutte le proprietà</translation>
+    </message>
+    <message>
+        <source>Edit attachment…</source>
+        <translation>Modifica collegamento…</translation>
+    </message>
+    <message>
+        <source>Edit attachment</source>
+        <translation>Modifica collegamento</translation>
     </message>
     <message>
         <source>fully constrained</source>
@@ -532,6 +623,22 @@ Il pannello richiede PySide6.QtQuickWidgets.</translation>
         <translation>Alla chiusura della modifica di un nuovo oggetto (o alla creazione di un contenitore), il suo nome si apre per la modifica nell&apos;albero.</translation>
     </message>
     <message>
+        <source>Experimental: Nxt&apos;s task panel while a sketch is edited</source>
+        <translation>Sperimentale: pannello attività Nxt nella modifica schizzi</translation>
+    </message>
+    <message>
+        <source>The solver&apos;s status moves to a pill in the 3D view, with the grid and snap settings. The task panel shows only problems and what is selected; FreeCAD&apos;s lists stay one click away.</source>
+        <translation>Lo stato del risolutore passa in una pillola nella vista 3D, con griglia e aggancio. Il pannello mostra solo problemi e selezione; gli elenchi di FreeCAD restano a un clic.</translation>
+    </message>
+    <message>
+        <source>Experimental: Nxt&apos;s attachment task panel</source>
+        <translation>Sperimentale: pannello collegamento Nxt</translation>
+    </message>
+    <message>
+        <source>Edit attachment opens Nxt&apos;s panel: picks named for what they are, ways grouped by what they do, and the offset shut until wanted.</source>
+        <translation>Modifica collegamento apre il pannello Nxt: selezioni chiamate per ciò che sono, modi raggruppati per effetto, offset chiuso finché non serve.</translation>
+    </message>
+    <message>
         <source>Attach a new sketch to three picked points without asking</source>
         <translation>Collega uno schizzo a tre punti senza chiedere</translation>
     </message>
@@ -663,8 +770,137 @@ Tieni premuto Alt mentre trascini per attraversarle.</translation>
         <translation>Annulla</translation>
     </message>
     <message>
+        <source>Plane</source>
+        <extracomment>Most references an attachment takes. Mode -&gt; its variant&apos;s label, in the order offered. What the variants choose (&quot;Plane&quot;); empty with one mode. Its modes read MapPathParameter.</extracomment>
+        <translation>Piano</translation>
+    </message>
+    <message>
+        <source>On face</source>
+        <extracomment>Names follow commercial CAD where it has the idea (Midplane, Along path, Normal to edge); the rest place a whole coordinate system.</extracomment>
+        <translation>Su faccia</translation>
+    </message>
+    <message>
+        <source>Tangent to surface</source>
+        <translation>Tangente alla superficie</translation>
+    </message>
+    <message>
+        <source>Midplane</source>
+        <translation>Piano medio</translation>
+    </message>
+    <message>
+        <source>Through 3 points</source>
+        <translation>Per 3 punti</translation>
+    </message>
+    <message>
+        <source>Normal to edge</source>
+        <translation>Normale allo spigolo</translation>
+    </message>
+    <message>
+        <source>Along path</source>
+        <translation>Lungo il percorso</translation>
+    </message>
+    <message>
+        <source>Across</source>
+        <translation>Trasversale</translation>
+    </message>
+    <message>
+        <source>In bend</source>
+        <translation>Nella curva</translation>
+    </message>
+    <message>
+        <source>Beside</source>
+        <translation>Accanto</translation>
+    </message>
+    <message>
+        <source>Concentric</source>
+        <translation>Concentrico</translation>
+    </message>
+    <message>
+        <source>Circle</source>
+        <translation>Cerchio</translation>
+    </message>
+    <message>
         <source>Section</source>
         <translation>Sezione</translation>
+    </message>
+    <message>
+        <source>Parallel plane</source>
+        <translation>Piano parallelo</translation>
+    </message>
+    <message>
+        <source>Same as object</source>
+        <translation>Come l&apos;oggetto</translation>
+    </message>
+    <message>
+        <source>Inertia axes</source>
+        <translation>Assi d&apos;inerzia</translation>
+    </message>
+    <message>
+        <source>Align to points</source>
+        <translation>Allinea ai punti</translation>
+    </message>
+    <message>
+        <source>Axes</source>
+        <translation>Assi</translation>
+    </message>
+    <message>
+        <source>Move origin only</source>
+        <translation>Sposta solo l&apos;origine</translation>
+    </message>
+    <message>
+        <source>Folding</source>
+        <translation>Piegatura</translation>
+    </message>
+    <message>
+        <source>Point</source>
+        <extracomment>FreeCAD&apos;s reference types -&gt; the word a pick is shown with.</extracomment>
+        <translation>Punto</translation>
+    </message>
+    <message>
+        <source>Edge</source>
+        <translation>Spigolo</translation>
+    </message>
+    <message>
+        <source>Line</source>
+        <extracomment>Part&apos;s geometry classes, by the name a sketch&apos;s element goes by.</extracomment>
+        <translation>Linea</translation>
+    </message>
+    <message>
+        <source>Curve</source>
+        <translation>Curva</translation>
+    </message>
+    <message>
+        <source>Face</source>
+        <translation>Faccia</translation>
+    </message>
+    <message>
+        <source>Object</source>
+        <translation>Oggetto</translation>
+    </message>
+    <message>
+        <source>These points are in a line, so no plane fits.</source>
+        <extracomment>Reference types -&gt; the glyph a pick is drawn with. FreeCAD&apos;s message (a fragment, lower case) -&gt; what went wrong in plain words, and what to do about it.</extracomment>
+        <translation>Questi punti sono allineati, quindi nessun piano va bene.</translation>
+    </message>
+    <message>
+        <source>Pick a point off the line.</source>
+        <translation>Scegli un punto fuori dalla linea.</translation>
+    </message>
+    <message>
+        <source>Two picks are at the same place.</source>
+        <translation>Due selezioni sono nello stesso punto.</translation>
+    </message>
+    <message>
+        <source>Pick another one.</source>
+        <translation>Scegline un altro.</translation>
+    </message>
+    <message>
+        <source>The picks are parallel, so they do not meet.</source>
+        <translation>Le selezioni sono parallele e non si incontrano.</translation>
+    </message>
+    <message>
+        <source>Pick one at an angle to the other.</source>
+        <translation>Scegline uno inclinato rispetto all&apos;altro.</translation>
     </message>
     <message>
         <source>Deleted %s from %s</source>
@@ -708,8 +944,156 @@ Tieni premuto Alt mentre trascini per attraversarle.</translation>
     </message>
     <message>
         <source>Menu</source>
-        <extracomment>After the window first shows, the button is checked this often for this long: FreeCAD may still be restoring its toolbar layout.</extracomment>
+        <extracomment>The setting&apos;s name while it was on by default; dropped at startup. After the window first shows, the button is checked this often for this long: FreeCAD may still be restoring its toolbar layout. What FreeCAD&apos;s toolbar layout does to the button&apos;s toolbar.</extracomment>
         <translation>Menu</translation>
+    </message>
+    <message>
+        <source>Attachment</source>
+        <extracomment>Offset fields in panel order: move X Y Z, then turn about X Y Z. FreeCAD&apos;s attachment box, in its dialog for a datum or a new sketch. How long after an object is made its dialog may still be opening, s. Binders take an attachment only when asked: FreeCAD&apos;s editor adds it. A way chosen before the picks it needs: its mode.</extracomment>
+        <translation>Collegamento</translation>
+    </message>
+    <message>
+        <source>Edit attachment</source>
+        <translation>Modifica collegamento</translation>
+    </message>
+    <message>
+        <source>Next: %1</source>
+        <translation>Poi: %1</translation>
+    </message>
+    <message>
+        <source>Fits your picks</source>
+        <translation>Adatto alle selezioni</translation>
+    </message>
+    <message>
+        <source>Needs other picks</source>
+        <translation>Richiede altre selezioni</translation>
+    </message>
+    <message>
+        <source>add %1</source>
+        <translation>aggiungi %1</translation>
+    </message>
+    <message>
+        <source>External</source>
+        <extracomment>Element filters, then constraint filters. A geometric group longer than this starts folded. Constraint chips shown on an element&apos;s strip before &quot;+n&quot;. A constraint&apos;s geometry index where it names none (GeoEnum::GeoUndef). External geometry&apos;s indices count down from this one (GeoEnum::RefExt). ExternalGeo holds the two axes first, then the external geometry. The status marks, as SeverityMark.qml draws them.
+----------
+External geometry&apos;s indices count down from this one (GeoEnum::RefExt).</extracomment>
+        <translation>Esterna</translation>
+    </message>
+    <message>
+        <source>Dimensions</source>
+        <translation>Quote</translation>
+    </message>
+    <message>
+        <source>construction</source>
+        <translation>costruzione</translation>
+    </message>
+    <message>
+        <source>edge</source>
+        <extracomment>What part of an element is still free, by Sketcher&apos;s PointPos.</extracomment>
+        <translation>spigolo</translation>
+    </message>
+    <message>
+        <source>start</source>
+        <translation>inizio</translation>
+    </message>
+    <message>
+        <source>end</source>
+        <translation>fine</translation>
+    </message>
+    <message>
+        <source>centre</source>
+        <translation>centro</translation>
+    </message>
+    <message>
+        <source>Horizontal axis</source>
+        <extracomment>Axes, by geometry index, as a constraint&apos;s chips name them.
+----------
+The sketch&apos;s axes, by their geometry index.</extracomment>
+        <translation>Asse orizzontale</translation>
+    </message>
+    <message>
+        <source>Vertical axis</source>
+        <translation>Asse verticale</translation>
+    </message>
+    <message>
+        <source>Point on object</source>
+        <extracomment>Constraint types that hold a value, and so can drive or be driven. Sketcher&apos;s constraint types whose name is not already a plain word.</extracomment>
+        <translation>Punto su oggetto</translation>
+    </message>
+    <message>
+        <source>Horizontal distance</source>
+        <translation>Distanza orizzontale</translation>
+    </message>
+    <message>
+        <source>Vertical distance</source>
+        <translation>Distanza verticale</translation>
+    </message>
+    <message>
+        <source>Internal alignment</source>
+        <translation>Allineamento interno</translation>
+    </message>
+    <message>
+        <source>Refraction</source>
+        <translation>Rifrazione</translation>
+    </message>
+    <message>
+        <source>Arc</source>
+        <translation>Arco</translation>
+    </message>
+    <message>
+        <source>Ellipse</source>
+        <translation>Ellisse</translation>
+    </message>
+    <message>
+        <source>Elliptical arc</source>
+        <translation>Arco ellittico</translation>
+    </message>
+    <message>
+        <source>Hyperbolic arc</source>
+        <translation>Arco iperbolico</translation>
+    </message>
+    <message>
+        <source>Parabolic arc</source>
+        <translation>Arco parabolico</translation>
+    </message>
+    <message>
+        <source>B-spline</source>
+        <translation>B-spline</translation>
+    </message>
+    <message>
+        <source>Element</source>
+        <extracomment>A geometry class not named above.</extracomment>
+        <translation>Elemento</translation>
+    </message>
+    <message>
+        <source>Over-constrained</source>
+        <extracomment>A solver finding&apos;s heading, by the sketch attribute that lists it.</extracomment>
+        <translation>Sovravincolato</translation>
+    </message>
+    <message>
+        <source>Malformed constraints</source>
+        <translation>Vincoli malformati</translation>
+    </message>
+    <message>
+        <source>Redundant constraints</source>
+        <translation>Vincoli ridondanti</translation>
+    </message>
+    <message>
+        <source>Partially redundant</source>
+        <translation>Parzialmente ridondanti</translation>
+    </message>
+    <message>
+        <source>Empty sketch</source>
+        <extracomment>The status mark&apos;s shapes (SeverityMark.qml): none, ring, triangle, disc. A finding&apos;s mark is its health severity, past the ring. A constraint&apos;s geometry index where it names none (GeoEnum::GeoUndef). The status link that selects what is still free to move. Selection names inside a sketch, and what each picks.</extracomment>
+        <translation>Schizzo vuoto</translation>
+    </message>
+    <message>
+        <source>Fully constrained</source>
+        <translation>Completamente vincolato</translation>
+    </message>
+    <message>
+        <source>%d DoF</source>
+        <translation>%d GdL</translation>
     </message>
 </context>
 <context>
@@ -793,6 +1177,10 @@ Tieni premuto Alt mentre trascini per attraversarle.</translation>
     <message>
         <source>Collapse all</source>
         <translation>Comprimi tutto</translation>
+    </message>
+    <message>
+        <source>Open file location</source>
+        <translation>Apri percorso</translation>
     </message>
     <message>
         <source>Synchronize</source>
@@ -900,6 +1288,27 @@ Tieni premuto Alt mentre trascini per attraversarle.</translation>
     <message>
         <source>Delete</source>
         <translation>Elimina</translation>
+    </message>
+    <message>
+        <source>Visibility</source>
+        <extracomment>The tree header&apos;s menu: its sections and subtitle.</extracomment>
+        <translation>Visibilità</translation>
+    </message>
+    <message>
+        <source>File</source>
+        <translation>File</translation>
+    </message>
+    <message>
+        <source>Document</source>
+        <translation>Documento</translation>
+    </message>
+    <message>
+        <source>Open documents</source>
+        <translation>Documenti aperti</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation>Chiudi</translation>
     </message>
     <message>
         <source>Edit %1</source>
@@ -1473,6 +1882,166 @@ Tieni premuto Alt mentre trascini per attraversarle.</translation>
         <translation>Lasciato intero</translation>
     </message>
     <message>
+        <source>Not attached</source>
+        <comment>sketch</comment>
+        <translation>Non collegato</translation>
+    </message>
+    <message>
+        <source>Translate origin</source>
+        <comment>sketch</comment>
+        <translation>Trasla l&apos;origine</translation>
+    </message>
+    <message>
+        <source>XY of object</source>
+        <comment>sketch</comment>
+        <translation>XY dell&apos;oggetto</translation>
+    </message>
+    <message>
+        <source>XZ of object</source>
+        <comment>sketch</comment>
+        <translation>XZ dell&apos;oggetto</translation>
+    </message>
+    <message>
+        <source>YZ of object</source>
+        <comment>sketch</comment>
+        <translation>YZ dell&apos;oggetto</translation>
+    </message>
+    <message>
+        <source>Plane face</source>
+        <comment>sketch</comment>
+        <translation>Faccia piana</translation>
+    </message>
+    <message>
+        <source>Tangent to surface</source>
+        <comment>sketch</comment>
+        <translation>Tangente alla superficie</translation>
+    </message>
+    <message>
+        <source>Normal to edge</source>
+        <comment>sketch</comment>
+        <translation>Normale allo spigolo</translation>
+    </message>
+    <message>
+        <source>Frenet NB</source>
+        <comment>sketch</comment>
+        <translation>Frenet NB</translation>
+    </message>
+    <message>
+        <source>Frenet TN</source>
+        <comment>sketch</comment>
+        <translation>Frenet TN</translation>
+    </message>
+    <message>
+        <source>Frenet TB</source>
+        <comment>sketch</comment>
+        <translation>Frenet TB</translation>
+    </message>
+    <message>
+        <source>Concentric</source>
+        <comment>sketch</comment>
+        <translation>Concentrico</translation>
+    </message>
+    <message>
+        <source>Revolution section</source>
+        <comment>sketch</comment>
+        <translation>Sezione di rivoluzione</translation>
+    </message>
+    <message>
+        <source>Plane by 3 points</source>
+        <comment>sketch</comment>
+        <translation>Piano per 3 punti</translation>
+    </message>
+    <message>
+        <source>Normal to 3 points</source>
+        <comment>sketch</comment>
+        <translation>Normale a 3 punti</translation>
+    </message>
+    <message>
+        <source>Folding</source>
+        <comment>sketch</comment>
+        <translation>Piegatura</translation>
+    </message>
+    <message>
+        <source>Inertia axes</source>
+        <comment>sketch</comment>
+        <translation>Assi d&apos;inerzia</translation>
+    </message>
+    <message>
+        <source>Align O-X-Y</source>
+        <comment>sketch</comment>
+        <translation>Allinea O-X-Y</translation>
+    </message>
+    <message>
+        <source>Align O-X-Z</source>
+        <comment>sketch</comment>
+        <translation>Allinea O-X-Z</translation>
+    </message>
+    <message>
+        <source>Align O-Y-Z</source>
+        <comment>sketch</comment>
+        <translation>Allinea O-Y-Z</translation>
+    </message>
+    <message>
+        <source>Align O-Y-X</source>
+        <comment>sketch</comment>
+        <translation>Allinea O-Y-X</translation>
+    </message>
+    <message>
+        <source>Align O-Z-X</source>
+        <comment>sketch</comment>
+        <translation>Allinea O-Z-X</translation>
+    </message>
+    <message>
+        <source>Align O-Z-Y</source>
+        <comment>sketch</comment>
+        <translation>Allinea O-Z-Y</translation>
+    </message>
+    <message>
+        <source>Attachment</source>
+        <comment>sketch</comment>
+        <translation>Collegamento</translation>
+    </message>
+    <message>
+        <source>Attached to</source>
+        <comment>sketch</comment>
+        <translation>Collegato a</translation>
+    </message>
+    <message>
+        <source>Mode</source>
+        <comment>sketch</comment>
+        <translation>Modalità</translation>
+    </message>
+    <message>
+        <source>Along path</source>
+        <comment>sketch</comment>
+        <translation>Lungo il percorso</translation>
+    </message>
+    <message>
+        <source>Offset</source>
+        <comment>sketch</comment>
+        <translation>Offset</translation>
+    </message>
+    <message>
+        <source>External geometry</source>
+        <comment>sketch</comment>
+        <translation>Geometria esterna</translation>
+    </message>
+    <message>
+        <source>Arc fit tolerance</source>
+        <comment>sketch</comment>
+        <translation>Tolleranza archi</translation>
+    </message>
+    <message>
+        <source>Profiles</source>
+        <comment>sketch</comment>
+        <translation>Profili</translation>
+    </message>
+    <message>
+        <source>Inner profiles</source>
+        <comment>sketch</comment>
+        <translation>Profili interni</translation>
+    </message>
+    <message>
         <source>Variables</source>
         <comment>varset</comment>
         <translation>Variabili</translation>
@@ -1724,6 +2293,207 @@ Tieni premuto Alt mentre trascini per attraversarle.</translation>
     </message>
 </context>
 <context>
+    <name>SketchContents</name>
+    <message>
+        <source>Free</source>
+        <translation>Liberi</translation>
+    </message>
+    <message>
+        <source>Construction</source>
+        <translation>Costruzione</translation>
+    </message>
+    <message>
+        <source>External</source>
+        <translation>Esterne</translation>
+    </message>
+    <message>
+        <source>Problems</source>
+        <translation>Problemi</translation>
+    </message>
+    <message>
+        <source>Reference</source>
+        <translation>Riferimento</translation>
+    </message>
+    <message>
+        <source>Inactive</source>
+        <translation>Inattivi</translation>
+    </message>
+    <message>
+        <source>Contents</source>
+        <translation>Contenuto</translation>
+    </message>
+    <message>
+        <source>%1 elements · %2 constraints</source>
+        <translation>%1 elementi · %2 vincoli</translation>
+    </message>
+    <message>
+        <source>Elements %1</source>
+        <translation>Elementi %1</translation>
+    </message>
+    <message>
+        <source>Constraints %1</source>
+        <translation>Vincoli %1</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation>Cerca</translation>
+    </message>
+    <message>
+        <source>Nothing matches</source>
+        <translation>Nessun risultato</translation>
+    </message>
+    <message>
+        <source>Make reference</source>
+        <translation>Rendi di riferimento</translation>
+    </message>
+    <message>
+        <source>Deactivate</source>
+        <translation>Disattiva</translation>
+    </message>
+    <message>
+        <source>Delete</source>
+        <translation>Elimina</translation>
+    </message>
+    <message>
+        <source>Driving</source>
+        <translation>Pilota</translation>
+    </message>
+    <message>
+        <source>Active</source>
+        <translation>Attivo</translation>
+    </message>
+    <message>
+        <source>Every constraint on it</source>
+        <translation>Tutti i suoi vincoli</translation>
+    </message>
+    <message>
+        <source>%1 selected</source>
+        <translation>%1 selezionati</translation>
+    </message>
+    <message>
+        <source>Select constraints</source>
+        <translation>Seleziona vincoli</translation>
+    </message>
+</context>
+<context>
+    <name>SketchPanel</name>
+    <message>
+        <source>Deactivate</source>
+        <translation>Disattiva</translation>
+    </message>
+    <message>
+        <source>Activate</source>
+        <translation>Attiva</translation>
+    </message>
+    <message>
+        <source>Make reference</source>
+        <translation>Rendi di riferimento</translation>
+    </message>
+    <message>
+        <source>Delete</source>
+        <translation>Elimina</translation>
+    </message>
+    <message>
+        <source>Validate sketch…</source>
+        <translation>Convalida schizzo…</translation>
+    </message>
+    <message>
+        <source>Construction</source>
+        <translation>Costruzione</translation>
+    </message>
+    <message>
+        <source>Constraints on it</source>
+        <translation>I suoi vincoli</translation>
+    </message>
+    <message>
+        <source>No constraints on it</source>
+        <translation>Nessun vincolo</translation>
+    </message>
+    <message>
+        <source>Name</source>
+        <translation>Nome</translation>
+    </message>
+    <message>
+        <source>Geometry</source>
+        <translation>Geometria</translation>
+    </message>
+    <message>
+        <source>Driving</source>
+        <translation>Pilota</translation>
+    </message>
+    <message>
+        <source>Active</source>
+        <translation>Attivo</translation>
+    </message>
+    <message>
+        <source>Hide FreeCAD&apos;s lists</source>
+        <translation>Nascondi elenchi di FreeCAD</translation>
+    </message>
+    <message>
+        <source>Show FreeCAD&apos;s lists</source>
+        <translation>Mostra elenchi di FreeCAD</translation>
+    </message>
+</context>
+<context>
+    <name>SketchPill</name>
+    <message>
+        <source>Normal</source>
+        <translation>Normale</translation>
+    </message>
+    <message>
+        <source>Construction</source>
+        <translation>Costruzione</translation>
+    </message>
+    <message>
+        <source>External</source>
+        <translation>Esterna</translation>
+    </message>
+    <message>
+        <source>Grid</source>
+        <translation>Griglia</translation>
+    </message>
+    <message>
+        <source>Grid auto-spacing</source>
+        <translation>Griglia automatica</translation>
+    </message>
+    <message>
+        <source>Spacing</source>
+        <translation>Passo</translation>
+    </message>
+    <message>
+        <source>Snap</source>
+        <translation>Aggancio</translation>
+    </message>
+    <message>
+        <source>Snap to grid</source>
+        <translation>Aggancia alla griglia</translation>
+    </message>
+    <message>
+        <source>Snap to objects</source>
+        <translation>Aggancia agli oggetti</translation>
+    </message>
+    <message>
+        <source>Snap angle</source>
+        <translation>Angolo di aggancio</translation>
+    </message>
+    <message>
+        <source>Auto constraints</source>
+        <translation>Vincoli automatici</translation>
+    </message>
+    <message>
+        <source>Render order, top first</source>
+        <translation>Ordine di disegno, sopra prima</translation>
+    </message>
+    <message>
+        <source>Draw above</source>
+        <translation>Disegna sopra</translation>
+    </message>
+    <message>
+        <source>Sketch settings</source>
+        <translation>Impostazioni schizzo</translation>
+    </message>
+</context>
+<context>
     <name>TreeHeader</name>
     <message>
         <source>No document</source>
@@ -1736,6 +2506,10 @@ Tieni premuto Alt mentre trascini per attraversarle.</translation>
     <message>
         <source>Double-click: add new objects at the top level</source>
         <translation>Doppio clic: nuovi oggetti al livello superiore</translation>
+    </message>
+    <message>
+        <source>Switch document</source>
+        <translation>Cambia documento</translation>
     </message>
     <message>
         <source>search</source>
@@ -1954,6 +2728,14 @@ Tieni premuto Alt mentre trascini per attraversarle.</translation>
     <message>
         <source>Auto repair &apos;Wire not closed&apos; errors</source>
         <translation>Ripara «Wire not closed»</translation>
+    </message>
+    <message>
+        <source>Experimental sketch task panel</source>
+        <translation>Pannello schizzi sperimentale</translation>
+    </message>
+    <message>
+        <source>Experimental attachment panel</source>
+        <translation>Pannello collegamento sperimentale</translation>
     </message>
     <message>
         <source>Rename new objects</source>

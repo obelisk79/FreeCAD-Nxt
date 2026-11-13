@@ -2,6 +2,89 @@
 <!DOCTYPE TS>
 <TS version="2.1" language="zh_CN">
 <context>
+    <name>AttachTask</name>
+    <message>
+        <source>Attached</source>
+        <translation>已附着</translation>
+    </message>
+    <message>
+        <source>Not attached yet</source>
+        <translation>尚未附着</translation>
+    </message>
+    <message>
+        <source>Not attached</source>
+        <translation>未附着</translation>
+    </message>
+    <message>
+        <source>Detach</source>
+        <translation>解除附着</translation>
+    </message>
+    <message>
+        <source>Pick a face, edge or point</source>
+        <translation>选取面、边或点</translation>
+    </message>
+    <message>
+        <source>Done</source>
+        <translation>完成</translation>
+    </message>
+    <message>
+        <source>+ Pick</source>
+        <translation>+ 选取</translation>
+    </message>
+    <message>
+        <source>Pick in the 3D view or the tree. A whole object takes its position.</source>
+        <translation>在 3D 视图或模型树中选取。选取整个对象时使用其位置。</translation>
+    </message>
+    <message>
+        <source>Way</source>
+        <translation>方式</translation>
+    </message>
+    <message>
+        <source>Choose</source>
+        <translation>选择</translation>
+    </message>
+    <message>
+        <source>Flip sides</source>
+        <translation>翻转方向</translation>
+    </message>
+    <message>
+        <source>Along path</source>
+        <translation>沿路径</translation>
+    </message>
+    <message>
+        <source>0 start, 1 end</source>
+        <translation>0 起点，1 终点</translation>
+    </message>
+    <message>
+        <source>Offset</source>
+        <translation>偏移</translation>
+    </message>
+    <message>
+        <source>None</source>
+        <translation>无</translation>
+    </message>
+    <message>
+        <source>Reset</source>
+        <translation>重置</translation>
+    </message>
+    <message>
+        <source>Move</source>
+        <translation>移动</translation>
+    </message>
+    <message>
+        <source>Turn</source>
+        <translation>旋转</translation>
+    </message>
+    <message>
+        <source>Measured along the attached axes.</source>
+        <translation>沿附着轴测量。</translation>
+    </message>
+    <message>
+        <source>Remove</source>
+        <translation>移除</translation>
+    </message>
+</context>
+<context>
     <name>ContextMenu</name>
     <message>
         <source>More</source>
@@ -17,6 +100,14 @@
     <message>
         <source>All properties</source>
         <translation>所有属性</translation>
+    </message>
+    <message>
+        <source>Edit attachment…</source>
+        <translation>编辑附着…</translation>
+    </message>
+    <message>
+        <source>Edit attachment</source>
+        <translation>编辑附着</translation>
     </message>
     <message>
         <source>fully constrained</source>
@@ -532,6 +623,22 @@ The panel needs PySide6.QtQuickWidgets.</source>
         <translation>新对象的编辑关闭时 (或创建容器时)，在树中打开其名称以供编辑。</translation>
     </message>
     <message>
+        <source>Experimental: Nxt&apos;s task panel while a sketch is edited</source>
+        <translation>实验性：编辑草图时使用 Nxt 任务面板</translation>
+    </message>
+    <message>
+        <source>The solver&apos;s status moves to a pill in the 3D view, with the grid and snap settings. The task panel shows only problems and what is selected; FreeCAD&apos;s lists stay one click away.</source>
+        <translation>求解器状态移至 3D 视图中的状态条，附带网格和吸附设置。任务面板只显示问题和所选内容；FreeCAD 的列表一键可达。</translation>
+    </message>
+    <message>
+        <source>Experimental: Nxt&apos;s attachment task panel</source>
+        <translation>实验性：Nxt 附着任务面板</translation>
+    </message>
+    <message>
+        <source>Edit attachment opens Nxt&apos;s panel: picks named for what they are, ways grouped by what they do, and the offset shut until wanted.</source>
+        <translation>“编辑附着”会打开 Nxt 面板：选取按类型命名，方式按作用分组，偏移在需要前保持收起。</translation>
+    </message>
+    <message>
         <source>Attach a new sketch to three picked points without asking</source>
         <translation>无需询问直接将新草图附加到选取的三个点</translation>
     </message>
@@ -663,8 +770,137 @@ Hold Alt while dragging to pass through.</source>
         <translation>撤销</translation>
     </message>
     <message>
+        <source>Plane</source>
+        <extracomment>Most references an attachment takes. Mode -&gt; its variant&apos;s label, in the order offered. What the variants choose (&quot;Plane&quot;); empty with one mode. Its modes read MapPathParameter.</extracomment>
+        <translation>平面</translation>
+    </message>
+    <message>
+        <source>On face</source>
+        <extracomment>Names follow commercial CAD where it has the idea (Midplane, Along path, Normal to edge); the rest place a whole coordinate system.</extracomment>
+        <translation>在面上</translation>
+    </message>
+    <message>
+        <source>Tangent to surface</source>
+        <translation>与曲面相切</translation>
+    </message>
+    <message>
+        <source>Midplane</source>
+        <translation>中间平面</translation>
+    </message>
+    <message>
+        <source>Through 3 points</source>
+        <translation>过 3 点</translation>
+    </message>
+    <message>
+        <source>Normal to edge</source>
+        <translation>垂直于边</translation>
+    </message>
+    <message>
+        <source>Along path</source>
+        <translation>沿路径</translation>
+    </message>
+    <message>
+        <source>Across</source>
+        <translation>横向</translation>
+    </message>
+    <message>
+        <source>In bend</source>
+        <translation>在弯曲处</translation>
+    </message>
+    <message>
+        <source>Beside</source>
+        <translation>旁边</translation>
+    </message>
+    <message>
+        <source>Concentric</source>
+        <translation>同心</translation>
+    </message>
+    <message>
+        <source>Circle</source>
+        <translation>圆</translation>
+    </message>
+    <message>
         <source>Section</source>
         <translation>剖面</translation>
+    </message>
+    <message>
+        <source>Parallel plane</source>
+        <translation>平行平面</translation>
+    </message>
+    <message>
+        <source>Same as object</source>
+        <translation>与对象相同</translation>
+    </message>
+    <message>
+        <source>Inertia axes</source>
+        <translation>惯性轴</translation>
+    </message>
+    <message>
+        <source>Align to points</source>
+        <translation>对齐到点</translation>
+    </message>
+    <message>
+        <source>Axes</source>
+        <translation>轴</translation>
+    </message>
+    <message>
+        <source>Move origin only</source>
+        <translation>仅移动原点</translation>
+    </message>
+    <message>
+        <source>Folding</source>
+        <translation>折叠</translation>
+    </message>
+    <message>
+        <source>Point</source>
+        <extracomment>FreeCAD&apos;s reference types -&gt; the word a pick is shown with.</extracomment>
+        <translation>点</translation>
+    </message>
+    <message>
+        <source>Edge</source>
+        <translation>边</translation>
+    </message>
+    <message>
+        <source>Line</source>
+        <extracomment>Part&apos;s geometry classes, by the name a sketch&apos;s element goes by.</extracomment>
+        <translation>直线</translation>
+    </message>
+    <message>
+        <source>Curve</source>
+        <translation>曲线</translation>
+    </message>
+    <message>
+        <source>Face</source>
+        <translation>面</translation>
+    </message>
+    <message>
+        <source>Object</source>
+        <translation>对象</translation>
+    </message>
+    <message>
+        <source>These points are in a line, so no plane fits.</source>
+        <extracomment>Reference types -&gt; the glyph a pick is drawn with. FreeCAD&apos;s message (a fragment, lower case) -&gt; what went wrong in plain words, and what to do about it.</extracomment>
+        <translation>这些点共线，无法确定平面。</translation>
+    </message>
+    <message>
+        <source>Pick a point off the line.</source>
+        <translation>请选取不在该直线上的点。</translation>
+    </message>
+    <message>
+        <source>Two picks are at the same place.</source>
+        <translation>有两个选取位于同一位置。</translation>
+    </message>
+    <message>
+        <source>Pick another one.</source>
+        <translation>请另选一个。</translation>
+    </message>
+    <message>
+        <source>The picks are parallel, so they do not meet.</source>
+        <translation>所选对象平行，不会相交。</translation>
+    </message>
+    <message>
+        <source>Pick one at an angle to the other.</source>
+        <translation>请选取与另一个成角度的对象。</translation>
     </message>
     <message>
         <source>Deleted %s from %s</source>
@@ -708,8 +944,156 @@ Hold Alt while dragging to pass through.</source>
     </message>
     <message>
         <source>Menu</source>
-        <extracomment>After the window first shows, the button is checked this often for this long: FreeCAD may still be restoring its toolbar layout.</extracomment>
+        <extracomment>The setting&apos;s name while it was on by default; dropped at startup. After the window first shows, the button is checked this often for this long: FreeCAD may still be restoring its toolbar layout. What FreeCAD&apos;s toolbar layout does to the button&apos;s toolbar.</extracomment>
         <translation>菜单</translation>
+    </message>
+    <message>
+        <source>Attachment</source>
+        <extracomment>Offset fields in panel order: move X Y Z, then turn about X Y Z. FreeCAD&apos;s attachment box, in its dialog for a datum or a new sketch. How long after an object is made its dialog may still be opening, s. Binders take an attachment only when asked: FreeCAD&apos;s editor adds it. A way chosen before the picks it needs: its mode.</extracomment>
+        <translation>附着</translation>
+    </message>
+    <message>
+        <source>Edit attachment</source>
+        <translation>编辑附着</translation>
+    </message>
+    <message>
+        <source>Next: %1</source>
+        <translation>下一步：%1</translation>
+    </message>
+    <message>
+        <source>Fits your picks</source>
+        <translation>适合当前选取</translation>
+    </message>
+    <message>
+        <source>Needs other picks</source>
+        <translation>需要其他选取</translation>
+    </message>
+    <message>
+        <source>add %1</source>
+        <translation>添加%1</translation>
+    </message>
+    <message>
+        <source>External</source>
+        <extracomment>Element filters, then constraint filters. A geometric group longer than this starts folded. Constraint chips shown on an element&apos;s strip before &quot;+n&quot;. A constraint&apos;s geometry index where it names none (GeoEnum::GeoUndef). External geometry&apos;s indices count down from this one (GeoEnum::RefExt). ExternalGeo holds the two axes first, then the external geometry. The status marks, as SeverityMark.qml draws them.
+----------
+External geometry&apos;s indices count down from this one (GeoEnum::RefExt).</extracomment>
+        <translation>外部</translation>
+    </message>
+    <message>
+        <source>Dimensions</source>
+        <translation>尺寸</translation>
+    </message>
+    <message>
+        <source>construction</source>
+        <translation>构造</translation>
+    </message>
+    <message>
+        <source>edge</source>
+        <extracomment>What part of an element is still free, by Sketcher&apos;s PointPos.</extracomment>
+        <translation>边</translation>
+    </message>
+    <message>
+        <source>start</source>
+        <translation>起点</translation>
+    </message>
+    <message>
+        <source>end</source>
+        <translation>终点</translation>
+    </message>
+    <message>
+        <source>centre</source>
+        <translation>中心</translation>
+    </message>
+    <message>
+        <source>Horizontal axis</source>
+        <extracomment>Axes, by geometry index, as a constraint&apos;s chips name them.
+----------
+The sketch&apos;s axes, by their geometry index.</extracomment>
+        <translation>水平轴</translation>
+    </message>
+    <message>
+        <source>Vertical axis</source>
+        <translation>竖直轴</translation>
+    </message>
+    <message>
+        <source>Point on object</source>
+        <extracomment>Constraint types that hold a value, and so can drive or be driven. Sketcher&apos;s constraint types whose name is not already a plain word.</extracomment>
+        <translation>点在对象上</translation>
+    </message>
+    <message>
+        <source>Horizontal distance</source>
+        <translation>水平距离</translation>
+    </message>
+    <message>
+        <source>Vertical distance</source>
+        <translation>竖直距离</translation>
+    </message>
+    <message>
+        <source>Internal alignment</source>
+        <translation>内部对齐</translation>
+    </message>
+    <message>
+        <source>Refraction</source>
+        <translation>折射</translation>
+    </message>
+    <message>
+        <source>Arc</source>
+        <translation>圆弧</translation>
+    </message>
+    <message>
+        <source>Ellipse</source>
+        <translation>椭圆</translation>
+    </message>
+    <message>
+        <source>Elliptical arc</source>
+        <translation>椭圆弧</translation>
+    </message>
+    <message>
+        <source>Hyperbolic arc</source>
+        <translation>双曲线弧</translation>
+    </message>
+    <message>
+        <source>Parabolic arc</source>
+        <translation>抛物线弧</translation>
+    </message>
+    <message>
+        <source>B-spline</source>
+        <translation>B 样条</translation>
+    </message>
+    <message>
+        <source>Element</source>
+        <extracomment>A geometry class not named above.</extracomment>
+        <translation>元素</translation>
+    </message>
+    <message>
+        <source>Over-constrained</source>
+        <extracomment>A solver finding&apos;s heading, by the sketch attribute that lists it.</extracomment>
+        <translation>过约束</translation>
+    </message>
+    <message>
+        <source>Malformed constraints</source>
+        <translation>约束格式错误</translation>
+    </message>
+    <message>
+        <source>Redundant constraints</source>
+        <translation>冗余约束</translation>
+    </message>
+    <message>
+        <source>Partially redundant</source>
+        <translation>部分冗余</translation>
+    </message>
+    <message>
+        <source>Empty sketch</source>
+        <extracomment>The status mark&apos;s shapes (SeverityMark.qml): none, ring, triangle, disc. A finding&apos;s mark is its health severity, past the ring. A constraint&apos;s geometry index where it names none (GeoEnum::GeoUndef). The status link that selects what is still free to move. Selection names inside a sketch, and what each picks.</extracomment>
+        <translation>空草图</translation>
+    </message>
+    <message>
+        <source>Fully constrained</source>
+        <translation>完全约束</translation>
+    </message>
+    <message>
+        <source>%d DoF</source>
+        <translation>%d 自由度</translation>
     </message>
 </context>
 <context>
@@ -793,6 +1177,10 @@ Hold Alt while dragging to pass through.</source>
     <message>
         <source>Collapse all</source>
         <translation>全部折叠</translation>
+    </message>
+    <message>
+        <source>Open file location</source>
+        <translation>打开文件位置</translation>
     </message>
     <message>
         <source>Synchronize</source>
@@ -900,6 +1288,27 @@ Hold Alt while dragging to pass through.</source>
     <message>
         <source>Delete</source>
         <translation>删除</translation>
+    </message>
+    <message>
+        <source>Visibility</source>
+        <extracomment>The tree header&apos;s menu: its sections and subtitle.</extracomment>
+        <translation>可见性</translation>
+    </message>
+    <message>
+        <source>File</source>
+        <translation>文件</translation>
+    </message>
+    <message>
+        <source>Document</source>
+        <translation>文档</translation>
+    </message>
+    <message>
+        <source>Open documents</source>
+        <translation>已打开的文档</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation>关闭</translation>
     </message>
     <message>
         <source>Edit %1</source>
@@ -1473,6 +1882,166 @@ Hold Alt while dragging to pass through.</source>
         <translation>保持完整</translation>
     </message>
     <message>
+        <source>Not attached</source>
+        <comment>sketch</comment>
+        <translation>未附着</translation>
+    </message>
+    <message>
+        <source>Translate origin</source>
+        <comment>sketch</comment>
+        <translation>平移原点</translation>
+    </message>
+    <message>
+        <source>XY of object</source>
+        <comment>sketch</comment>
+        <translation>对象的 XY</translation>
+    </message>
+    <message>
+        <source>XZ of object</source>
+        <comment>sketch</comment>
+        <translation>对象的 XZ</translation>
+    </message>
+    <message>
+        <source>YZ of object</source>
+        <comment>sketch</comment>
+        <translation>对象的 YZ</translation>
+    </message>
+    <message>
+        <source>Plane face</source>
+        <comment>sketch</comment>
+        <translation>平面</translation>
+    </message>
+    <message>
+        <source>Tangent to surface</source>
+        <comment>sketch</comment>
+        <translation>与曲面相切</translation>
+    </message>
+    <message>
+        <source>Normal to edge</source>
+        <comment>sketch</comment>
+        <translation>垂直于边</translation>
+    </message>
+    <message>
+        <source>Frenet NB</source>
+        <comment>sketch</comment>
+        <translation>Frenet NB</translation>
+    </message>
+    <message>
+        <source>Frenet TN</source>
+        <comment>sketch</comment>
+        <translation>Frenet TN</translation>
+    </message>
+    <message>
+        <source>Frenet TB</source>
+        <comment>sketch</comment>
+        <translation>Frenet TB</translation>
+    </message>
+    <message>
+        <source>Concentric</source>
+        <comment>sketch</comment>
+        <translation>同心</translation>
+    </message>
+    <message>
+        <source>Revolution section</source>
+        <comment>sketch</comment>
+        <translation>旋转截面</translation>
+    </message>
+    <message>
+        <source>Plane by 3 points</source>
+        <comment>sketch</comment>
+        <translation>三点平面</translation>
+    </message>
+    <message>
+        <source>Normal to 3 points</source>
+        <comment>sketch</comment>
+        <translation>垂直于三点</translation>
+    </message>
+    <message>
+        <source>Folding</source>
+        <comment>sketch</comment>
+        <translation>折叠</translation>
+    </message>
+    <message>
+        <source>Inertia axes</source>
+        <comment>sketch</comment>
+        <translation>惯性轴</translation>
+    </message>
+    <message>
+        <source>Align O-X-Y</source>
+        <comment>sketch</comment>
+        <translation>对齐 O-X-Y</translation>
+    </message>
+    <message>
+        <source>Align O-X-Z</source>
+        <comment>sketch</comment>
+        <translation>对齐 O-X-Z</translation>
+    </message>
+    <message>
+        <source>Align O-Y-Z</source>
+        <comment>sketch</comment>
+        <translation>对齐 O-Y-Z</translation>
+    </message>
+    <message>
+        <source>Align O-Y-X</source>
+        <comment>sketch</comment>
+        <translation>对齐 O-Y-X</translation>
+    </message>
+    <message>
+        <source>Align O-Z-X</source>
+        <comment>sketch</comment>
+        <translation>对齐 O-Z-X</translation>
+    </message>
+    <message>
+        <source>Align O-Z-Y</source>
+        <comment>sketch</comment>
+        <translation>对齐 O-Z-Y</translation>
+    </message>
+    <message>
+        <source>Attachment</source>
+        <comment>sketch</comment>
+        <translation>附着</translation>
+    </message>
+    <message>
+        <source>Attached to</source>
+        <comment>sketch</comment>
+        <translation>附着于</translation>
+    </message>
+    <message>
+        <source>Mode</source>
+        <comment>sketch</comment>
+        <translation>模式</translation>
+    </message>
+    <message>
+        <source>Along path</source>
+        <comment>sketch</comment>
+        <translation>沿路径</translation>
+    </message>
+    <message>
+        <source>Offset</source>
+        <comment>sketch</comment>
+        <translation>偏移</translation>
+    </message>
+    <message>
+        <source>External geometry</source>
+        <comment>sketch</comment>
+        <translation>外部几何</translation>
+    </message>
+    <message>
+        <source>Arc fit tolerance</source>
+        <comment>sketch</comment>
+        <translation>圆弧拟合公差</translation>
+    </message>
+    <message>
+        <source>Profiles</source>
+        <comment>sketch</comment>
+        <translation>轮廓</translation>
+    </message>
+    <message>
+        <source>Inner profiles</source>
+        <comment>sketch</comment>
+        <translation>内轮廓</translation>
+    </message>
+    <message>
         <source>Variables</source>
         <comment>varset</comment>
         <translation>变量</translation>
@@ -1724,6 +2293,207 @@ Hold Alt while dragging to pass through.</source>
     </message>
 </context>
 <context>
+    <name>SketchContents</name>
+    <message>
+        <source>Free</source>
+        <translation>自由</translation>
+    </message>
+    <message>
+        <source>Construction</source>
+        <translation>构造</translation>
+    </message>
+    <message>
+        <source>External</source>
+        <translation>外部</translation>
+    </message>
+    <message>
+        <source>Problems</source>
+        <translation>仅显示问题</translation>
+    </message>
+    <message>
+        <source>Reference</source>
+        <translation>参考</translation>
+    </message>
+    <message>
+        <source>Inactive</source>
+        <translation>停用</translation>
+    </message>
+    <message>
+        <source>Contents</source>
+        <translation>内容</translation>
+    </message>
+    <message>
+        <source>%1 elements · %2 constraints</source>
+        <translation>%1 个元素 · %2 个约束</translation>
+    </message>
+    <message>
+        <source>Elements %1</source>
+        <translation>元素 %1</translation>
+    </message>
+    <message>
+        <source>Constraints %1</source>
+        <translation>约束 %1</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation>搜索</translation>
+    </message>
+    <message>
+        <source>Nothing matches</source>
+        <translation>无匹配项</translation>
+    </message>
+    <message>
+        <source>Make reference</source>
+        <translation>设为参考</translation>
+    </message>
+    <message>
+        <source>Deactivate</source>
+        <translation>停用</translation>
+    </message>
+    <message>
+        <source>Delete</source>
+        <translation>删除</translation>
+    </message>
+    <message>
+        <source>Driving</source>
+        <translation>驱动</translation>
+    </message>
+    <message>
+        <source>Active</source>
+        <translation>活动</translation>
+    </message>
+    <message>
+        <source>Every constraint on it</source>
+        <translation>其所有约束</translation>
+    </message>
+    <message>
+        <source>%1 selected</source>
+        <translation>已选 %1 项</translation>
+    </message>
+    <message>
+        <source>Select constraints</source>
+        <translation>选择约束</translation>
+    </message>
+</context>
+<context>
+    <name>SketchPanel</name>
+    <message>
+        <source>Deactivate</source>
+        <translation>停用</translation>
+    </message>
+    <message>
+        <source>Activate</source>
+        <translation>启用</translation>
+    </message>
+    <message>
+        <source>Make reference</source>
+        <translation>设为参考</translation>
+    </message>
+    <message>
+        <source>Delete</source>
+        <translation>删除</translation>
+    </message>
+    <message>
+        <source>Validate sketch…</source>
+        <translation>验证草图…</translation>
+    </message>
+    <message>
+        <source>Construction</source>
+        <translation>构造</translation>
+    </message>
+    <message>
+        <source>Constraints on it</source>
+        <translation>其约束</translation>
+    </message>
+    <message>
+        <source>No constraints on it</source>
+        <translation>无约束</translation>
+    </message>
+    <message>
+        <source>Name</source>
+        <translation>名称</translation>
+    </message>
+    <message>
+        <source>Geometry</source>
+        <translation>几何</translation>
+    </message>
+    <message>
+        <source>Driving</source>
+        <translation>驱动</translation>
+    </message>
+    <message>
+        <source>Active</source>
+        <translation>活动</translation>
+    </message>
+    <message>
+        <source>Hide FreeCAD&apos;s lists</source>
+        <translation>隐藏 FreeCAD 列表</translation>
+    </message>
+    <message>
+        <source>Show FreeCAD&apos;s lists</source>
+        <translation>显示 FreeCAD 列表</translation>
+    </message>
+</context>
+<context>
+    <name>SketchPill</name>
+    <message>
+        <source>Normal</source>
+        <translation>正常</translation>
+    </message>
+    <message>
+        <source>Construction</source>
+        <translation>构造</translation>
+    </message>
+    <message>
+        <source>External</source>
+        <translation>外部</translation>
+    </message>
+    <message>
+        <source>Grid</source>
+        <translation>网格</translation>
+    </message>
+    <message>
+        <source>Grid auto-spacing</source>
+        <translation>网格自动间距</translation>
+    </message>
+    <message>
+        <source>Spacing</source>
+        <translation>间距</translation>
+    </message>
+    <message>
+        <source>Snap</source>
+        <translation>吸附</translation>
+    </message>
+    <message>
+        <source>Snap to grid</source>
+        <translation>吸附到网格</translation>
+    </message>
+    <message>
+        <source>Snap to objects</source>
+        <translation>吸附到对象</translation>
+    </message>
+    <message>
+        <source>Snap angle</source>
+        <translation>吸附角度</translation>
+    </message>
+    <message>
+        <source>Auto constraints</source>
+        <translation>自动约束</translation>
+    </message>
+    <message>
+        <source>Render order, top first</source>
+        <translation>绘制顺序（顶层在前）</translation>
+    </message>
+    <message>
+        <source>Draw above</source>
+        <translation>绘制于上方</translation>
+    </message>
+    <message>
+        <source>Sketch settings</source>
+        <translation>草图设置</translation>
+    </message>
+</context>
+<context>
     <name>TreeHeader</name>
     <message>
         <source>No document</source>
@@ -1736,6 +2506,10 @@ Hold Alt while dragging to pass through.</source>
     <message>
         <source>Double-click: add new objects at the top level</source>
         <translation>双击：在顶层添加新对象</translation>
+    </message>
+    <message>
+        <source>Switch document</source>
+        <translation>切换文档</translation>
     </message>
     <message>
         <source>search</source>
@@ -1954,6 +2728,14 @@ Hold Alt while dragging to pass through.</source>
     <message>
         <source>Auto repair &apos;Wire not closed&apos; errors</source>
         <translation>自动修复“线框未闭合”错误</translation>
+    </message>
+    <message>
+        <source>Experimental sketch task panel</source>
+        <translation>实验性草图任务面板</translation>
+    </message>
+    <message>
+        <source>Experimental attachment panel</source>
+        <translation>实验性附着面板</translation>
     </message>
     <message>
         <source>Rename new objects</source>

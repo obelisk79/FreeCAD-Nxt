@@ -121,6 +121,17 @@ def way_of(mode: str) -> Way:
     return _BY_MODE.get(mode) or Way(mode, mode, {mode: ""})
 
 
+def way_by_key(key: str) -> Way:
+    """The way a row of `ways` stands for: an own way's key is its mode."""
+    return next((way for way in WAYS if way.key == key), None) \
+        or way_of(key)
+
+
+def named(way: Way) -> bool:
+    """Nxt names the way; else its label is FreeCAD's mode name."""
+    return way.key in _KEYS
+
+
 def pick_word(ref_type: str) -> str:
     """The word a pick of FreeCAD's reference type is shown with."""
     return PICKS.get(ref_type, OBJECT)
@@ -212,5 +223,8 @@ def mode_for_way(way: Way, current: str,
 
 
 def needs_text(needs: list[str], word: Callable[[str], str]) -> str:
-    """'a point + a face' from FreeCAD's reference types."""
-    return " + ".join(word(pick_word(ref)).lower() for ref in needs)
+    """'Point + Face' from FreeCAD's reference types.
+
+    Each word as translated: lowering its case would break German nouns.
+    """
+    return " + ".join(word(pick_word(ref)) for ref in needs)

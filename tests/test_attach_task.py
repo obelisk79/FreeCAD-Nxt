@@ -36,7 +36,8 @@ Gui.Selection = types.SimpleNamespace(
 from freecad.nxt.tools import attach_task  # noqa: E402
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
-FRIENDLY = {"FlatFace": "Plane face", "ObjectXY": "Object's XY"}
+FRIENDLY = {"FlatFace": "Plane face", "ObjectXY": "Object's XY",
+            "TwoPointLine": "Line through two points"}
 
 
 class Engine:
@@ -166,6 +167,13 @@ class EmbeddedTests(unittest.TestCase):
         self.attachment.detach()
         self.assertEqual(self.obj.refs, [])
         self.assertEqual(self.modes().currentRow(), 0)
+
+    def test_ungrouped_modes_take_freecads_name(self) -> None:
+        self.attachment.engine.Mode = "TwoPointLine"
+        self.assertEqual(self.attachment.bridge.wayLabel,
+                         "Line through two points")
+        self.attachment.engine.Mode = "FlatFace"
+        self.assertEqual(self.attachment.bridge.wayLabel, "On face")
 
     def test_finishing_gives_the_object_its_picking_back(self) -> None:
         self.assertFalse(self.obj.ViewObject.Selectable)

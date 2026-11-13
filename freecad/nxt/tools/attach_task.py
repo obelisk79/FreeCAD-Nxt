@@ -536,7 +536,7 @@ class AttachBridge(QtCore.QObject):
         mode = self._task.wanted or self._task.engine.Mode
         if mode == DETACHED:
             return ""
-        return self._word(self._mode_way(mode).label)
+        return self._label(self._mode_way(mode))
 
     @QtCore.Property(str, notify=changed)
     def choice(self) -> str:
@@ -652,7 +652,7 @@ class AttachBridge(QtCore.QObject):
             if task.engine.References and section != heading:
                 menu.addSection(section)
                 heading = section
-            label = self._word(row["label"])
+            label = self._label(attach_ways.way_by_key(row["key"]))
             if row["needs"]:
                 label = "%s    (%s)" % (label, translate("Nxt", "add %1")
                                         .replace("%1", attach_ways.needs_text(
@@ -672,6 +672,19 @@ class AttachBridge(QtCore.QObject):
     @staticmethod
     def _word(text: str) -> str:
         return translate("Nxt", text) if text else ""
+
+    def _label(self, way: attach_ways.Way) -> str:
+        """Nxt's name for the way, else FreeCAD's translated mode name.
+
+        FreeCAD's for a mode Nxt doesn't group: a datum line's or point's.
+        """
+        if attach_ways.named(way):
+            return self._word(way.label)
+        try:
+            info = self._task.engine.getModeInfo(way.key)
+            return str(info.get("UserFriendlyName") or way.label)
+        except Exception:  # noqa: BLE001 - no Gui strings: FreeCAD's name
+            return way.label
 
     @staticmethod
     def _mode_way(mode: str) -> attach_ways.Way:

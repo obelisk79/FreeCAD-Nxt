@@ -2,6 +2,89 @@
 <!DOCTYPE TS>
 <TS version="2.1">
 <context>
+    <name>AttachTask</name>
+    <message>
+        <source>Attached</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Not attached yet</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Not attached</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Detach</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Pick a face, edge or point</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Done</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>+ Pick</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Pick in the 3D view or the tree. A whole object takes its position.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Way</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Choose</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Flip sides</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Along path</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>0 start, 1 end</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Offset</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>None</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Reset</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Move</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Turn</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Measured along the attached axes.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Remove</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>ContextMenu</name>
     <message>
         <source>More</source>
@@ -16,6 +99,14 @@
     </message>
     <message>
         <source>All properties</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Edit attachment…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Edit attachment</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -529,6 +620,22 @@ The panel needs PySide6.QtQuickWidgets.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <source>Experimental: Nxt&apos;s task panel while a sketch is edited</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The solver&apos;s status moves to a pill in the 3D view, with the grid and snap settings. The task panel shows only problems and what is selected; FreeCAD&apos;s lists stay one click away.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Experimental: Nxt&apos;s attachment task panel</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Edit attachment opens Nxt&apos;s panel: picks named for what they are, ways grouped by what they do, and the offset shut until wanted.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Attach a new sketch to three picked points without asking</source>
         <translation type="unfinished"></translation>
     </message>
@@ -657,7 +764,136 @@ Hold Alt while dragging to pass through.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <source>Plane</source>
+        <extracomment>Most references an attachment takes. Mode -&gt; its variant&apos;s label, in the order offered. What the variants choose (&quot;Plane&quot;); empty with one mode. Its modes read MapPathParameter.</extracomment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>On face</source>
+        <extracomment>Names follow commercial CAD where it has the idea (Midplane, Along path, Normal to edge); the rest place a whole coordinate system.</extracomment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Tangent to surface</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Midplane</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Through 3 points</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Normal to edge</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Along path</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Across</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>In bend</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Beside</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Concentric</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Circle</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Section</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Parallel plane</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Same as object</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Inertia axes</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Align to points</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Axes</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Move origin only</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Folding</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Point</source>
+        <extracomment>FreeCAD&apos;s reference types -&gt; the word a pick is shown with.</extracomment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Edge</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Line</source>
+        <extracomment>Part&apos;s geometry classes, by the name a sketch&apos;s element goes by.</extracomment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Curve</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Face</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Object</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>These points are in a line, so no plane fits.</source>
+        <extracomment>Reference types -&gt; the glyph a pick is drawn with. FreeCAD&apos;s message (a fragment, lower case) -&gt; what went wrong in plain words, and what to do about it.</extracomment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Pick a point off the line.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Two picks are at the same place.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Pick another one.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The picks are parallel, so they do not meet.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Pick one at an angle to the other.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -702,7 +938,155 @@ Hold Alt while dragging to pass through.</source>
     </message>
     <message>
         <source>Menu</source>
-        <extracomment>After the window first shows, the button is checked this often for this long: FreeCAD may still be restoring its toolbar layout.</extracomment>
+        <extracomment>The setting&apos;s name while it was on by default; dropped at startup. After the window first shows, the button is checked this often for this long: FreeCAD may still be restoring its toolbar layout. What FreeCAD&apos;s toolbar layout does to the button&apos;s toolbar.</extracomment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Attachment</source>
+        <extracomment>Offset fields in panel order: move X Y Z, then turn about X Y Z. FreeCAD&apos;s attachment box, in its dialog for a datum or a new sketch. How long after an object is made its dialog may still be opening, s. Binders take an attachment only when asked: FreeCAD&apos;s editor adds it. A way chosen before the picks it needs: its mode.</extracomment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Edit attachment</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Next: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Fits your picks</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Needs other picks</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>add %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>External</source>
+        <extracomment>Element filters, then constraint filters. A geometric group longer than this starts folded. Constraint chips shown on an element&apos;s strip before &quot;+n&quot;. A constraint&apos;s geometry index where it names none (GeoEnum::GeoUndef). External geometry&apos;s indices count down from this one (GeoEnum::RefExt). ExternalGeo holds the two axes first, then the external geometry. The status marks, as SeverityMark.qml draws them.
+----------
+External geometry&apos;s indices count down from this one (GeoEnum::RefExt).</extracomment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Dimensions</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>construction</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>edge</source>
+        <extracomment>What part of an element is still free, by Sketcher&apos;s PointPos.</extracomment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>start</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>end</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>centre</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Horizontal axis</source>
+        <extracomment>Axes, by geometry index, as a constraint&apos;s chips name them.
+----------
+The sketch&apos;s axes, by their geometry index.</extracomment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Vertical axis</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Point on object</source>
+        <extracomment>Constraint types that hold a value, and so can drive or be driven. Sketcher&apos;s constraint types whose name is not already a plain word.</extracomment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Horizontal distance</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Vertical distance</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Internal alignment</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Refraction</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Arc</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Ellipse</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Elliptical arc</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Hyperbolic arc</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Parabolic arc</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>B-spline</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Element</source>
+        <extracomment>A geometry class not named above.</extracomment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Over-constrained</source>
+        <extracomment>A solver finding&apos;s heading, by the sketch attribute that lists it.</extracomment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Malformed constraints</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Redundant constraints</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Partially redundant</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Empty sketch</source>
+        <extracomment>The status mark&apos;s shapes (SeverityMark.qml): none, ring, triangle, disc. A finding&apos;s mark is its health severity, past the ring. A constraint&apos;s geometry index where it names none (GeoEnum::GeoUndef). The status link that selects what is still free to move. Selection names inside a sketch, and what each picks.</extracomment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Fully constrained</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%d DoF</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -786,6 +1170,10 @@ Hold Alt while dragging to pass through.</source>
     </message>
     <message>
         <source>Collapse all</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Open file location</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -893,6 +1281,27 @@ Hold Alt while dragging to pass through.</source>
     </message>
     <message>
         <source>Delete</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Visibility</source>
+        <extracomment>The tree header&apos;s menu: its sections and subtitle.</extracomment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>File</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Document</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Open documents</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Close</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -1467,6 +1876,166 @@ Hold Alt while dragging to pass through.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <source>Not attached</source>
+        <comment>sketch</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Translate origin</source>
+        <comment>sketch</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>XY of object</source>
+        <comment>sketch</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>XZ of object</source>
+        <comment>sketch</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>YZ of object</source>
+        <comment>sketch</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Plane face</source>
+        <comment>sketch</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Tangent to surface</source>
+        <comment>sketch</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Normal to edge</source>
+        <comment>sketch</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Frenet NB</source>
+        <comment>sketch</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Frenet TN</source>
+        <comment>sketch</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Frenet TB</source>
+        <comment>sketch</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Concentric</source>
+        <comment>sketch</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Revolution section</source>
+        <comment>sketch</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Plane by 3 points</source>
+        <comment>sketch</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Normal to 3 points</source>
+        <comment>sketch</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Folding</source>
+        <comment>sketch</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Inertia axes</source>
+        <comment>sketch</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Align O-X-Y</source>
+        <comment>sketch</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Align O-X-Z</source>
+        <comment>sketch</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Align O-Y-Z</source>
+        <comment>sketch</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Align O-Y-X</source>
+        <comment>sketch</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Align O-Z-X</source>
+        <comment>sketch</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Align O-Z-Y</source>
+        <comment>sketch</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Attachment</source>
+        <comment>sketch</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Attached to</source>
+        <comment>sketch</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Mode</source>
+        <comment>sketch</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Along path</source>
+        <comment>sketch</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Offset</source>
+        <comment>sketch</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>External geometry</source>
+        <comment>sketch</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Arc fit tolerance</source>
+        <comment>sketch</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Profiles</source>
+        <comment>sketch</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Inner profiles</source>
+        <comment>sketch</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Variables</source>
         <comment>varset</comment>
         <translation type="unfinished"></translation>
@@ -1718,6 +2287,207 @@ Hold Alt while dragging to pass through.</source>
     </message>
 </context>
 <context>
+    <name>SketchContents</name>
+    <message>
+        <source>Free</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Construction</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>External</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Problems</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Reference</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Inactive</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Contents</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 elements · %2 constraints</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Elements %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Constraints %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Nothing matches</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Make reference</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Deactivate</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Delete</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Driving</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Active</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Every constraint on it</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 selected</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select constraints</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>SketchPanel</name>
+    <message>
+        <source>Deactivate</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Activate</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Make reference</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Delete</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Validate sketch…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Construction</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Constraints on it</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>No constraints on it</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Name</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Geometry</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Driving</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Active</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Hide FreeCAD&apos;s lists</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Show FreeCAD&apos;s lists</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>SketchPill</name>
+    <message>
+        <source>Normal</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Construction</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>External</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Grid</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Grid auto-spacing</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Spacing</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Snap</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Snap to grid</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Snap to objects</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Snap angle</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Auto constraints</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Render order, top first</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Draw above</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Sketch settings</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>TreeHeader</name>
     <message>
         <source>No document</source>
@@ -1729,6 +2499,10 @@ Hold Alt while dragging to pass through.</source>
     </message>
     <message>
         <source>Double-click: add new objects at the top level</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Switch document</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -1947,6 +2721,14 @@ Hold Alt while dragging to pass through.</source>
     </message>
     <message>
         <source>Auto repair &apos;Wire not closed&apos; errors</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Experimental sketch task panel</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Experimental attachment panel</source>
         <translation type="unfinished"></translation>
     </message>
     <message>

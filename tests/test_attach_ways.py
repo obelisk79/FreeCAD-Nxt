@@ -113,7 +113,15 @@ class WordTests(unittest.TestCase):
 
     def test_needs_text(self) -> None:
         self.assertEqual(attach_ways.needs_text(
-            ["Vertex", "Plane"], lambda text: text), "point + plane")
+            ["Vertex", "Plane"], lambda text: text), "Point + Plane")
+
+    def test_only_grouped_ways_carry_nxts_names(self) -> None:
+        self.assertTrue(attach_ways.named(attach_ways.way_of("OXY")))
+        self.assertFalse(attach_ways.named(
+            attach_ways.way_of("TwoPointLine")))
+        self.assertEqual(attach_ways.way_by_key("align").key, "align")
+        self.assertEqual(attach_ways.way_by_key("TwoPointLine").modes,
+                         {"TwoPointLine": ""})
 
 
 if __name__ == "__main__":
