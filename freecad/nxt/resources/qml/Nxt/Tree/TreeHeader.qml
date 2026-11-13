@@ -7,6 +7,7 @@ Item {
 
     property Item ghost
     property bool settingsOpen: false
+    property bool documentsOpen: false
     readonly property alias gear: gear
     // The room between the name's start and the buttons: all the search
     // field's with no name. It keeps at least half of it.
@@ -93,6 +94,7 @@ Item {
         // The standard button size, for an easy target; the glyph stays small.
         enabled: nxt.hasDocument
         tip: qsTr("Switch document")
+        highlighted: header.documentsOpen
         iconScale: 0.4
         paint: function (ctx, w, h, ink) {
             ctx.strokeStyle = ink;

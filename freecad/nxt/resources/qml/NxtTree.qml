@@ -90,8 +90,21 @@ Rectangle {
             root.openContextMenu(null, at.x, at.y, nxt.headerMenu());
         }
         onDocumentsRequested: function (x, y) {
+            // A second click closes it: the press outside has already
+            // closed the menu by the time the button's click arrives.
+            if (header.documentsOpen
+                    || Date.now() - root.documentsClosedAt < 300)
+                return;
             var at = header.mapToItem(root, x, y);
-            root.openContextMenu(null, at.x, at.y, nxt.documentsMenu());
+            var menu = root.openContextMenu(null, at.x, at.y,
+                                            nxt.documentsMenu());
+            if (!menu)
+                return;
+            header.documentsOpen = true;
+            menu.closed.connect(function () {
+                header.documentsOpen = false;
+                root.documentsClosedAt = Date.now();
+            });
         }
     }
 
@@ -352,6 +365,9 @@ Rectangle {
         TreeSettings {}
     }
 
+    // When the documents menu last closed, so its button can toggle it.
+    property double documentsClosedAt: 0
+
     function openContextMenu(rowItem, x, y, data) {
         data = data || nxt.contextMenu();
         if (!data || !data.bar)
@@ -393,6 +409,7 @@ Rectangle {
         menuAnchor.y = at.y + offset.y;
         menu.parent = menuAnchor;
         menu.popup(menuAnchor, 0, 0);
+        return menu;
     }
 
     function startRename(row) {
