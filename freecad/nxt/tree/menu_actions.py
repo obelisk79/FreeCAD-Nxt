@@ -43,6 +43,9 @@ def build(bridge: TreeBridge, names: list[str]) -> dict[str, Any]:
 #: The header's menu: visibility for the whole document.
 HEADER_ITEMS = ("nxt:show_all", "Std_ToggleObjects", "Std_HideObjects")
 
+#: The header's menu: the document's file.
+HEADER_FILE_ITEMS = ("nxt:open_file_location",)
+
 
 def build_header() -> dict[str, Any]:
     """The tree header's menu, as QML draws it."""
@@ -51,11 +54,22 @@ def build_header() -> dict[str, Any]:
         return {}
     subject = present.Subject(title=doc.Label,
                               subtitle=translate(present.CONTEXT, "Document"))
-    items = [e for e in (present.entry(Item(c), subject, runner.lookup)
-                         for c in HEADER_ITEMS) if e is not None]
+
+    def entries(commands: tuple[str, ...]) -> list[dict[str, Any]]:
+        return [e for e in (present.entry(Item(c), subject, runner.lookup)
+                            for c in commands) if e is not None]
+
+    files = entries(HEADER_FILE_ITEMS)
+    for item in files:
+        # A document never saved has no folder to open.
+        if item["command"] == "nxt:open_file_location":
+            item["enabled"] = bool(_document_folder(doc))
     return {"title": subject.title, "subtitle": subject.subtitle,
-            "bar": [], "sections": [{"name": translate(
-                present.CONTEXT, "Visibility"), "items": items}]}
+            "bar": [], "sections": [
+                {"name": translate(present.CONTEXT, "Visibility"),
+                 "items": entries(HEADER_ITEMS)},
+                {"name": translate(present.CONTEXT, "File"),
+                 "items": files}]}
 
 
 def _kind(objects: list[Any]) -> str:
@@ -271,6 +285,34 @@ def _show_all(bridge: TreeBridge, objects: list[Any]) -> None:
     show_all.run()
 
 
+def _document_folder(doc: Any) -> str:
+    """The folder the document is saved in; "" if it was never saved."""
+    import os
+    path = str(getattr(doc, "FileName", "") or "")
+    folder = os.path.dirname(os.path.abspath(path)) if path else ""
+    return folder if folder and os.path.isdir(folder) else ""
+
+
+def _open_file_location(bridge: TreeBridge, objects: list[Any]) -> None:
+    """Open the system's file browser at the active document's folder.
+
+    QDesktopServices hands a local folder URL to the platform's handler:
+    Explorer on Windows, Finder on macOS, the desktop's default file
+    manager (xdg-open / portal) on Linux and the BSDs. No subprocess,
+    so nothing for Bandit to flag.
+    """
+    from ..core.qt import QtCore, QtGui
+    doc = App.ActiveDocument
+    folder = _document_folder(doc) if doc is not None else ""
+    if not folder:
+        App.Console.PrintWarning(
+            "Nxt: the document has not been saved; no folder to open.\n")
+        return
+    url = QtCore.QUrl.fromLocalFile(folder)
+    if not QtGui.QDesktopServices.openUrl(url):
+        App.Console.PrintError("Nxt: could not open %s\n" % folder)
+
+
 def _show_contents(bridge: TreeBridge, objects: list[Any]) -> None:
     from ..tools import show_all
     if len(objects) == 1:
@@ -368,6 +410,7 @@ _ACTIONS: dict[str, Action] = {
     "collapse_all": _collapse_all,
     "show_all": _show_all,
     "show_contents": _show_contents,
+    "open_file_location": _open_file_location,
     "synchronize_binder": _synchronize,
     "select_bound": _select_bound,
     "edit_attachment": _edit_attachment,
