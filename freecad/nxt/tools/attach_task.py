@@ -1,16 +1,21 @@
 """Experimental: Nxt's attachment task panel.
 
-Off unless the AttachPanel setting is on; then Nxt's "Edit attachment"
-opens this in place of FreeCAD's attachment editor. AttachTask.qml shows
-a card per step: what the object is attached to, the way, the offset.
-Picks in the 3D view or the tree fill the next reference. Each change is
-written to the object at once, which is the preview, inside one undo
-step that OK keeps and Cancel takes back.
+Off unless the AttachPanel setting is on. AttachTask.qml shows a card per
+step: what the object is attached to, the way, the offset. Picks in the
+3D view or the tree fill the next reference. Each change is written to
+the object at once, which is the preview.
+
+It shows in two places. Nxt's "Edit attachment" opens it as a task of
+its own (AttachTask), one undo step that OK keeps and Cancel takes back.
+FreeCAD's own attachment dialog, which new datums and Part Design's new
+sketches open, keeps its OK, Cancel and undo step; its attachment box is
+swapped for the cards (AttachPanels, EmbeddedAttachment).
 """
 
 from __future__ import annotations
 
 import contextlib
+import time
 from collections.abc import Callable
 from typing import Any
 
@@ -18,23 +23,43 @@ import FreeCAD as App
 import FreeCADGui as Gui
 
 from ..app.i18n import translate
-from ..core import log, units
+from ..core import log, settings, units, widgets
 from ..core.qt import QtCore, QtWidgets
 from ..ui import quick_host
 from . import attach_ways
 from .attach_ways import DETACHED, MOST_REFERENCES
 from .editing import DATUMS
+from .task_layout import RENEW_MS, TaskLayout, fitted_view, tab_in_order
+from .task_sync import SWAPPED
 
 SETTING = "AttachPanel"
 #: Offset fields in panel order: move X Y Z, then turn about X Y Z.
 MOVES = 3
 ANGLE = "°"
 LENGTH = "mm"
+#: FreeCAD's attachment box, in its dialog for a datum or a new sketch.
+STOCK_BOX = "PartGui::TaskAttacher"
+#: How long after an object is made its dialog may still be opening, s.
+NEW_FOR_S = 5.0
+#: Binders take an attachment only when asked: FreeCAD's editor adds it.
+ATTACHES_ON_ASK = ("PartDesign::SubShapeBinder",)
+ADDED_EXTENSION = "Part::AttachExtensionPython"
 
 
 def attachable(obj: Any) -> bool:
     return obj is not None and hasattr(obj, "Attacher") \
         and hasattr(obj, "AttachmentSupport")
+
+
+def make_attachable(obj: Any) -> bool:
+    """Give a binder an attachment, as FreeCAD's editor does; True if done."""
+    if not attachable(obj) and obj is not None and any(
+            obj.isDerivedFrom(kind) for kind in ATTACHES_ON_ASK):
+        try:
+            obj.addExtension(ADDED_EXTENSION)
+        except Exception:  # noqa: BLE001 - FreeCAD refuses it
+            log.error("could not make %s attachable" % obj.Name)
+    return attachable(obj)
 
 
 def reference(doc: Any, name: str, sub: str,
@@ -68,8 +93,11 @@ def _quantity(value: float, unit: str) -> str:
         return "%g %s" % (value, unit)
 
 
-class AttachTask:
-    """FreeCAD's task dialog for one object's attachment."""
+class Attachment:
+    """One object's attachment as the cards edit it.
+
+    Changes go to an AttachEngine copy, then all at once to the object.
+    """
 
     def __init__(self, obj: Any) -> None:
         self.obj = obj
@@ -83,45 +111,23 @@ class AttachTask:
         self.attached = False
         self.picking = not self.engine.References
         self.bridge = AttachBridge(self)
-        from ..app import services
-        from ..ui.theme import Theme
-        theme = services.theme() or Theme(None)
-        self.form = quick_host.make_view(
-            None, "AttachTask.qml", {"theme": theme, "attach": self.bridge})
-        self.form.setWindowTitle(translate("Nxt", "Attachment"))
-        self.bridge.setParent(self.form)
-        root = self.form.rootObject()
-        # Resized later, never inside the frame that changed the height.
-        root.implicitHeightChanged.connect(
-            lambda: QtCore.QTimer.singleShot(0, self._fit_height))
-        QtCore.QTimer.singleShot(0, self._fit_height)
-        self.doc.openTransaction(translate("Nxt", "Edit attachment"))
+        self.form: Any = None
+
+    def start(self) -> None:
+        """Listen for picks and show the attachment as it stands."""
         self._selectable = self._set_selectable(False)
         Gui.Selection.clearSelection()
         Gui.Selection.addObserver(self)
         self._apply(suggest=True)
 
-    # -- FreeCAD task dialog --
+    def finish(self) -> None:
+        with contextlib.suppress(Exception):
+            Gui.Selection.removeObserver(self)
+        with contextlib.suppress(Exception):    # the object may be gone
+            self._set_selectable(self._selectable)
 
-    def getStandardButtons(self) -> int:  # noqa: N802 - FreeCAD API
-        buttons = QtWidgets.QDialogButtonBox.StandardButton
-        return int((buttons.Ok | buttons.Cancel).value)
-
-    def accept(self) -> bool:
-        if self.error:
-            return False    # the notice says what to fix
-        self._finish()
-        self.doc.recompute()
-        self.doc.commitTransaction()
-        Gui.Control.closeDialog()
-        return True
-
-    def reject(self) -> bool:
-        self._finish()
-        self.doc.abortTransaction()
-        self.doc.recompute()
-        Gui.Control.closeDialog()
-        return True
+    def synced(self) -> None:
+        """The object was written: whoever else holds it may follow."""
 
     # -- picks --
 
@@ -246,20 +252,59 @@ class AttachTask:
         except Exception as err:  # noqa: BLE001 - FreeCAD says why
             self.error = str(err) or type(err).__name__
             self.attached = False
+        self.synced()
         self.bridge.changed.emit()
-
-    def _finish(self) -> None:
-        with contextlib.suppress(Exception):
-            Gui.Selection.removeObserver(self)
-        self._set_selectable(self._selectable)
 
     def _set_selectable(self, on: bool) -> bool:
         """The object itself can't be picked as its own reference."""
-        view = getattr(self.obj, "ViewObject", None)
+        view: Any = getattr(self.obj, "ViewObject", None)
         before = bool(getattr(view, "Selectable", True))
         with contextlib.suppress(Exception):
             view.Selectable = on
         return before
+
+
+class AttachTask(Attachment):
+    """Nxt's own task dialog for one object's attachment."""
+
+    def __init__(self, obj: Any) -> None:
+        super().__init__(obj)
+        from ..app import services
+        from ..ui.theme import Theme
+        theme = services.theme() or Theme(None)
+        self.form = quick_host.make_view(
+            None, "AttachTask.qml", {"theme": theme, "attach": self.bridge})
+        self.form.setWindowTitle(translate("Nxt", "Attachment"))
+        self.bridge.setParent(self.form)
+        root = self.form.rootObject()
+        # Resized later, never inside the frame that changed the height.
+        root.implicitHeightChanged.connect(
+            lambda: QtCore.QTimer.singleShot(0, self._fit_height))
+        QtCore.QTimer.singleShot(0, self._fit_height)
+        self.doc.openTransaction(translate("Nxt", "Edit attachment"))
+        self.start()
+
+    # -- FreeCAD task dialog --
+
+    def getStandardButtons(self) -> int:  # noqa: N802 - FreeCAD API
+        buttons = QtWidgets.QDialogButtonBox.StandardButton
+        return int((buttons.Ok | buttons.Cancel).value)
+
+    def accept(self) -> bool:
+        if self.error:
+            return False    # the notice says what to fix
+        self.finish()
+        self.doc.recompute()
+        self.doc.commitTransaction()
+        Gui.Control.closeDialog()
+        return True
+
+    def reject(self) -> bool:
+        self.finish()
+        self.doc.abortTransaction()
+        self.doc.recompute()
+        Gui.Control.closeDialog()
+        return True
 
     def _fit_height(self) -> None:
         try:
@@ -272,6 +317,141 @@ class AttachTask:
                 self.form.setMinimumHeight(height)
 
 
+class EmbeddedAttachment(Attachment):
+    """The cards in FreeCAD's own attachment dialog, in place of its box.
+
+    The dialog owns the undo step and writes the object's properties back
+    on OK, which the cards have kept current. Its box stays, hidden, and
+    is kept in step: a datum's OK reads the mode from its list.
+    """
+
+    def __init__(self, obj: Any, box: Any) -> None:
+        super().__init__(obj)
+        self._box = box
+        # FreeCAD's box takes picks too while one of its buttons is down.
+        for index in range(1, MOST_REFERENCES + 1):
+            button = box.findChild(QtWidgets.QPushButton,
+                                   "buttonRef%d" % index)
+            if button is not None and button.isChecked():
+                button.click()
+
+    def synced(self) -> None:
+        """FreeCAD's box lists its modes again, then is told the mode."""
+        box = self._box
+        if not widgets.alive(box):
+            return
+        count = len(self.engine.References)
+        if count < MOST_REFERENCES:
+            # An empty line past the last reference removes nothing, and
+            # makes the box read the references and list its modes again.
+            line = box.findChild(QtWidgets.QLineEdit,
+                                 "lineRef%d" % (count + 1))
+            if line is not None:
+                line.textEdited.emit("")
+        modes = box.findChild(QtWidgets.QListWidget, "listOfModes")
+        if modes is None:
+            return
+        mode = str(self.engine.Mode)
+        wanted = "" if mode == DETACHED else str(
+            self.engine.getModeInfo(mode).get("UserFriendlyName", ""))
+        for row in range(modes.count()):
+            if (row == 0) if not wanted else modes.item(row).text() == wanted:
+                if modes.currentRow() != row:
+                    modes.setCurrentRow(row)
+                return
+
+
+class _Made:
+    """Remembers the last object made: a new sketch's dialog is for it."""
+
+    def __init__(self) -> None:
+        self.last: tuple[str, str, float] | None = None
+
+    def slotCreatedObject(self, obj: Any) -> None:  # noqa: N802
+        self.last = (obj.Document.Name, obj.Name, time.monotonic())
+
+
+class AttachPanels(TaskLayout):
+    """Swaps FreeCAD's attachment box for the cards while the setting is on."""
+
+    def __init__(self, parent: QtCore.QObject | None = None) -> None:
+        super().__init__(parent)
+        self._made = _Made()
+
+    def install(self) -> None:
+        with contextlib.suppress(Exception):    # already registered
+            App.addDocumentObserver(self._made)
+        super().install()
+
+    def remove(self) -> None:
+        with contextlib.suppress(Exception):
+            App.removeDocumentObserver(self._made)
+        super().remove()
+
+    def _swap(self) -> None:
+        view = self._view
+        if not widgets.alive(view) or not settings.get(SETTING):
+            return
+        self._busy = True
+        try:
+            for box in view.findChildren(QtWidgets.QWidget):
+                if box.inherits(STOCK_BOX) and not box.property(SWAPPED):
+                    box.setProperty(SWAPPED, True)
+                    self._replace(box)
+        except Exception:  # noqa: BLE001 - called from a Qt timer
+            log.error("could not lay out the attachment dialog")
+        finally:
+            self._busy = False
+
+    def _target(self) -> Any:
+        """The open dialog's object: the one in edit, else the one just made.
+
+        A datum's dialog edits it; a new sketch's dialog opens on the sketch
+        the command has just made.
+        """
+        gui_doc = Gui.ActiveDocument
+        editing = gui_doc.getInEdit() if gui_doc is not None else None
+        obj = getattr(editing, "Object", None)
+        if attachable(obj):
+            return obj
+        made = self._made.last
+        if made is None or time.monotonic() - made[2] > NEW_FOR_S:
+            return None
+        doc = App.getDocument(made[0]) if made[0] in App.listDocuments() \
+            else None
+        obj = doc.getObject(made[1]) if doc is not None else None
+        return obj if attachable(obj) else None
+
+    def _replace(self, box: Any) -> None:
+        obj = self._target()
+        holder = box.parentWidget()
+        layout = holder.layout() if holder is not None else None
+        if obj is None or not isinstance(layout, QtWidgets.QBoxLayout):
+            App.Console.PrintLog("Nxt: attachment dialog left as "
+                                 "FreeCAD's, its object not found\n")
+            return
+        attachment = EmbeddedAttachment(obj, box)
+        cards = fitted_view(holder, "AttachTask.qml",
+                            {"attach": attachment.bridge})
+        attachment.bridge.setParent(cards)
+        attachment.form = cards
+        layout.insertWidget(layout.indexOf(box), cards)
+        box.hide()
+        attachment.start()
+        for delay in RENEW_MS:
+            QtCore.QTimer.singleShot(delay, cards,
+                                     lambda: tab_in_order(cards))
+        box.destroyed.connect(lambda *_: _discard(attachment, cards))
+
+
+def _discard(attachment: Attachment, cards: Any) -> None:
+    attachment.finish()
+    if widgets.alive(cards):
+        cards.hide()
+        cards.setParent(None)
+        cards.deleteLater()
+
+
 class AttachBridge(QtCore.QObject):
     """What AttachTask.qml shows and does.
 
@@ -280,7 +460,7 @@ class AttachBridge(QtCore.QObject):
 
     changed = QtCore.Signal()
 
-    def __init__(self, task: AttachTask) -> None:
+    def __init__(self, task: Attachment) -> None:
         super().__init__()
         self._task = task
         self._jobs: list[Callable[[], Any]] = []
@@ -503,7 +683,7 @@ class AttachBridge(QtCore.QObject):
 
 def open_for(obj: Any) -> bool:
     """Show the panel for `obj`; False if another task is open or fails."""
-    if not attachable(obj) or Gui.Control.activeDialog():
+    if Gui.Control.activeDialog() or not make_attachable(obj):
         return False
     try:
         task = AttachTask(obj)

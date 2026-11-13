@@ -458,9 +458,61 @@ class Pill(TopNotice):
         super()._place()
         self.placed.emit()
 
+    def _ensure(self, host: Any) -> Any:
+        fresh = self._widget is None or self._host is not host
+        widget = super()._ensure(host)
+        if widget is not None and fresh:
+            widget.nxt_away = _ClickAway(widget)  # type: ignore[attr-defined]
+        return widget
+
     def _drop(self) -> None:
         super()._drop()
         self.placed.emit()
+
+
+class _ClickAway(QtCore.QObject):
+    """Closes the pill's settings on a press anywhere else, or Escape.
+
+    Watches the whole application only while the settings are open. The
+    press goes on to whatever it was on; Escape is kept, or Sketcher
+    would also take it and leave the sketch.
+    """
+
+    def __init__(self, view: Any) -> None:
+        super().__init__(view)
+        self._view = view
+        self._root = view.rootObject()
+        self._watching = False
+        if self._root is not None:
+            self._root.openChanged.connect(self._follow)
+
+    def _follow(self) -> None:
+        on = bool(self._root.property("open"))
+        if on == self._watching:
+            return
+        app = QtWidgets.QApplication.instance()
+        if app is None:
+            return
+        (app.installEventFilter if on else app.removeEventFilter)(self)
+        self._watching = on
+
+    def _close(self) -> None:
+        with contextlib.suppress(RuntimeError):  # the view went first
+            self._root.setProperty("open", False)
+
+    def eventFilter(self, watched: Any, event: Any) -> bool:  # noqa: N802
+        kind = event.type()
+        if kind == QtCore.QEvent.Type.KeyPress \
+                and event.key() == QtCore.Qt.Key.Key_Escape:
+            self._close()
+            return True
+        # A window passes its presses on to a widget: judge them there.
+        if kind == QtCore.QEvent.Type.MouseButtonPress \
+                and isinstance(watched, QtWidgets.QWidget) \
+                and watched is not self._view \
+                and not self._view.isAncestorOf(watched):
+            self._close()
+        return False
 
 
 class _Selection:

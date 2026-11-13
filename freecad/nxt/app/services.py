@@ -101,6 +101,13 @@ class Services(QtCore.QObject):
             log.error("could not install the Pad and Pocket task layout")
             self._task_layout = None
         try:
+            from ..tools.attach_task import AttachPanels
+            self._attach_panels: Any = AttachPanels(self)
+            self._attach_panels.install()
+        except Exception:
+            log.error("could not install the attachment panel")
+            self._attach_panels = None
+        try:
             from ..tools.visibility import SpaceInView
             self._space = SpaceInView(self)
             self._space.install()
@@ -143,6 +150,7 @@ class Services(QtCore.QObject):
                      self._sketch_repair, self._sketch_attach,
                      self._face_snap, self._space,
                      getattr(self, "_task_layout", None),
+                     getattr(self, "_attach_panels", None),
                      getattr(self, "_drag_guard", None)):
             if part is not None:
                 try:
@@ -153,6 +161,7 @@ class Services(QtCore.QObject):
         self._sketch_repair = self._sketch_attach = None
         self._face_snap = self._space = None
         self._task_layout = self._drag_guard = None
+        self._attach_panels = None
         with contextlib.suppress(RuntimeError):
             self._main_window.removeEventFilter(self)
 

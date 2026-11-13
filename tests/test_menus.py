@@ -169,6 +169,13 @@ class DefaultFileTests(unittest.TestCase):
         plain = self.resolve(obj(*SKETCH, flags=SHAPED))
         self.assertNotIn("nxt:edit_attachment", section(plain, "Model"))
 
+    def test_a_sub_shape_binder_offers_the_attachment_editor(self) -> None:
+        binder = ("PartDesign::SubShapeBinder", "Part::Feature")
+        for flags in (SHAPED, SHAPED + ("attachable",)):
+            model = section(self.resolve(obj(*binder, flags=flags)),
+                            "Model")
+            self.assertEqual(model.count("nxt:edit_attachment"), 1)
+
     def test_replaced_commands_are_dropped_not_carried_over(self) -> None:
         menu = self.resolve(obj(*POCKET, flags=SHAPED, in_body=True))
         self.assertTrue({"PartDesign_MoveTip", "Std_ShowSelection",

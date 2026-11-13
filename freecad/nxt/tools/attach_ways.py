@@ -158,7 +158,8 @@ def ways(implemented: Iterable[str], suggestion: dict[str, Any],
     seen = {way_of(mode).key: way_of(mode) for mode in have}
     ordered = [way for way in WAYS if way.key in seen] + [
         way for key, way in seen.items() if key not in _KEYS]
-    fits, later = [], []
+    fits: list[dict[str, Any]] = []
+    later: list[dict[str, Any]] = []
     for way in ordered:
         modes = [mode for mode in way.modes if mode in have]
         fit = any(mode in applicable for mode in modes)

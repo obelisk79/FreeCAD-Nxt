@@ -349,6 +349,49 @@ made = [i for i in items_of(cards.contentItem())
 check("3000 rows make only the delegates on screen",
       model.rowCount() > 3000 and 0 < len(made) < 60)
 
+print("click away")
+from freecad.nxt.ui import quick_host  # noqa: E402
+
+holder = QtWidgets.QWidget()
+holder.resize(600, 400)
+elsewhere = QtWidgets.QWidget(holder)
+elsewhere.setGeometry(0, 300, 600, 100)
+Gui.ActiveDocument = types.SimpleNamespace(
+    getInEdit=lambda: sketch.ViewObject)
+bridge.refresh()
+floating = quick_host.make_view(holder, "SketchPill.qml",
+                                {"theme": theme, "sketch": bridge},
+                                floating=True)
+away = sketch_panel._ClickAway(floating)
+holder.show()
+settle()
+top = floating.rootObject()
+top.setProperty("open", True)
+settle()
+QTest.mouseClick(elsewhere, QtCore.Qt.MouseButton.LeftButton)
+settle()
+check("a press elsewhere closes the settings", not top.property("open"))
+top.setProperty("open", True)
+settle()
+QTest.mouseClick(floating, QtCore.Qt.MouseButton.LeftButton,
+                 QtCore.Qt.KeyboardModifier.NoModifier,
+                 QtCore.QPoint(5, int(top.property("height")) - 5))
+settle()
+check("a press inside leaves them open", bool(top.property("open")))
+escape = QtGui.QKeyEvent(QtCore.QEvent.Type.KeyPress,
+                         QtCore.Qt.Key.Key_Escape,
+                         QtCore.Qt.KeyboardModifier.NoModifier)
+kept = QtCore.QCoreApplication.sendEvent(elsewhere, escape)
+settle()
+check("Escape closes them, and is kept from Sketcher",
+      not top.property("open") and kept)
+check("once closed, nothing else is watched",
+      not away.eventFilter(elsewhere, QtGui.QKeyEvent(
+          QtCore.QEvent.Type.KeyPress, QtCore.Qt.Key.Key_A,
+          QtCore.Qt.KeyboardModifier.NoModifier))
+      and not away._watching)
+holder.close()
+
 print("leaving")
 Gui.ActiveDocument = types.SimpleNamespace(getInEdit=lambda: None)
 bridge.touch()

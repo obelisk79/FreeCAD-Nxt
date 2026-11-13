@@ -206,6 +206,7 @@ they are.
 | Edit Shape Binder | edit mode Default | lead |
 | Synchronize | view provider action | state, when out of date; else Model |
 | Select Bound Object | view provider action | Relations |
+| Edit attachment | `nxt:edit_attachment` | Model, on a sub-shape binder not yet attachable: the action gives it Part's attachment extension, as Part's editor does |
 | Select Linked / Deepest Linked / All Links | `Std_LinkSelect*` | Relations |
 | Unlink, Replace, Import, Make Relative | `Std_Link*` | More |
 | Copy on Change, Tracking, Configurable Object | view provider actions | More |

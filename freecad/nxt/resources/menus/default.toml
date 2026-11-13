@@ -244,6 +244,8 @@ lead = "edit:default"
 state = [{ command = "nxt:synchronize_binder", flags = ["out_of_date"] }]
 
 [menu.section]
+# A binder takes an attachment only when asked, as Part's editor gives it.
+Model = [{ command = "nxt:edit_attachment", count = 1, flags = ["!attachable"] }]
 Relations = ["nxt:select_bound"]
 
 [[menu]]

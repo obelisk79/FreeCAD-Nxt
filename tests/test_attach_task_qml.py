@@ -66,21 +66,12 @@ FAULTY = dict(ATTACHED, attached=False, problem="These points are in a "
                            "text": "Pad · Vertex2", "faulty": True}])
 
 
-class Stub(QtCore.QObject):
-    changed = QtCore.Signal()
-
-    def __init__(self) -> None:
-        super().__init__()
-        self.state = dict(ATTACHED)
-
-    def show(self, state: dict[str, Any]) -> None:
-        self.state = dict(state)
-        self.changed.emit()
+changed = QtCore.Signal()
 
 
 def _value(name: str, kind: type) -> object:
     return QtCore.Property(kind, lambda self: self.state[name],
-                           notify=Stub.changed)
+                           notify=changed)
 
 
 def _slot(name: str, *kinds: type, result: type | None = None) -> object:
@@ -92,8 +83,15 @@ def _slot(name: str, *kinds: type, result: type | None = None) -> object:
     return QtCore.Slot(*kinds, result=result)(record)
 
 
-for key, value in ATTACHED.items():
-    setattr(Stub, key, _value(key, type(value)))
+def _show(self: Any, state: dict[str, Any]) -> None:
+    self.state = dict(state)
+    self.changed.emit()
+
+
+members: dict[str, Any] = {"changed": changed, "state": dict(ATTACHED),
+                           "show": _show}
+members.update({key: _value(key, type(value))
+                for key, value in ATTACHED.items()})
 for name, kinds, result in (
         ("pick", (), None), ("stopPicking", (), None),
         ("removeReference", (int,), None), ("chooseVariant", (str,), None),
@@ -101,12 +99,14 @@ for name, kinds, result in (
         ("setOffset", (int, str), bool), ("resetOffset", (), None),
         ("detach", (), None),
         ("openWays", (float, float, float), None)):
-    setattr(Stub, name, _slot(name, *kinds, result=result))
+    members[name] = _slot(name, *kinds, result=result)
+Stub = type("Stub", (QtCore.QObject,), members)
 
 attach = Stub()
 view = QtQuick.QQuickView()
 view.engine().addImportPath(str(QML))
-view.rootContext().setContextProperty("theme", Theme())
+theme = Theme()
+view.rootContext().setContextProperty("theme", theme)
 view.rootContext().setContextProperty("attach", attach)
 view.setResizeMode(QtQuick.QQuickView.ResizeMode.SizeRootObjectToView)
 view.resize(340, 700)
