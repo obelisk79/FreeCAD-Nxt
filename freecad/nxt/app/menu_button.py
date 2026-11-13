@@ -1,12 +1,14 @@
 """FreeCAD's menus behind one button: its logo, first on the toolbars.
 
 The menu bar is hidden while the button is in use; its shortcuts keep
-working. Not on macOS, whose menu bar is the system's, outside the
-window. Turned off in the preferences, the menu bar comes back.
+working, as its actions are lent to the main window meanwhile. Not on
+macOS, whose menu bar is the system's, outside the window. Turned off
+in the preferences, the menu bar comes back.
 """
 
 from __future__ import annotations
 
+import contextlib
 import sys
 from typing import Any
 
@@ -14,7 +16,7 @@ import FreeCAD as App
 import FreeCADGui as Gui
 
 from ..core import settings
-from ..core.qt import QtCore, QtWidgets
+from ..core.qt import QtCore, QtGui, QtWidgets
 from .i18n import translate
 
 TOOLBAR = "NxtMenuToolbar"
@@ -71,6 +73,8 @@ class MenuButton(QtCore.QObject):
         self._watch.setInterval(WATCH_MS)
         self._watch.timeout.connect(self._check)
         self._watched_ms = 0
+        #: Menu actions lent to the main window while the menu bar is hidden.
+        self._lent: list[QtGui.QAction] = []
 
     def eventFilter(self, watched: QtCore.QObject,  # noqa: N802
                     event: QtCore.QEvent) -> bool:
@@ -108,7 +112,27 @@ class MenuButton(QtCore.QObject):
         # (before the window is, it cannot be; the window's showing
         # applies this again).
         shown = self.toolbar.isVisible() or not self._main.isVisible()
-        self._main.menuBar().setVisible(not (on and shown))
+        hidden = on and shown
+        self._main.menuBar().setVisible(not hidden)
+        self._lend_shortcuts(hidden)
+
+    def _lend_shortcuts(self, lend: bool) -> None:
+        """Keep the shortcuts of menu-only actions alive (issues #191, #206).
+
+        Qt fires a window shortcut only for an action on a visible widget;
+        menus of a hidden menu bar do not count, so Delete, Ctrl+A and the
+        like went dead. The menus change with the workbench: lent anew.
+        """
+        main = self._main
+        for action in self._lent:
+            with contextlib.suppress(RuntimeError):     # deleted by FreeCAD
+                main.removeAction(action)
+        self._lent = []
+        if lend:
+            own = set(main.actions())
+            self._lent = [a for a in _shortcut_actions(main.menuBar())
+                          if a not in own]
+            main.addActions(self._lent)
 
     def _place_first(self) -> None:
         """Put the toolbar first on the top row, if it is not already.
@@ -137,8 +161,20 @@ class MenuButton(QtCore.QObject):
         self._main.removeEventFilter(self)
         self.toolbar.removeEventFilter(self)
         self._main.menuBar().setVisible(True)
+        self._lend_shortcuts(False)
         self._main.removeToolBar(self.toolbar)
         self.toolbar.deleteLater()
+
+
+def _shortcut_actions(widget: QtWidgets.QWidget) -> list[QtGui.QAction]:
+    """The actions with a shortcut in a menu bar or menu, submenus too."""
+    found: list[QtGui.QAction] = []
+    for action in widget.actions():
+        if isinstance(sub := action.menu(), QtWidgets.QMenu):
+            found += _shortcut_actions(sub)
+        elif not action.shortcut().isEmpty():
+            found.append(action)
+    return found
 
 
 def apply() -> None:
