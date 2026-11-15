@@ -41,6 +41,9 @@ class Entry:
     action: QtGui.QAction | None = None
     #: The proxied button, tab bar or combo box, or a command's dropdown.
     widget: Any = None
+    #: Names it in a saved layout: the command's name, or for a widget
+    #: its toolbar and place there ("Draft tray#2").
+    key: str = ""
 
 
 SEPARATOR = Entry(Kind.SEPARATOR)
@@ -71,20 +74,26 @@ def _choices_in(widget: QtWidgets.QWidget) -> Any:
             or widget.findChild(QtWidgets.QComboBox))
 
 
-def entry_for(bar: QtWidgets.QToolBar, action: QtGui.QAction) -> Entry | None:
-    """The strip's entry for one toolbar action, or None if unsupported."""
+def entry_for(bar: QtWidgets.QToolBar, action: QtGui.QAction,
+              place: int = 0) -> Entry | None:
+    """The strip's entry for one toolbar action, or None if unsupported.
+
+    `place` is the action's position in its toolbar, naming a widget.
+    """
     if action.isSeparator():
         return SEPARATOR
     widget = bar.widgetForAction(action)
     if not isinstance(action, QtWidgets.QWidgetAction):
         dropdown = (widget if isinstance(widget, QtWidgets.QToolButton)
                     and widget.menu() is not None else None)
-        return Entry(Kind.COMMAND, action, dropdown)
+        return Entry(Kind.COMMAND, action, dropdown,
+                     action.objectName() or action.text())
+    key = "%s#%d" % (bar.objectName(), place)
     if isinstance(widget, QtWidgets.QAbstractButton):
-        return Entry(Kind.BUTTON, action, widget)
+        return Entry(Kind.BUTTON, action, widget, key)
     choices = _choices_in(widget) if widget is not None else None
     if choices is not None:
-        return Entry(Kind.CHOICE, action, choices)
+        return Entry(Kind.CHOICE, action, choices, key)
     return None
 
 
@@ -108,10 +117,10 @@ def read(main: QtWidgets.QMainWindow, own: Iterable[str]
     unsupported: list[str] = []
     for bar in shown_toolbars(main, own):
         entries.append(SEPARATOR)
-        for action in bar.actions():
+        for place, action in enumerate(bar.actions()):
             if not action.isVisible():
                 continue
-            entry = entry_for(bar, action)
+            entry = entry_for(bar, action, place)
             if entry is None:
                 widget = bar.widgetForAction(action)
                 unsupported.append(widget.metaObject().className()

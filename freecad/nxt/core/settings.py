@@ -54,6 +54,8 @@ DEFAULTS: dict[str, bool | int | float | str] = {
     # Experimental: one QML strip in place of FreeCAD's toolbars
     # (toolbars/strip.py).
     "ToolStrip": False,
+    # JSON: the tool strip's order per workbench (toolbars/layouts.py).
+    "ToolStripLayouts": "",
     # A new sketch, container or feature opens in rename.
     "AutoRename": False,
     # Look for addon updates after startup (app/update_check.py).

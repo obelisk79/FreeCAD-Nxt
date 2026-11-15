@@ -26,13 +26,14 @@ fakes.install()
 
 from PySide6 import QtCore, QtGui, QtWidgets  # noqa: E402
 
-from freecad.nxt.toolbars import models, source  # noqa: E402
+from freecad.nxt.toolbars import layouts, models, source  # noqa: E402
 from freecad.nxt.toolbars.bridge import ToolStripBridge  # noqa: E402
 from freecad.nxt.toolbars.hider import ToolbarHider  # noqa: E402
 from freecad.nxt.toolbars.source import Kind  # noqa: E402
 
 APP = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 OWN = ("NxtToolStrip",)
+WORKBENCH = "PartDesignWorkbench"
 TOP = QtCore.Qt.ToolBarArea.TopToolBarArea
 SPLIT = QtWidgets.QToolButton.ToolButtonPopupMode.MenuButtonPopup
 
@@ -203,8 +204,10 @@ class Acting(unittest.TestCase):
     def setUp(self) -> None:
         self.window = Window()
         self.global_point = QtCore.QPoint(5, 5)
+        layouts.save(WORKBENCH, None)
         self.bridge = ToolStripBridge(self.window.main, OWN,
-                                      lambda _p: self.global_point)
+                                      lambda _p: self.global_point,
+                                      lambda: WORKBENCH)
         self.model = self.bridge.model
         self.bridge.rebuild()
 
@@ -281,6 +284,110 @@ class Acting(unittest.TestCase):
 
     def test_mnemonics_dropped_from_labels(self) -> None:
         self.assertEqual(models.plain("&Save && Close"), "Save & Close")
+
+
+def entry(key: str) -> source.Entry:
+    return source.Entry(Kind.COMMAND, key=key)
+
+
+def keys(entries: list[source.Entry]) -> list[str]:
+    return ["|" if e.kind is Kind.SEPARATOR else e.key for e in entries]
+
+
+class Layouts(unittest.TestCase):
+    def setUp(self) -> None:
+        self.live = [entry("New"), entry("Open"), source.SEPARATOR,
+                     entry("Pad"), entry("Pocket")]
+        layouts.save(WORKBENCH, None)
+
+    def test_no_layout_keeps_freecads_order(self) -> None:
+        self.assertEqual(keys(layouts.arrange(self.live, None)),
+                         ["New", "Open", "|", "Pad", "Pocket"])
+
+    def test_saved_order_applied(self) -> None:
+        layout = layouts.Layout(["Pad", "|", "New"], ["Open", "Pocket"])
+        self.assertEqual(keys(layouts.arrange(self.live, layout)),
+                         ["Pad", "|", "New"])
+
+    def test_unmentioned_items_appended_after_a_separator(self) -> None:
+        layout = layouts.Layout(["Pad", "New"], ["Open"])
+        self.assertEqual(keys(layouts.arrange(self.live, layout)),
+                         ["Pad", "New", "|", "Pocket"])
+
+    def test_items_no_longer_offered_skipped(self) -> None:
+        layout = layouts.Layout(["Gone", "Pad", "|", "Open"], [])
+        arranged = keys(layouts.arrange(self.live, layout))
+        self.assertNotIn("Gone", arranged)
+
+    def test_capture_counts_what_was_left_out_as_removed(self) -> None:
+        shown = [self.live[3], source.SEPARATOR, self.live[0]]
+        layout = layouts.capture(shown, self.live,
+                                 layouts.Layout([], ["Elsewhere"]))
+        self.assertEqual(layout.order, ["Pad", "|", "New"])
+        self.assertEqual(layout.removed, ["Elsewhere", "Open", "Pocket"])
+
+    def test_saved_layouts_round_trip(self) -> None:
+        layouts.save(WORKBENCH, layouts.Layout(["Pad"], ["New"]))
+        self.assertEqual(layouts.load(WORKBENCH),
+                         layouts.Layout(["Pad"], ["New"]))
+        layouts.save(WORKBENCH, None)
+        self.assertIsNone(layouts.load(WORKBENCH))
+
+    def test_unreadable_setting_ignored(self) -> None:
+        layouts.settings.put(layouts.SETTING, "{not json")
+        self.assertEqual(layouts.load_all(), {})
+        layouts.save(WORKBENCH, None)
+
+
+class Editing(Acting):
+    def texts(self) -> list[str]:
+        role = self.role("text")
+        return [self.model.data(self.model.index(r), role) or "|"
+                for r in range(self.model.rowCount())]
+
+    def test_drag_saves_the_new_order(self) -> None:
+        self.bridge.setEditing(True)
+        self.bridge.beginDrag()
+        self.bridge.move(self.row_of("Save"), 0)
+        self.bridge.endDrag(0, False)
+        self.assertEqual(layouts.load(WORKBENCH).order[0], "Save")
+        self.bridge.rebuild()
+        self.assertEqual(self.texts()[0], "Save")
+
+    def test_drop_outside_removes_and_remembers(self) -> None:
+        row = self.row_of("Open")
+        self.bridge.beginDrag()
+        self.bridge.endDrag(row, True)
+        self.assertNotIn("Open", self.texts())
+        self.bridge.rebuild()
+        self.assertNotIn("Open", self.texts())
+
+    def test_remove_button_removes(self) -> None:
+        self.bridge.removeItem(self.row_of("Pad"))
+        self.assertNotIn("Pad", self.texts())
+
+    def test_reset_brings_back_freecads_toolbars(self) -> None:
+        self.bridge.removeItem(self.row_of("Pad"))
+        self.bridge.resetLayout()
+        self.assertIn("Pad", self.texts())
+        self.assertIsNone(layouts.load(WORKBENCH))
+
+    def test_commands_do_not_run_while_editing(self) -> None:
+        self.bridge.setEditing(True)
+        self.bridge.activate(self.row_of("New"), 0.0, 0.0)
+        self.assertEqual(self.window.fired, [])
+
+    def test_no_rebuild_mid_drag(self) -> None:
+        self.bridge.beginDrag()
+        self.bridge.move(self.row_of("Save"), 0)
+        self.bridge.rebuild()
+        self.assertEqual(self.texts()[0], "Save")
+        self.bridge.endDrag(0, False)
+
+    def test_moved_row_still_follows_its_action(self) -> None:
+        self.bridge.move(self.row_of("Pad"), 0)
+        self.window.pad.setChecked(True)
+        self.assertTrue(self.value(0, "checked"))
 
 
 if __name__ == "__main__":

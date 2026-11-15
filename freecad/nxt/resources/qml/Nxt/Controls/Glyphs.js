@@ -31,6 +31,20 @@ function pen(ctx, w, ink) {
     ctx.beginPath();
 }
 
+// Edit: a pencil, point down-left, its cap marked off.
+function pencil(ctx, w, h, ink) {
+    pen(ctx, w, ink);
+    ctx.moveTo(w * 0.16, h * 0.84);
+    ctx.lineTo(w * 0.22, h * 0.6);
+    ctx.lineTo(w * 0.64, h * 0.18);
+    ctx.lineTo(w * 0.82, h * 0.36);
+    ctx.lineTo(w * 0.4, h * 0.78);
+    ctx.closePath();
+    ctx.moveTo(w * 0.54, h * 0.28);
+    ctx.lineTo(w * 0.72, h * 0.46);
+    ctx.stroke();
+}
+
 // A constraint's Deactivate: a circle struck through.
 function deactivate(ctx, w, h, ink) {
     pen(ctx, w, ink);

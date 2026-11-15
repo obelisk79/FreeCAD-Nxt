@@ -15,6 +15,10 @@ Item {
     property string tip: ""
     property bool checked: false
     property string dropdown: ""
+    //: Drawn as disabled while still enabled for edit mode's hand.
+    property bool dimmed: !enabled
+    //: Framed, and its clicks left to the strip's hand.
+    property bool editing: false
 
     readonly property bool hovered: hover.hovered
     readonly property int padding: Math.round((size - iconSize) / 2)
@@ -36,7 +40,16 @@ Item {
         color: press.pressed || item.checked ? theme.pressed : theme.hover
         border.color: item.checked ? theme.accent : "transparent"
         border.width: item.checked ? 1 : 0
-        visible: item.enabled && (item.hovered || press.pressed || item.checked)
+        visible: !item.dimmed && (item.hovered || press.pressed || item.checked)
+    }
+
+    Rectangle {
+        anchors.fill: parent
+        visible: item.editing
+        radius: 4
+        color: "transparent"
+        border.color: theme.border
+        border.width: 1
     }
 
     Row {
@@ -44,7 +57,7 @@ Item {
         x: item.padding
         anchors.verticalCenter: parent.verticalCenter
         spacing: item.padding
-        opacity: item.enabled ? 1 : item.disabledOpacity
+        opacity: item.dimmed ? item.disabledOpacity : 1
 
         Image {
             visible: item.icon !== ""
@@ -92,7 +105,7 @@ Item {
     MouseArea {
         id: press
         anchors.fill: parent
-        enabled: item.enabled
+        enabled: item.enabled && !item.editing
         onClicked: (event) => {
             announce.menu = item.dropdown === "instant"
                 || (item.dropdown === "split"
@@ -110,7 +123,7 @@ Item {
     }
 
     NxtToolTip {
-        shown: item.hovered && !press.pressed
+        shown: item.hovered && !press.pressed && !item.editing
         text: item.tip
     }
 

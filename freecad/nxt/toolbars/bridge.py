@@ -1,7 +1,9 @@
 """The object the tool strip's QML calls: its model and its actions.
 
 Rebuilds are deferred and coalesced: FreeCAD lays out a workbench's
-toolbars over several events after `workbenchActivated`.
+toolbars over several events after `workbenchActivated`. In edit mode
+items are reordered and removed instead of run; each finished drag or
+removal saves the workbench's layout once.
 """
 
 from __future__ import annotations
@@ -14,7 +16,7 @@ import FreeCAD as App
 
 from ..core import log
 from ..core.qt import QtCore, QtWidgets
-from . import source
+from . import layouts, source
 from .models import ToolModel
 from .source import Kind
 
@@ -63,14 +65,20 @@ class ToolStripBridge(QtCore.QObject):
     """FreeCAD's toolbars as the strip's model, and its click handlers."""
 
     iconSizeChanged = QtCore.Signal()  # noqa: N815 - Qt API
+    editingChanged = QtCore.Signal()  # noqa: N815 - Qt API
 
     def __init__(self, main: QtWidgets.QMainWindow, own: Iterable[str],
                  to_global: Callable[[QtCore.QPoint], QtCore.QPoint],
+                 workbench: Callable[[], str],
                  parent: QtCore.QObject | None = None) -> None:
         super().__init__(parent)
         self._main = main
         self._own = tuple(own)
         self._to_global = to_global
+        self._workbench = workbench
+        self._live: list[source.Entry] = []
+        self._editing = False
+        self._dragging = False
         self._icon_size = self._main_icon_size()
         self._model = ToolModel(lambda: self._icon_size, self)
         self._reported: set[str] = set()
@@ -94,6 +102,9 @@ class ToolStripBridge(QtCore.QObject):
         self._rebuild_timer.start()
 
     def rebuild(self) -> None:
+        if self._dragging:
+            self.schedule()
+            return
         size = self._main_icon_size()
         if size != self._icon_size:
             self._icon_size = size
@@ -104,7 +115,9 @@ class ToolStripBridge(QtCore.QObject):
             log.error("could not read FreeCAD's toolbars")
             return
         self._report(unsupported)
-        self._model.set_entries(entries)
+        self._live = entries
+        self._model.set_entries(layouts.arrange(
+            entries, layouts.load(self._workbench())))
         if self._model.has(Kind.BUTTON):
             self._poll_timer.start()
         else:
@@ -115,6 +128,11 @@ class ToolStripBridge(QtCore.QObject):
             App.Console.PrintLog(
                 "Nxt: tool strip cannot show a toolbar widget %s\n" % name)
         self._reported.update(unsupported)
+
+    def _save(self) -> None:
+        workbench = self._workbench()
+        layouts.save(workbench, layouts.capture(
+            self._model.entries(), self._live, layouts.load(workbench)))
 
     def stop(self) -> None:
         self._rebuild_timer.stop()
@@ -134,6 +152,46 @@ class ToolStripBridge(QtCore.QObject):
     iconSize = QtCore.Property(  # noqa: N815 - QML API
         int, _get_icon_size, notify=iconSizeChanged)
 
+    def _get_editing(self) -> bool:
+        return self._editing
+
+    editing = QtCore.Property(bool, _get_editing, notify=editingChanged)
+
+    @QtCore.Slot(bool)
+    def setEditing(self, on: bool) -> None:  # noqa: N802
+        """Enter or leave edit mode, where items move instead of run."""
+        if on != self._editing:
+            self._editing = on
+            self.editingChanged.emit()
+
+    @QtCore.Slot()
+    def beginDrag(self) -> None:  # noqa: N802
+        self._dragging = True
+
+    @QtCore.Slot(int, int)
+    def move(self, row: int, to: int) -> None:
+        """Move an item while it is dragged; saved when the drag ends."""
+        self._model.move(row, to)
+
+    @QtCore.Slot(int, bool)
+    def endDrag(self, row: int, remove: bool) -> None:  # noqa: N802
+        """Finish a drag at `row`, removing the item if dropped outside."""
+        self._dragging = False
+        if remove:
+            self._model.remove(row)
+        self._save()
+
+    @QtCore.Slot(int)
+    def removeItem(self, row: int) -> None:  # noqa: N802
+        if self._model.remove(row):
+            self._save()
+
+    @QtCore.Slot()
+    def resetLayout(self) -> None:  # noqa: N802
+        """Back to FreeCAD's own toolbars for this workbench."""
+        layouts.save(self._workbench(), None)
+        self._model.set_entries(self._live)
+
     @QtCore.Slot(int, float, float)
     def activate(self, row: int, x: float, y: float) -> None:
         """Run the command, or click the button, at `row`.
@@ -143,7 +201,7 @@ class ToolStripBridge(QtCore.QObject):
         """
         entry = self._model.entry(row)
         try:
-            if entry is None:
+            if entry is None or self._editing:
                 return
             if entry.kind is Kind.COMMAND and entry.action is not None \
                     and entry.action.isEnabled():

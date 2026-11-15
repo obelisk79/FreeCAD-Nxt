@@ -112,6 +112,9 @@ class ToolModel(QtCore.QAbstractListModel):
     def entry(self, row: int) -> Entry | None:
         return self._entries[row] if 0 <= row < len(self._entries) else None
 
+    def entries(self) -> list[Entry]:
+        return list(self._entries)
+
     def has(self, kind: Kind) -> bool:
         return any(e.kind is kind for e in self._entries)
 
@@ -127,6 +130,27 @@ class ToolModel(QtCore.QAbstractListModel):
         self._rows = [describe(e, size) for e in self._entries]
         self.endResetModel()
         self._watch()
+
+    def move(self, row: int, to: int) -> bool:
+        """Move row `row` to index `to`, as a drag passes over items."""
+        count = len(self._entries)
+        if row == to or not (0 <= row < count and 0 <= to < count):
+            return False
+        # Qt's destination counts the row being moved while it is above.
+        self.beginMoveRows(QtCore.QModelIndex(), row, row,
+                           QtCore.QModelIndex(), to + 1 if to > row else to)
+        self._entries.insert(to, self._entries.pop(row))
+        self._rows.insert(to, self._rows.pop(row))
+        self.endMoveRows()
+        return True
+
+    def remove(self, row: int) -> bool:
+        if self.entry(row) is None:
+            return False
+        self.beginRemoveRows(QtCore.QModelIndex(), row, row)
+        del self._entries[row], self._rows[row]
+        self.endRemoveRows()
+        return True
 
     def refresh(self, row: int, *_args: Any) -> None:
         """Announce row `row` if what it shows has changed."""
@@ -145,9 +169,16 @@ class ToolModel(QtCore.QAbstractListModel):
             if kind is None or entry.kind is kind:
                 self.refresh(row)
 
+    def _refresh_entry(self, entry: Entry, *_args: Any) -> None:
+        # By identity: rows move while editing; a removed entry is gone.
+        for row, shown in enumerate(self._entries):
+            if shown is entry:
+                self.refresh(row)
+                return
+
     def _watch(self) -> None:
-        for row, entry in enumerate(self._entries):
-            slot = functools.partial(self.refresh, row)
+        for entry in self._entries:
+            slot = functools.partial(self._refresh_entry, entry)
             if entry.kind is Kind.COMMAND and entry.action is not None:
                 signal = entry.action.changed
             elif entry.kind is Kind.CHOICE:

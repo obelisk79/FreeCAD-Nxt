@@ -66,7 +66,8 @@ class ToolStrip(QtCore.QObject):
         # Off the toolbars' own menu: hiding it would leave no toolbar.
         toolbar.toggleViewAction().setVisible(False)
         self._toolbar = toolbar
-        self.bridge = ToolStripBridge(main, OWN, self._to_global, self)
+        self.bridge = ToolStripBridge(main, OWN, self._to_global,
+                                      _workbench_name, self)
         self._view = quick_host.make_view(
             toolbar, QML, {"theme": self._theme, "strip": self.bridge},
             prepare=_see_through)
@@ -122,6 +123,11 @@ class ToolStrip(QtCore.QObject):
                 and event.type() == QtCore.QEvent.Type.Hide:
             self._reshow_timer.start()
         return False
+
+
+def _workbench_name() -> str:
+    workbench = Gui.activeWorkbench()
+    return workbench.name() if workbench is not None else ""
 
 
 def _remove_left_over(main: QtWidgets.QMainWindow) -> None:
