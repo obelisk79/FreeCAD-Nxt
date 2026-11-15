@@ -224,6 +224,11 @@ class Expressions(QtCore.QObject):
         """Popup offset; the Wayland workaround lives in quick_host."""
         return quick_host.popup_offset(item)
 
+    @QtCore.Slot(QtCore.QObject, result=QtCore.QRectF)
+    def popupRoom(self, item: Any) -> QtCore.QRectF:  # noqa: N802
+        """Where a popup may go; empty when no view holds `item`."""
+        return quick_host.popup_room(item)
+
     @QtCore.Slot(str, str, result="QVariantMap")
     def evaluate(self, owner: str, text: str) -> dict[str, Any]:  # noqa: N802
         """{ok, text}: the value, or the first line of the error."""

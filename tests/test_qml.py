@@ -584,17 +584,17 @@ def run(overlay):
         settle(0.1)
         lists = [c for c in view.contentItem().childItems()
                  if c.metaObject().className().startswith("ChoiceList")]
-        shown = len(lists) == 1 and lists[0].property("visible")
+        windows = [w for w in app.topLevelWindows()
+                   if w.transientParent() is view and w.isVisible()]
+        shown = len(lists) == 1 and len(windows) == 1
         print("     choice drop-down: %s" % ("open" if shown else "missing"))
         # Wide enough for its longest option, not stuck at the chip's.
         if shown:
-            box = [c for c in lists[0].childItems()
-                   if c.metaObject().className().startswith("QQuickRect")]
-            box = box[0]
             need = lists[0].property("widest")
+            width = lists[0].property("listWidth")
             print("     drop-down width %.0f for longest option %.0f"
-                  % (box.property("width"), need))
-            if need <= 0 or box.property("width") < need + 20:
+                  % (width, need))
+            if need <= 0 or width < need + 20:
                 problems.append("overlay=%s: drop-down narrower than its "
                                 "options" % overlay)
         if not shown:
@@ -604,8 +604,8 @@ def run(overlay):
                          QtCore.Qt.KeyboardModifier.NoModifier,
                          QtCore.QPoint(5, 470))
         settle(0.1)
-        if any(c.metaObject().className().startswith("ChoiceList")
-               for c in view.contentItem().childItems()):
+        if any(w.transientParent() is view and w.isVisible()
+               for w in app.topLevelWindows()):
             problems.append("overlay=%s: a press outside did not close the "
                             "drop-down" % overlay)
     else:

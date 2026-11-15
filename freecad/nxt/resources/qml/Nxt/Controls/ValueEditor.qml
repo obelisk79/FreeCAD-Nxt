@@ -51,6 +51,9 @@ Item {
                                     || editor.kind === "number"
                                     || editor.kind === "text"
     property bool choosing: false
+    //: The control whose list a press just closed: that press's click
+    //: must not open it again.
+    property var closedFrom: null
 
     // What a click chose, shown at once, before it is stored: the spec
     // comes back from the stored value a refresh later.
@@ -193,7 +196,15 @@ Item {
         return (i >= 0 && labels[i]) || value;
     }
 
+    Timer {
+        id: reopenGuard
+        interval: Qt.styleHints.mouseDoubleClickInterval
+        onTriggered: editor.closedFrom = null
+    }
+
     function openChoices(anchor, spec, done) {
+        if (editor.closedFrom === anchor)
+            return;
         spec = spec || editor.spec;
         done = done || editor.edited;
         var root = anchor.Window.contentItem;
@@ -224,6 +235,10 @@ Item {
         list.chosen.connect(function (value) {
             if (value !== editor.choiceOf(spec))
                 editor.choose(spec, done, value);
+        });
+        list.pressedAway.connect(function () {
+            editor.closedFrom = anchor;
+            reopenGuard.restart();
         });
         list.Component.destruction.connect(function () {
             editor.choosing = false;
