@@ -19,6 +19,10 @@ Item {
     property bool dimmed: !enabled
     //: Framed, and its clicks left to the strip's hand.
     property bool editing: false
+    //: The row's kind, for the strip's hand ("command", "group", ...).
+    property string kind: "command"
+    //: A group the user can open and drop commands into.
+    property bool groupEditable: false
 
     readonly property bool hovered: hover.hovered
     readonly property int padding: Math.round((size - iconSize) / 2)

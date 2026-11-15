@@ -85,6 +85,49 @@
     </message>
 </context>
 <context>
+    <name>CommandDrawer</name>
+    <message>
+        <source>Already on the toolbar</source>
+        <translation>Déjà dans la barre d&apos;outils</translation>
+    </message>
+    <message>
+        <source>Search commands</source>
+        <translation>Rechercher des commandes</translation>
+    </message>
+    <message>
+        <source>Separator</source>
+        <translation>Séparateur</translation>
+    </message>
+    <message>
+        <source>Drag a separator onto the toolbar</source>
+        <translation>Glisser un séparateur sur la barre d&apos;outils</translation>
+    </message>
+    <message>
+        <source>New group</source>
+        <translation>Nouveau groupe</translation>
+    </message>
+    <message>
+        <source>Drag onto the toolbar, then drop commands on it</source>
+        <translation>Glisser sur la barre d&apos;outils, puis y déposer des commandes</translation>
+    </message>
+    <message>
+        <source>Import…</source>
+        <translation>Importer…</translation>
+    </message>
+    <message>
+        <source>Export…</source>
+        <translation>Exporter…</translation>
+    </message>
+    <message>
+        <source>Reading commands…</source>
+        <translation>Lecture des commandes…</translation>
+    </message>
+    <message>
+        <source>No command matches</source>
+        <translation>Aucune commande ne correspond</translation>
+    </message>
+</context>
+<context>
     <name>ContextMenu</name>
     <message>
         <source>More</source>
@@ -245,6 +288,25 @@
     <message>
         <source>Refine result</source>
         <translation>Affiner le résultat</translation>
+    </message>
+</context>
+<context>
+    <name>GroupEditor</name>
+    <message>
+        <source>Group name</source>
+        <translation>Nom du groupe</translation>
+    </message>
+    <message>
+        <source>Remove from the group</source>
+        <translation>Retirer du groupe</translation>
+    </message>
+    <message>
+        <source>Ungroup</source>
+        <translation>Dissocier</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation>Fermer</translation>
     </message>
 </context>
 <context>
@@ -637,6 +699,14 @@ Le panneau requiert PySide6.QtQuickWidgets.</translation>
     <message>
         <source>Edit attachment opens Nxt&apos;s panel: picks named for what they are, ways grouped by what they do, and the offset shut until wanted.</source>
         <translation>Éditer l&apos;attachement ouvre le panneau Nxt : sélections nommées pour ce qu&apos;elles sont, modes groupés par effet, décalage replié jusqu&apos;à besoin.</translation>
+    </message>
+    <message>
+        <source>Experimental: Nxt&apos;s tool strip</source>
+        <translation>Expérimental : bande d&apos;outils Nxt</translation>
+    </message>
+    <message>
+        <source>One bar in place of FreeCAD&apos;s toolbars, with each command on its own.</source>
+        <translation>Une seule barre à la place des barres d&apos;outils de FreeCAD, chaque commande séparément.</translation>
     </message>
     <message>
         <source>Attach a new sketch to three picked points without asking</source>
@@ -1094,6 +1164,24 @@ The sketch&apos;s axes, by their geometry index.</extracomment>
     <message>
         <source>%d DoF</source>
         <translation>%d DDL</translation>
+    </message>
+    <message>
+        <source>Group</source>
+        <extracomment>Wait after the last toolbar change before reading them all again. Proxied buttons emit nothing when their text or state changes (Draft Tray shows the current layer): read again this often. The group open in the editor row, by identity: rows move. Group key -&gt; the member key last used, kept across rebuilds.</extracomment>
+        <translation>Groupe</translation>
+    </message>
+    <message>
+        <source>Export toolbar layouts</source>
+        <translation>Exporter les dispositions des barres d&apos;outils</translation>
+    </message>
+    <message>
+        <source>Import toolbar layouts</source>
+        <translation>Importer les dispositions des barres d&apos;outils</translation>
+    </message>
+    <message>
+        <source>Tool strip</source>
+        <extracomment>Toolbars that are the strip&apos;s own and never covered. FreeCAD&apos;s main window, with its workbenchActivated signal.</extracomment>
+        <translation>Bande d&apos;outils</translation>
     </message>
 </context>
 <context>
@@ -2491,6 +2579,25 @@ The sketch&apos;s axes, by their geometry index.</extracomment>
     <message>
         <source>Sketch settings</source>
         <translation>Réglages de l&apos;esquisse</translation>
+    </message>
+</context>
+<context>
+    <name>ToolStrip</name>
+    <message>
+        <source>Remove from the toolbar</source>
+        <translation>Retirer de la barre d&apos;outils</translation>
+    </message>
+    <message>
+        <source>Edit the toolbar</source>
+        <translation>Modifier la barre d&apos;outils</translation>
+    </message>
+    <message>
+        <source>Reset</source>
+        <translation>Réinitialiser</translation>
+    </message>
+    <message>
+        <source>Done</source>
+        <translation>Terminé</translation>
     </message>
 </context>
 <context>

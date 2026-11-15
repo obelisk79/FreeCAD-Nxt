@@ -85,6 +85,49 @@
     </message>
 </context>
 <context>
+    <name>CommandDrawer</name>
+    <message>
+        <source>Already on the toolbar</source>
+        <translation>已在工具栏上</translation>
+    </message>
+    <message>
+        <source>Search commands</source>
+        <translation>搜索命令</translation>
+    </message>
+    <message>
+        <source>Separator</source>
+        <translation>分隔符</translation>
+    </message>
+    <message>
+        <source>Drag a separator onto the toolbar</source>
+        <translation>将分隔符拖到工具栏上</translation>
+    </message>
+    <message>
+        <source>New group</source>
+        <translation>新建组</translation>
+    </message>
+    <message>
+        <source>Drag onto the toolbar, then drop commands on it</source>
+        <translation>拖到工具栏上，然后把命令拖放到它上面</translation>
+    </message>
+    <message>
+        <source>Import…</source>
+        <translation>导入…</translation>
+    </message>
+    <message>
+        <source>Export…</source>
+        <translation>导出…</translation>
+    </message>
+    <message>
+        <source>Reading commands…</source>
+        <translation>正在读取命令…</translation>
+    </message>
+    <message>
+        <source>No command matches</source>
+        <translation>没有匹配的命令</translation>
+    </message>
+</context>
+<context>
     <name>ContextMenu</name>
     <message>
         <source>More</source>
@@ -245,6 +288,25 @@
     <message>
         <source>Refine result</source>
         <translation>消除多余边(Refine)</translation>
+    </message>
+</context>
+<context>
+    <name>GroupEditor</name>
+    <message>
+        <source>Group name</source>
+        <translation>组名</translation>
+    </message>
+    <message>
+        <source>Remove from the group</source>
+        <translation>从组中移除</translation>
+    </message>
+    <message>
+        <source>Ungroup</source>
+        <translation>取消分组</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation>关闭</translation>
     </message>
 </context>
 <context>
@@ -637,6 +699,14 @@ The panel needs PySide6.QtQuickWidgets.</source>
     <message>
         <source>Edit attachment opens Nxt&apos;s panel: picks named for what they are, ways grouped by what they do, and the offset shut until wanted.</source>
         <translation>“编辑附着”会打开 Nxt 面板：选取按类型命名，方式按作用分组，偏移在需要前保持收起。</translation>
+    </message>
+    <message>
+        <source>Experimental: Nxt&apos;s tool strip</source>
+        <translation>实验性：Nxt 工具条</translation>
+    </message>
+    <message>
+        <source>One bar in place of FreeCAD&apos;s toolbars, with each command on its own.</source>
+        <translation>用一条工具栏代替 FreeCAD 的工具栏，每个命令单独显示。</translation>
     </message>
     <message>
         <source>Attach a new sketch to three picked points without asking</source>
@@ -1094,6 +1164,24 @@ The sketch&apos;s axes, by their geometry index.</extracomment>
     <message>
         <source>%d DoF</source>
         <translation>%d 自由度</translation>
+    </message>
+    <message>
+        <source>Group</source>
+        <extracomment>Wait after the last toolbar change before reading them all again. Proxied buttons emit nothing when their text or state changes (Draft Tray shows the current layer): read again this often. The group open in the editor row, by identity: rows move. Group key -&gt; the member key last used, kept across rebuilds.</extracomment>
+        <translation>组</translation>
+    </message>
+    <message>
+        <source>Export toolbar layouts</source>
+        <translation>导出工具栏布局</translation>
+    </message>
+    <message>
+        <source>Import toolbar layouts</source>
+        <translation>导入工具栏布局</translation>
+    </message>
+    <message>
+        <source>Tool strip</source>
+        <extracomment>Toolbars that are the strip&apos;s own and never covered. FreeCAD&apos;s main window, with its workbenchActivated signal.</extracomment>
+        <translation>工具条</translation>
     </message>
 </context>
 <context>
@@ -2491,6 +2579,25 @@ The sketch&apos;s axes, by their geometry index.</extracomment>
     <message>
         <source>Sketch settings</source>
         <translation>草图设置</translation>
+    </message>
+</context>
+<context>
+    <name>ToolStrip</name>
+    <message>
+        <source>Remove from the toolbar</source>
+        <translation>从工具栏移除</translation>
+    </message>
+    <message>
+        <source>Edit the toolbar</source>
+        <translation>编辑工具栏</translation>
+    </message>
+    <message>
+        <source>Reset</source>
+        <translation>重置</translation>
+    </message>
+    <message>
+        <source>Done</source>
+        <translation>完成</translation>
     </message>
 </context>
 <context>

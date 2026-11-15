@@ -190,6 +190,98 @@ class StripView(unittest.TestCase):
         self.drag(first, below)
         self.assertNotIn("New", self.texts())
 
+    def open_drawer(self) -> list[Any]:
+        self.bridge.setEditing(True)
+        settle(0.3)
+        drawer = items_of(self.root, "CommandDrawer")[0]
+        return [t for t in items_of(drawer, "Tile")
+                if t.property("key") and t.isVisible()]
+
+    def tile(self, key: str) -> Any:
+        return next(t for t in self.open_drawer()
+                    if t.property("key") == key)
+
+    def test_drawer_lists_commands(self) -> None:
+        keys = {t.property("key") for t in self.open_drawer()}
+        self.assertIn("Sketcher_CreateCircle", keys)
+        self.assertIn("|", keys)
+
+    def test_double_click_adds_to_the_end(self) -> None:
+        circle = self.tile("Sketcher_CreateCircle")
+        point = circle.mapToScene(QtCore.QPointF(
+            circle.width() / 2, circle.height() / 2)).toPoint()
+        QTest.mouseDClick(self.view, QtCore.Qt.MouseButton.LeftButton,
+                          QtCore.Qt.KeyboardModifier.NoModifier, point)
+        settle()
+        self.assertEqual(self.texts()[-1], "Circle")
+
+    def test_drag_from_the_drawer_places_it(self) -> None:
+        circle = self.tile("Sketcher_CreateCircle")
+        first = self.tools()[0]
+        target = first.mapToScene(QtCore.QPointF(
+            first.width() / 4, first.height() / 2)).toPoint()
+        self.drag(circle, target)
+        self.assertEqual(self.texts()[0], "Circle")
+        self.assertEqual(layouts.load(WORKBENCH).order[0],
+                         "Sketcher_CreateCircle")
+
+    def test_drag_back_onto_the_drawer_removes(self) -> None:
+        tiles = self.open_drawer()
+        first = self.tools()[0]
+        on_drawer = tiles[-1].mapToScene(QtCore.QPointF(5, 5)).toPoint()
+        self.drag(first, on_drawer)
+        self.assertNotIn("New", self.texts())
+
+    def group_item(self) -> Any:
+        return next(t for t in self.tools() if t.property("kind") == "group")
+
+    def middle(self, item: Any) -> QtCore.QPoint:
+        return item.mapToScene(QtCore.QPointF(
+            item.width() / 2, item.height() / 2)).toPoint()
+
+    def make_group(self, *keys: str) -> None:
+        self.bridge.setEditing(True)
+        row = self.bridge.insertGroup(0)
+        for key in keys:
+            self.bridge.addToGroup(key, row)
+        settle(0.3)
+
+    def test_new_group_tile_adds_a_group_shown_while_editing(self) -> None:
+        tile = self.tile("+group")
+        QTest.mouseDClick(self.view, QtCore.Qt.MouseButton.LeftButton,
+                          QtCore.Qt.KeyboardModifier.NoModifier,
+                          self.middle(tile))
+        settle()
+        self.assertTrue(self.group_item().isVisible())
+
+    def test_command_dropped_on_a_group_goes_in(self) -> None:
+        self.make_group("PartDesign_Pocket")
+        circle = self.tile("Sketcher_CreateCircle")
+        self.drag(circle, self.middle(self.group_item()))
+        model = self.bridge.model
+        role = {v.data().decode(): k
+                for k, v in model.roleNames().items()}["members"]
+        self.assertEqual(model.data(model.index(0), role), 2)
+        self.assertNotIn("Circle", self.texts()[1:])
+
+    def test_click_opens_the_group_editor_and_drag_reorders(self) -> None:
+        self.make_group("PartDesign_Pocket", "Sketcher_CreateCircle")
+        self.click(self.group_item(), x_fraction=0.5)
+        self.assertEqual(self.bridge.property("editedGroup"), 0)
+        editor = items_of(self.root, "GroupEditor")[0]
+        self.assertTrue(editor.isVisible())
+        tiles = [t for t in items_of(editor, "QQuickRectangle")
+                 if t.property("key")]
+        self.assertEqual([t.property("key") for t in tiles],
+                         ["PartDesign_Pocket", "Sketcher_CreateCircle"])
+        second = tiles[1]
+        beyond = second.mapToScene(QtCore.QPointF(
+            second.width() * 0.8, second.height() / 2)).toPoint()
+        self.drag(tiles[0], beyond)
+        self.assertEqual(
+            [m["key"] for m in self.bridge.property("groupMembers")],
+            ["Sketcher_CreateCircle", "PartDesign_Pocket"])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -3,3 +3,5 @@ ToolStrip 1.0 ToolStrip.qml
 ToolItem 1.0 ToolItem.qml
 ChoiceBar 1.0 ChoiceBar.qml
 StripSeparator 1.0 StripSeparator.qml
+CommandDrawer 1.0 CommandDrawer.qml
+GroupEditor 1.0 GroupEditor.qml

@@ -23,7 +23,7 @@ INSTANT = "instant"
 ROLES: dict[str, Any] = {
     "kind": "", "text": "", "tip": "", "enabled": True,
     "checkable": False, "checked": False, "icon": "", "dropdown": "",
-    "choices": [], "current": -1,
+    "choices": [], "current": -1, "editable": False, "members": 0,
 }
 _ROLE_IDS = {QtCore.Qt.ItemDataRole.UserRole.value + i: name
              for i, name in enumerate(ROLES)}
@@ -81,8 +81,30 @@ def _choice(entry: Entry, size: int) -> dict[str, Any]:
             "current": chooser.currentIndex()}
 
 
+def last_member(entry: Entry) -> Entry | None:
+    """The member a group's button runs and shows."""
+    state = entry.group
+    if not entry.members or state is None:
+        return None
+    return entry.members[min(state.last, len(entry.members) - 1)]
+
+
+def _group(entry: Entry, size: int) -> dict[str, Any]:
+    state = entry.group
+    name = state.name if state is not None else ""
+    shown = last_member(entry)
+    row = {} if shown is None else _command(shown, size)
+    tip = row.get("tip") or row.get("text", "")
+    return {**row, "checkable": False, "checked": False,
+            "text": row.get("text", name), "dropdown": SPLIT,
+            "tip": "%s: %s" % (name, tip) if name and tip else name or tip,
+            "editable": state is not None and state.editable,
+            "members": len(entry.members)}
+
+
 _DESCRIBE: dict[Kind, Callable[[Entry, int], dict[str, Any]]] = {
     Kind.COMMAND: _command, Kind.BUTTON: _button, Kind.CHOICE: _choice,
+    Kind.GROUP: _group,
 }
 
 
@@ -94,8 +116,11 @@ def describe(entry: Entry, icon_size: int) -> dict[str, Any]:
     return row
 
 
-def _signature(entries: list[Entry]) -> list[tuple[Kind, int, int]]:
-    return [(e.kind, id(e.action), id(e.widget)) for e in entries]
+def _signature(entries: list[Entry]) -> list[tuple[Any, ...]]:
+    return [(e.kind, id(e.action), id(e.widget), e.key,
+             tuple(id(m.action) for m in e.members),
+             None if e.group is None else (e.group.name, tuple(e.group.keys)))
+            for e in entries]
 
 
 class ToolModel(QtCore.QAbstractListModel):
@@ -144,6 +169,36 @@ class ToolModel(QtCore.QAbstractListModel):
         self.endMoveRows()
         return True
 
+    def insert(self, row: int, entry: Entry) -> int:
+        """Put `entry` at `row` (the end if out of range); its row."""
+        row = row if 0 <= row <= len(self._entries) else len(self._entries)
+        self.beginInsertRows(QtCore.QModelIndex(), row, row)
+        self._entries.insert(row, entry)
+        self._rows.insert(row, describe(entry, self._icon_size()))
+        self.endInsertRows()
+        self._watch_entry(entry)
+        return row
+
+    def keys(self) -> set[str]:
+        """Every key shown, groups' members included."""
+        found: set[str] = set()
+        for entry in self._entries:
+            if entry.kind is not Kind.SEPARATOR:
+                found.add(entry.key)
+            if entry.group is not None:
+                found.update(entry.group.keys)
+        return found
+
+    def replace(self, row: int, entry: Entry) -> None:
+        """Show `entry` at `row` instead (a group that changed)."""
+        if self.entry(row) is None:
+            return
+        self._entries[row] = entry
+        self._rows[row] = describe(entry, self._icon_size())
+        self._watch_entry(entry)
+        index = self.index(row)
+        self.dataChanged.emit(index, index)
+
     def remove(self, row: int) -> bool:
         if self.entry(row) is None:
             return False
@@ -178,17 +233,26 @@ class ToolModel(QtCore.QAbstractListModel):
 
     def _watch(self) -> None:
         for entry in self._entries:
-            slot = functools.partial(self._refresh_entry, entry)
-            if entry.kind is Kind.COMMAND and entry.action is not None:
-                signal = entry.action.changed
-            elif entry.kind is Kind.CHOICE:
-                signal = entry.widget.currentIndexChanged \
-                    if isinstance(entry.widget, QtWidgets.QComboBox) \
-                    else entry.widget.currentChanged
-            else:
-                continue
-            signal.connect(slot)
-            self._watched.append((signal, slot))
+            self._watch_entry(entry)
+
+    def _watch_entry(self, entry: Entry) -> None:
+        slot = functools.partial(self._refresh_entry, entry)
+        if entry.kind is Kind.GROUP:
+            for member in entry.members:
+                if member.action is not None:
+                    member.action.changed.connect(slot)
+                    self._watched.append((member.action.changed, slot))
+            return
+        if entry.kind is Kind.COMMAND and entry.action is not None:
+            signal = entry.action.changed
+        elif entry.kind is Kind.CHOICE:
+            signal = entry.widget.currentIndexChanged \
+                if isinstance(entry.widget, QtWidgets.QComboBox) \
+                else entry.widget.currentChanged
+        else:
+            return
+        signal.connect(slot)
+        self._watched.append((signal, slot))
 
     def _unwatch(self) -> None:
         for signal, slot in self._watched:
@@ -214,3 +278,63 @@ class ToolModel(QtCore.QAbstractListModel):
     def roleNames(self) -> dict[int, QtCore.QByteArray]:  # noqa: N802
         return {role: QtCore.QByteArray(name.encode())
                 for role, name in _ROLE_IDS.items()}
+
+
+CATALOG_ROLES = ("key", "text", "tip", "icon", "placed")
+_CATALOG_IDS = {QtCore.Qt.ItemDataRole.UserRole.value + i: name
+                for i, name in enumerate(CATALOG_ROLES)}
+
+
+class CatalogModel(QtCore.QAbstractListModel):
+    """The drawer's commands; icons drawn only for rows a view asks for."""
+
+    def __init__(self, icon_size: Callable[[], int],
+                 icon_of: Callable[[str, str], Any],
+                 parent: QtCore.QObject | None = None) -> None:
+        super().__init__(parent)
+        self._icon_size = icon_size
+        self._icon_of = icon_of
+        self._commands: list[Any] = []
+        self._placed: set[str] = set()
+        self._icon_urls: dict[str, str] = {}
+
+    def set_commands(self, commands: list[Any]) -> None:
+        self.beginResetModel()
+        self._commands = list(commands)
+        self.endResetModel()
+
+    def set_placed(self, keys: set[str]) -> None:
+        """Mark the commands already on the strip."""
+        changed = keys ^ self._placed
+        self._placed = set(keys)
+        for row, command in enumerate(self._commands):
+            if command.key in changed:
+                index = self.index(row)
+                self.dataChanged.emit(index, index)
+
+    def _icon(self, command: Any) -> str:
+        url = self._icon_urls.get(command.key)
+        if url is None:
+            url = icons.url(self._icon_of(command.key, command.pixmap),
+                            self._icon_size())
+            self._icon_urls[command.key] = url
+        return url
+
+    def rowCount(self, parent: Any = None) -> int:  # noqa: N802
+        return 0 if parent is not None and parent.isValid() \
+            else len(self._commands)
+
+    def data(self, index: Any, role: int = 0) -> Any:
+        name = _CATALOG_IDS.get(role)
+        if name is None or not index.isValid():
+            return None
+        command = self._commands[index.row()]
+        if name == "icon":
+            return self._icon(command)
+        if name == "placed":
+            return command.key in self._placed
+        return getattr(command, name)
+
+    def roleNames(self) -> dict[int, QtCore.QByteArray]:  # noqa: N802
+        return {role: QtCore.QByteArray(name.encode())
+                for role, name in _CATALOG_IDS.items()}

@@ -22,11 +22,16 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import fakes  # noqa: E402
 
-fakes.install()
+App, Gui = fakes.install()
 
 from PySide6 import QtCore, QtGui, QtWidgets  # noqa: E402
 
-from freecad.nxt.toolbars import layouts, models, source  # noqa: E402
+from freecad.nxt.toolbars import (  # noqa: E402
+    catalog,
+    layouts,
+    models,
+    source,
+)
 from freecad.nxt.toolbars.bridge import ToolStripBridge  # noqa: E402
 from freecad.nxt.toolbars.hider import ToolbarHider  # noqa: E402
 from freecad.nxt.toolbars.source import Kind  # noqa: E402
@@ -36,6 +41,56 @@ OWN = ("NxtToolStrip",)
 WORKBENCH = "PartDesignWorkbench"
 TOP = QtCore.Qt.ToolBarArea.TopToolBarArea
 SPLIT = QtWidgets.QToolButton.ToolButtonPopupMode.MenuButtonPopup
+
+
+class FakeCommand:
+    """A FreeCAD command: its info, and its QActions if any were made."""
+
+    def __init__(self, key: str, text: str) -> None:
+        self.key, self.text = key, text
+        self.actions: list[QtGui.QAction] = []
+
+    def getInfo(self) -> dict[str, str]:
+        return {"menuText": self.text, "toolTip": self.text + " tip",
+                "pixmap": self.key}
+
+    def getAction(self) -> list[QtGui.QAction]:
+        return list(self.actions)
+
+
+class FakeWorkbench:
+    def __init__(self, label: str, toolbars: dict[str, list[str]]) -> None:
+        self.MenuText = label
+        self._toolbars = toolbars
+
+    def getToolbarItems(self) -> dict[str, list[str]]:
+        return self._toolbars
+
+
+COMMANDS = {key: FakeCommand(key, text) for key, text in (
+    ("Std_New", "&New"), ("PartDesign_Pad", "Pad"),
+    ("PartDesign_Pocket", "Pocket"), ("Sketcher_CreateCircle", "Circle"),
+    ("Std_DlgParameter", "E&dit Parameters"))}
+WORKBENCHES = {
+    "PartDesignWorkbench": FakeWorkbench("Part Design", {
+        "File": ["Std_New"], "Features": ["PartDesign_Pad",
+                                          "PartDesign_Pocket"]}),
+    "SketcherWorkbench": FakeWorkbench("Sketcher", {
+        "File": ["Std_New"], "Geometry": ["Sketcher_CreateCircle"]}),
+    "StartWorkbench": FakeWorkbench("Start", {}),
+}
+GROUP = "PartDesign_CompPrimitiveAdditive"
+COMMANDS[GROUP] = FakeCommand(GROUP, "Additive Primitive")
+for _name, _text in (("PartDesign_AdditiveBox", "Additive Box"),
+                     ("PartDesign_AdditiveCylinder", "Additive Cylinder")):
+    _member = QtGui.QAction(_text)
+    _member.setObjectName(_name)
+    COMMANDS[GROUP].actions.append(_member)
+RAN: list[str] = []
+Gui.listCommands = lambda: list(COMMANDS)
+Gui.Command = type("Command", (), {"get": staticmethod(COMMANDS.get)})
+Gui.listWorkbenches = lambda: dict(WORKBENCHES)
+Gui.runCommand = RAN.append
 
 
 def settle() -> None:
@@ -301,22 +356,22 @@ class Layouts(unittest.TestCase):
         layouts.save(WORKBENCH, None)
 
     def test_no_layout_keeps_freecads_order(self) -> None:
-        self.assertEqual(keys(layouts.arrange(self.live, None)),
+        self.assertEqual(keys(layouts.arrange(self.live, None)[0]),
                          ["New", "Open", "|", "Pad", "Pocket"])
 
     def test_saved_order_applied(self) -> None:
         layout = layouts.Layout(["Pad", "|", "New"], ["Open", "Pocket"])
-        self.assertEqual(keys(layouts.arrange(self.live, layout)),
+        self.assertEqual(keys(layouts.arrange(self.live, layout)[0]),
                          ["Pad", "|", "New"])
 
     def test_unmentioned_items_appended_after_a_separator(self) -> None:
         layout = layouts.Layout(["Pad", "New"], ["Open"])
-        self.assertEqual(keys(layouts.arrange(self.live, layout)),
+        self.assertEqual(keys(layouts.arrange(self.live, layout)[0]),
                          ["Pad", "New", "|", "Pocket"])
 
     def test_items_no_longer_offered_skipped(self) -> None:
         layout = layouts.Layout(["Gone", "Pad", "|", "Open"], [])
-        arranged = keys(layouts.arrange(self.live, layout))
+        arranged = keys(layouts.arrange(self.live, layout)[0])
         self.assertNotIn("Gone", arranged)
 
     def test_capture_counts_what_was_left_out_as_removed(self) -> None:
@@ -388,6 +443,305 @@ class Editing(Acting):
         self.bridge.move(self.row_of("Pad"), 0)
         self.window.pad.setChecked(True)
         self.assertTrue(self.value(0, "checked"))
+
+
+class Catalog(unittest.TestCase):
+    def setUp(self) -> None:
+        self.commands, self.filters = catalog.read()
+
+    def keys(self, query: str, group: str = catalog.ALL) -> list[str]:
+        return [c.key for c in catalog.search(self.commands, query, group)]
+
+    def test_letters_in_order_match(self) -> None:
+        self.assertIsNotNone(catalog.score("pdpad", "Pad Part Design Pad"))
+        self.assertIsNone(catalog.score("dap", "Pad"))
+
+    def test_word_starts_rank_first(self) -> None:
+        self.assertEqual(self.keys("pa")[0], "PartDesign_Pad")
+        self.assertEqual(self.keys("circ"), ["Sketcher_CreateCircle"])
+
+    def test_empty_query_lists_by_name(self) -> None:
+        self.assertEqual(self.keys("")[:2],
+                         ["PartDesign_CompPrimitiveAdditive",
+                          "Sketcher_CreateCircle"])
+
+    def test_filters_follow_the_workbenches(self) -> None:
+        self.assertEqual([f[1] for f in self.filters],
+                         ["All", "Global", "Part Design", "Sketcher"])
+        self.assertEqual(self.keys("", "SketcherWorkbench"),
+                         ["Sketcher_CreateCircle", "Std_New"])
+
+    def test_global_is_what_every_workbench_shows(self) -> None:
+        self.assertEqual(self.keys("", catalog.GLOBAL), ["Std_New"])
+
+    def test_menu_text_mnemonics_dropped(self) -> None:
+        texts = {c.key: c.text for c in self.commands}
+        self.assertEqual(texts["Std_DlgParameter"], "Edit Parameters")
+
+
+class StandIns(unittest.TestCase):
+    def setUp(self) -> None:
+        self.stand_ins = catalog.StandIns()
+        RAN.clear()
+
+    def tearDown(self) -> None:
+        COMMANDS["PartDesign_Pad"].actions = []
+
+    def test_live_action_preferred(self) -> None:
+        live = QtGui.QAction("Pad")
+        COMMANDS["PartDesign_Pad"].actions = [live]
+        self.assertIs(self.stand_ins.action("PartDesign_Pad"), live)
+
+    def test_stand_in_runs_the_command_by_name(self) -> None:
+        action = self.stand_ins.action("Sketcher_CreateCircle")
+        self.assertEqual(action.text(), "Circle")
+        action.trigger()
+        self.assertEqual(RAN, ["Sketcher_CreateCircle"])
+        self.assertIs(self.stand_ins.action("Sketcher_CreateCircle"), action)
+
+    def test_unknown_command_has_none(self) -> None:
+        self.assertIsNone(self.stand_ins.action("Nowhere_Nothing"))
+
+
+class Adding(Acting):
+    def texts(self) -> list[str]:
+        role = self.role("text")
+        return [self.model.data(self.model.index(r), role) or "|"
+                for r in range(self.model.rowCount())]
+
+    def catalog_rows(self) -> dict[str, bool]:
+        drawer = self.bridge.catalogModel
+        names = {v.data().decode(): k for k, v in drawer.roleNames().items()}
+        return {drawer.data(drawer.index(r), names["key"]):
+                drawer.data(drawer.index(r), names["placed"])
+                for r in range(drawer.rowCount())}
+
+    def open_drawer(self) -> None:
+        self.bridge.setEditing(True)
+        self.assertTrue(self.bridge.property("loading"))
+        settle()
+
+    def test_drawer_reads_commands_a_turn_after_opening(self) -> None:
+        self.open_drawer()
+        self.assertFalse(self.bridge.property("loading"))
+        self.assertIn("Sketcher_CreateCircle", self.catalog_rows())
+
+    def test_insert_while_dragging_places_it(self) -> None:
+        row = self.bridge.insertCommand("Sketcher_CreateCircle", 1)
+        self.assertEqual(row, 1)
+        self.assertEqual(self.texts()[1], "Circle")
+
+    def test_command_already_on_the_strip_not_added_twice(self) -> None:
+        self.bridge.appendCommand("Sketcher_CreateCircle")
+        self.assertEqual(self.bridge.insertCommand(
+            "Sketcher_CreateCircle", 0), -1)
+
+    def test_added_command_kept_after_a_rebuild(self) -> None:
+        self.bridge.appendCommand("Sketcher_CreateCircle")
+        self.bridge.rebuild()
+        self.assertIn("Circle", self.texts())
+
+    def test_added_command_marked_placed(self) -> None:
+        self.open_drawer()
+        self.bridge.appendCommand("PartDesign_Pocket")
+        self.assertTrue(self.catalog_rows()["PartDesign_Pocket"])
+        self.assertFalse(self.catalog_rows()["Sketcher_CreateCircle"])
+
+    def test_separator_appended_and_saved(self) -> None:
+        self.bridge.appendSeparator()
+        self.assertEqual(layouts.load(WORKBENCH).order[-1], "|")
+
+    def test_search_and_filter_narrow_the_drawer(self) -> None:
+        self.open_drawer()
+        self.bridge.setFilter("SketcherWorkbench")
+        self.bridge.setQuery("circ")
+        self.assertEqual(list(self.catalog_rows()), ["Sketcher_CreateCircle"])
+
+
+class Lasting(Acting):
+    """What survives: commands not loadable yet, files, sketch editing."""
+
+    def test_command_not_found_keeps_its_place_on_save(self) -> None:
+        layouts.save(WORKBENCH, layouts.Layout(
+            ["&New", "Draft_Line", "Open", "|", "Save"], []))
+        self.bridge.rebuild()
+        self.bridge.beginDrag()
+        self.bridge.move(self.row_of("Save"), 0)
+        self.bridge.endDrag(0, False)
+        order = layouts.load(WORKBENCH).order
+        self.assertEqual(order[:4], ["Save", "&New", "Draft_Line", "Open"])
+
+    def test_missing_key_without_an_anchor_goes_first(self) -> None:
+        live = [entry("New")]
+        layout = layouts.capture(live, live, layouts.Layout(
+            ["Gone", "New"], []), ["Gone"])
+        self.assertEqual(layout.order, ["Gone", "New"])
+
+    def test_export_and_import_round_trip(self) -> None:
+        layouts.save(WORKBENCH, layouts.Layout(["Pad"], ["New"]))
+        text = layouts.export_text()
+        layouts.save(WORKBENCH, None)
+        self.assertEqual(layouts.import_text(text), 1)
+        self.assertEqual(layouts.load(WORKBENCH).order, ["Pad"])
+
+    def test_import_rejects_other_files(self) -> None:
+        with self.assertRaises(ValueError):
+            layouts.import_text('{"PartDesignWorkbench": [1, 2]}')
+
+    def test_export_writes_the_chosen_file(self) -> None:
+        import tempfile
+        layouts.save(WORKBENCH, layouts.Layout(["Pad"], []))
+        with tempfile.TemporaryDirectory() as folder:
+            path = str(Path(folder) / "layouts.json")
+            with mock.patch.object(QtWidgets.QFileDialog, "getSaveFileName",
+                                   return_value=(path, "")):
+                self.bridge.exportLayouts()
+                settle()
+            self.assertIn("Pad", Path(path).read_text(encoding="utf-8"))
+
+    def test_sketch_editing_has_its_own_layout(self) -> None:
+        from freecad.nxt.toolbars import strip
+        sketch = mock.Mock()
+        sketch.Object.TypeId = strip.SKETCH
+        Gui.ActiveDocument = mock.Mock()
+        Gui.ActiveDocument.getInEdit.return_value = sketch
+        try:
+            self.assertEqual(strip._layout_name(), layouts.SKETCH_EDIT)
+            Gui.ActiveDocument.getInEdit.return_value = None
+            Gui.activeWorkbench = lambda: mock.Mock(**{
+                "name.return_value": WORKBENCH})
+            self.assertEqual(strip._layout_name(), WORKBENCH)
+        finally:
+            Gui.ActiveDocument = None
+
+
+class Grouping(Acting):
+    """Several commands behind one button: FreeCAD's groups and the user's."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.fired_members: list[str] = []
+        for action in COMMANDS[GROUP].actions:
+            action.triggered.connect(
+                lambda _c=False, a=action: self.fired_members.append(a.text()))
+
+    def tearDown(self) -> None:
+        for action in COMMANDS[GROUP].actions:
+            action.triggered.disconnect()
+        super().tearDown()
+
+    def texts(self) -> list[str]:
+        role = self.role("text")
+        return [self.model.data(self.model.index(r), role) or "|"
+                for r in range(self.model.rowCount())]
+
+    def saved_groups(self) -> list[dict[str, object]]:
+        return [t for t in layouts.load(WORKBENCH).order
+                if isinstance(t, dict)]
+
+    def new_group(self, *keys: str) -> int:
+        row = self.bridge.insertGroup(0)
+        for key in keys:
+            self.assertTrue(self.bridge.addToGroup(key, row))
+        return row
+
+    def test_freecad_group_from_the_drawer_gets_its_dropdown(self) -> None:
+        self.bridge.appendCommand(GROUP)
+        row = self.model.rowCount() - 1
+        self.assertEqual(self.value(row, "kind"), "group")
+        self.assertEqual(self.value(row, "dropdown"), models.SPLIT)
+        self.assertFalse(self.value(row, "editable"))
+        self.bridge.activate(row, 0.0, 0.0)
+        self.assertEqual(self.fired_members, ["Additive Box"])
+
+    def test_member_picked_from_the_menu_becomes_the_button(self) -> None:
+        self.bridge.appendCommand(GROUP)
+        row = self.model.rowCount() - 1
+        with mock.patch.object(QtWidgets.QMenu, "popup"):
+            self.bridge.openMenu(row, 0.0, 0.0)
+        self.bridge._menu.actions()[1].trigger()
+        self.assertEqual(self.value(row, "text"), "Additive Cylinder")
+        self.bridge.rebuild()
+        self.bridge.activate(self.row_of("Additive Cylinder"), 0.0, 0.0)
+        self.assertEqual(self.fired_members[-1], "Additive Cylinder")
+
+    def test_custom_group_saved_and_restored(self) -> None:
+        self.new_group("PartDesign_Pocket", "Sketcher_CreateCircle")
+        group = self.saved_groups()[0]
+        self.assertEqual(group["members"],
+                         ["PartDesign_Pocket", "Sketcher_CreateCircle"])
+        self.bridge.rebuild()
+        self.assertEqual(self.value(0, "members"), 2)
+        self.assertTrue(self.value(0, "editable"))
+
+    def test_strip_command_dropped_into_a_group_leaves_the_strip(self) -> None:
+        row = self.new_group("PartDesign_Pocket")
+        save = self.row_of("Save")
+        self.bridge.beginDrag()
+        self.bridge.dropIntoGroup(save, row)
+        self.assertNotIn("Save", self.texts())
+        self.bridge.rebuild()
+        self.assertNotIn("Save", self.texts())
+        self.assertEqual(self.value(0, "members"), 2)
+
+    def test_no_command_twice_in_a_group_or_beside_it(self) -> None:
+        row = self.new_group("PartDesign_Pocket")
+        self.assertFalse(self.bridge.addToGroup("PartDesign_Pocket", row))
+        self.assertEqual(
+            self.bridge.insertCommand("PartDesign_Pocket", 0), -1)
+
+    def test_editor_reorders_members(self) -> None:
+        row = self.new_group("PartDesign_Pocket", "Sketcher_CreateCircle")
+        self.bridge.editGroup(row)
+        self.assertEqual(self.bridge.property("editedGroup"), row)
+        self.bridge.setMemberOrder(["Sketcher_CreateCircle",
+                                    "PartDesign_Pocket"])
+        self.assertEqual(self.saved_groups()[0]["members"],
+                         ["Sketcher_CreateCircle", "PartDesign_Pocket"])
+        self.assertEqual(
+            [m["key"] for m in self.bridge.property("groupMembers")],
+            ["Sketcher_CreateCircle", "PartDesign_Pocket"])
+
+    def test_group_of_one_becomes_its_command_when_closed(self) -> None:
+        row = self.new_group("PartDesign_Pocket", "Sketcher_CreateCircle")
+        self.bridge.editGroup(row)
+        self.bridge.removeMember(0)
+        self.assertEqual(self.value(row, "kind"), "group")
+        self.bridge.editGroup(-1)
+        self.assertEqual(self.value(row, "kind"), "command")
+        self.assertEqual(self.value(row, "text"), "Circle")
+
+    def test_ungroup_puts_the_members_on_the_strip(self) -> None:
+        row = self.new_group("PartDesign_Pocket", "Sketcher_CreateCircle")
+        self.bridge.editGroup(row)
+        self.bridge.ungroup()
+        self.assertEqual(self.texts()[:2], ["Pocket", "Circle"])
+        self.assertEqual(self.saved_groups(), [])
+
+    def test_rename_shows_in_the_tooltip(self) -> None:
+        row = self.new_group("PartDesign_Pocket", "Sketcher_CreateCircle")
+        self.bridge.editGroup(row)
+        self.bridge.renameGroup("  Features ")
+        self.assertTrue(str(self.value(row, "tip")).startswith("Features:"))
+        self.assertEqual(self.saved_groups()[0]["name"], "Features")
+
+    def test_empty_group_dropped_when_editing_ends(self) -> None:
+        self.bridge.setEditing(True)
+        self.bridge.insertGroup(0)
+        self.bridge.setEditing(False)
+        self.assertNotEqual(self.value(0, "kind"), "group")
+
+    def test_member_not_loadable_yet_stays_in_the_group(self) -> None:
+        layouts.save(WORKBENCH, layouts.Layout([
+            {"group": "group:abc", "name": "Mixed",
+             "members": ["PartDesign_Pocket", "Draft_Line"]}], []))
+        self.bridge.rebuild()
+        self.bridge.editGroup(0)
+        self.bridge.renameGroup("Mixed tools")
+        self.assertEqual(self.saved_groups()[0]["members"],
+                         ["PartDesign_Pocket", "Draft_Line"])
+        self.bridge.editGroup(-1)
+        self.assertEqual(self.value(0, "kind"), "group")
 
 
 if __name__ == "__main__":

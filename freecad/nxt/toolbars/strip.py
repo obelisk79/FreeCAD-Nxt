@@ -16,6 +16,7 @@ import FreeCADGui as Gui
 from ..app.i18n import translate
 from ..core.qt import QtCore, QtGui, QtWidgets
 from ..ui import quick_host
+from . import layouts
 from .bridge import ToolStripBridge
 from .hider import ToolbarHider
 
@@ -67,7 +68,7 @@ class ToolStrip(QtCore.QObject):
         toolbar.toggleViewAction().setVisible(False)
         self._toolbar = toolbar
         self.bridge = ToolStripBridge(main, OWN, self._to_global,
-                                      _workbench_name, self)
+                                      _layout_name, self)
         self._view = quick_host.make_view(
             toolbar, QML, {"theme": self._theme, "strip": self.bridge},
             prepare=_see_through)
@@ -125,7 +126,16 @@ class ToolStrip(QtCore.QObject):
         return False
 
 
-def _workbench_name() -> str:
+SKETCH = "Sketcher::SketchObject"
+
+
+def _layout_name() -> str:
+    """The workbench's name, or the sketch-edit layout's while editing one."""
+    document = Gui.ActiveDocument
+    in_edit = document.getInEdit() if document is not None else None
+    edited = getattr(in_edit, "Object", None)
+    if getattr(edited, "TypeId", "") == SKETCH:
+        return layouts.SKETCH_EDIT
     workbench = Gui.activeWorkbench()
     return workbench.name() if workbench is not None else ""
 

@@ -31,6 +31,22 @@ class Kind(enum.Enum):
     BUTTON = "button"
     #: A tab bar or combo box of choices (the workbench selector).
     CHOICE = "choice"
+    #: Several commands behind one button: the user's, or FreeCAD's own
+    #: group added from the drawer.
+    GROUP = "group"
+
+
+@dataclass(eq=False)
+class GroupState:
+    """What changes about a group: its name, members and last one used."""
+
+    name: str
+    #: Every member's key in order, found or not (workbench not loaded).
+    keys: list[str]
+    #: Index into the found members of the one the button runs.
+    last: int = 0
+    #: False for FreeCAD's own groups, which FreeCAD defines.
+    editable: bool = True
 
 
 @dataclass(frozen=True, eq=False)
@@ -44,6 +60,9 @@ class Entry:
     #: Names it in a saved layout: the command's name, or for a widget
     #: its toolbar and place there ("Draft tray#2").
     key: str = ""
+    #: A group's commands that are found, in order.
+    members: tuple[Entry, ...] = ()
+    group: GroupState | None = None
 
 
 SEPARATOR = Entry(Kind.SEPARATOR)

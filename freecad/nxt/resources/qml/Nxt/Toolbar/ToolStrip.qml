@@ -8,8 +8,9 @@ import Nxt.Toolbar
 // and `theme`. Rows carry kind, text, tip, enabled, checkable, checked,
 // icon, dropdown, choices and current.
 //
-// Edit mode (the pen at the end): items are dragged to reorder, dropped
-// outside the strip or closed with their x to remove. Escape or Done
+// Edit mode (the pencil at the end): items are dragged to reorder, and
+// dropped outside the strip (or on the drawer) or closed with their x to
+// remove. The drawer below adds commands and separators. Escape or Done
 // leaves it. Each finished drag is saved by the bridge.
 Item {
     id: root
@@ -17,15 +18,33 @@ Item {
     readonly property int gap: Math.max(1, Math.round(theme.rowHeight * 0.08))
     readonly property int padding: Math.max(2, Math.round(strip.iconSize * 0.2))
     readonly property int itemSize: strip.iconSize + 2 * padding
-    //: How far outside the strip a drop removes the item.
+    //: How far past the strip's items a drop still lands on the strip.
     readonly property int removeMargin: Math.round(itemSize / 2)
     readonly property int moveMs: 120
     readonly property bool editing: strip.editing
 
-    implicitHeight: Math.max(flow.implicitHeight, controls.height) + 2 * gap
+    // The drag in progress: a strip row, or a drawer key not placed yet.
+    property bool dragging: false
+    property int dragIndex: -1
+    property string pendingKey: ""
+    property Item ghostSource: null
+    property point grip
+    property point pointer
+    //: The group a command will drop into, or -1.
+    property int intoGroup: -1
+    //: Where on a group, as a fraction of its width, a drop goes in.
+    readonly property real intoFrom: 0.25
+    readonly property real intoTo: 0.75
+    readonly property bool outside: dragging
+        && (pointer.y < flow.y - removeMargin
+            || pointer.y > flow.y + flow.height + removeMargin)
 
-    focus: editing
-    onEditingChanged: if (editing) forceActiveFocus()
+    implicitHeight: Math.max(flow.implicitHeight, controls.height) + 2 * gap
+                    + (editing ? drawer.implicitHeight + gap : 0)
+                    + (groupEditor.visible ? groupEditor.implicitHeight + gap
+                                           : 0)
+
+    onEditingChanged: if (editing) drawer.focusSearch()
     Keys.onEscapePressed: strip.setEditing(false)
 
     function delegateAt(x, y) {
@@ -40,6 +59,95 @@ Item {
                 return child;
         }
         return null;
+    }
+
+    function startDrag(index, key, source, at, point) {
+        dragging = true;
+        dragIndex = index;
+        pendingKey = key;
+        ghostSource = source;
+        grip = at;
+        pointer = point;
+        hover.index = -1;
+        strip.beginDrag();
+    }
+
+    function draggingCommand() {
+        if (pendingKey !== "")
+            return pendingKey !== drawer.separatorKey
+                   && pendingKey !== drawer.groupKey;
+        const held = delegateOf(dragIndex);
+        return held !== null && held.kind === "command";
+    }
+
+    // Over the middle of a group of the user's: the drop goes in.
+    function groupUnder(over, point) {
+        if (!over || over.kind !== "group" || !over.groupEditable
+                || over.index === dragIndex || !draggingCommand())
+            return -1;
+        const local = over.mapFromItem(root, point.x, point.y);
+        const at = local.x / over.width;
+        return at >= intoFrom && at <= intoTo ? over.index : -1;
+    }
+
+    function dragTo(point) {
+        pointer = point;
+        intoGroup = -1;
+        if (outside)
+            return;
+        const over = delegateAt(point.x, point.y);
+        intoGroup = groupUnder(over, point);
+        if (intoGroup >= 0)
+            return;
+        if (pendingKey !== "") {
+            const at = over ? over.index : items.count;
+            const row = pendingKey === drawer.separatorKey
+                        ? strip.insertSeparator(at)
+                        : pendingKey === drawer.groupKey
+                        ? strip.insertGroup(at)
+                        : strip.insertCommand(pendingKey, at);
+            if (row >= 0) {
+                pendingKey = "";
+                dragIndex = row;
+                ghostSource = delegateOf(row);
+            }
+            return;
+        }
+        if (!over || over.index === dragIndex)
+            return;
+        // Past the target's middle, so swapping items of different
+        // widths does not swap them straight back.
+        const local = over.mapFromItem(root, point.x, point.y);
+        const sameRow = Math.abs(over.y - delegateOf(dragIndex).y) < 1;
+        const forward = over.index > dragIndex;
+        // A group is passed only beyond its drop-in middle.
+        const edge = over.kind === "group" && over.groupEditable
+                     && draggingCommand() ? (forward ? intoTo : intoFrom) : 0.5;
+        if (sameRow && (forward ? local.x < over.width * edge
+                                : local.x > over.width * edge))
+            return;
+        // Read before moving: the move renumbers `over`.
+        const to = over.index;
+        strip.move(dragIndex, to);
+        dragIndex = to;
+    }
+
+    function endDrag() {
+        if (intoGroup >= 0 && pendingKey !== "") {
+            strip.cancelDrag();
+            strip.addToGroup(pendingKey, intoGroup);
+        } else if (intoGroup >= 0) {
+            strip.dropIntoGroup(dragIndex, intoGroup);
+        } else if (pendingKey !== "") {
+            strip.cancelDrag();
+        } else {
+            strip.endDrag(dragIndex, outside);
+        }
+        intoGroup = -1;
+        dragging = false;
+        dragIndex = -1;
+        pendingKey = "";
+        ghostSource = null;
     }
 
     Flow {
@@ -58,6 +166,7 @@ Item {
         }
 
         Repeater {
+            id: items
             model: strip.model
 
             delegate: DelegateChooser {
@@ -91,6 +200,11 @@ Item {
                     ToolItem {
                         required property int index
                         required property var model
+                        kind: model.kind
+                        groupEditable: model.editable
+                        // An empty group shows only while it can be filled.
+                        visible: model.kind !== "group" || model.members > 0
+                                 || root.editing
                         size: root.itemSize
                         iconSize: strip.iconSize
                         icon: model.icon
@@ -113,81 +227,59 @@ Item {
         }
     }
 
-    // Edit mode's hand: picks an item up, moves it through the strip.
+    // Edit mode's hand over the strip: picks an item up and moves it.
     MouseArea {
         id: hand
 
-        property int dragIndex: -1
-        property bool dragging: false
+        property int pressedIndex: -1
         property point pressedAt
-        property point grip
-        property int hovered: -1
-        readonly property bool outside: dragging
-            && (mouseY < -root.removeMargin
-                || mouseY > root.height + root.removeMargin)
 
         anchors.fill: flow
         enabled: root.editing
         hoverEnabled: true
-        cursorShape: dragging ? Qt.ClosedHandCursor : Qt.OpenHandCursor
+        cursorShape: root.dragging ? Qt.ClosedHandCursor : Qt.OpenHandCursor
         preventStealing: true
 
-        function at(mouse) {
-            return root.delegateAt(mouse.x + flow.x, mouse.y + flow.y);
-        }
-
-        onPositionChanged: (mouse) => {
-            const over = at(mouse);
-            if (!pressed) {
-                hovered = over ? over.index : -1;
-                return;
-            }
-            if (!dragging) {
-                if (dragIndex < 0 || Math.hypot(mouse.x - pressedAt.x,
-                        mouse.y - pressedAt.y) < Qt.styleHints.startDragDistance)
-                    return;
-                dragging = true;
-                hovered = -1;
-                strip.beginDrag();
-            }
-            if (!over || over.index === dragIndex || outside)
-                return;
-            // Past the target's middle, so swapping items of different
-            // widths does not swap them straight back.
-            const local = over.mapFromItem(hand, mouse.x, mouse.y);
-            const sameRow = Math.abs(over.y - root.delegateOf(dragIndex).y) < 1;
-            const forward = over.index > dragIndex;
-            if (sameRow && (forward ? local.x < over.width / 2
-                                    : local.x > over.width / 2))
-                return;
-            // Read before moving: the move renumbers `over`.
-            const to = over.index;
-            strip.move(dragIndex, to);
-            dragIndex = to;
+        function inRoot(mouse) {
+            return mapToItem(root, mouse.x, mouse.y);
         }
 
         onPressed: (mouse) => {
-            const over = at(mouse);
-            dragIndex = over ? over.index : -1;
+            const over = root.delegateAt(inRoot(mouse).x, inRoot(mouse).y);
+            pressedIndex = over ? over.index : -1;
             pressedAt = Qt.point(mouse.x, mouse.y);
-            if (over)
-                grip = over.mapFromItem(hand, mouse.x, mouse.y);
+        }
+
+        onPositionChanged: (mouse) => {
+            const point = inRoot(mouse);
+            if (!pressed) {
+                const over = root.delegateAt(point.x, point.y);
+                hover.index = over ? over.index : -1;
+                return;
+            }
+            if (!root.dragging) {
+                if (pressedIndex < 0 || Math.hypot(mouse.x - pressedAt.x,
+                        mouse.y - pressedAt.y) < Qt.styleHints.startDragDistance)
+                    return;
+                const held = root.delegateOf(pressedIndex);
+                root.startDrag(pressedIndex, "", held,
+                               held.mapFromItem(hand, pressedAt.x, pressedAt.y),
+                               point);
+            }
+            root.dragTo(point);
         }
 
         onReleased: {
-            if (dragging)
-                strip.endDrag(dragIndex, outside);
-            dragging = false;
-            dragIndex = -1;
+            if (root.dragging) {
+                root.endDrag();
+                return;
+            }
+            const clicked = root.delegateOf(pressedIndex);
+            if (clicked && clicked.kind === "group" && clicked.groupEditable)
+                strip.editGroup(strip.editedGroup === pressedIndex
+                                ? -1 : pressedIndex);
         }
-
-        onCanceled: {
-            if (dragging)
-                strip.endDrag(dragIndex, false);
-            dragging = false;
-            dragIndex = -1;
-        }
-
+        onCanceled: if (root.dragging) root.endDrag()
         // The pointer may have moved onto the item's x: look a turn later.
         onExited: leaving.restart()
 
@@ -196,14 +288,64 @@ Item {
             interval: 0
             onTriggered: if (!hand.pressed && !hand.containsMouse
                                  && !removeButton.hovered)
-                             hand.hovered = -1
+                             hover.index = -1
+        }
+    }
+
+    QtObject {
+        id: hover
+        property int index: -1
+    }
+
+    GroupEditor {
+        id: groupEditor
+        visible: root.editing && strip.editedGroup >= 0
+        x: root.gap
+        y: flow.y + flow.height + root.gap
+        width: root.width - 2 * root.gap
+        itemSize: root.itemSize
+        iconSize: strip.iconSize
+    }
+
+    CommandDrawer {
+        id: drawer
+        visible: root.editing
+        x: root.gap
+        y: (groupEditor.visible ? groupEditor.y + groupEditor.height
+                                : flow.y + flow.height) + root.gap
+        width: root.width - 2 * root.gap
+        itemSize: root.itemSize
+        iconSize: strip.iconSize
+        onDragStarted: (key, tile, at) => root.startDrag(
+            -1, key, tile, at, tile.mapToItem(root, at.x, at.y))
+        onDragMoved: (tile, at) => root.dragTo(tile.mapToItem(root, at.x, at.y))
+        onDragEnded: root.endDrag()
+    }
+
+    // The group a drop goes into, and the group open in the editor.
+    Repeater {
+        model: [root.intoGroup, root.editing ? strip.editedGroup : -1]
+
+        delegate: Rectangle {
+            required property int modelData
+            readonly property Item target: modelData >= 0
+                                           ? root.delegateOf(modelData) : null
+            visible: target !== null
+            x: target ? target.x + flow.x - 1 : 0
+            y: target ? target.y + flow.y - 1 : 0
+            width: target ? target.width + 2 : 0
+            height: target ? target.height + 2 : 0
+            radius: 4
+            color: "transparent"
+            border.color: theme.accent
+            border.width: 2
         }
     }
 
     // Where the dragged item will land.
     Rectangle {
-        readonly property Item held: hand.dragging
-                                     ? root.delegateOf(hand.dragIndex) : null
+        readonly property Item held: root.dragging && root.dragIndex >= 0
+                                     ? root.delegateOf(root.dragIndex) : null
         visible: held !== null
         x: held ? held.x + flow.x : 0
         y: held ? held.y + flow.y : 0
@@ -211,31 +353,29 @@ Item {
         height: held ? held.height : 0
         radius: 4
         color: theme.background
-        border.color: hand.outside ? theme.danger : theme.accent
+        border.color: root.outside ? theme.danger : theme.accent
         border.width: 1
+        opacity: root.intoGroup >= 0 ? 0 : 1
     }
 
     // The dragged item, under the pointer.
     ShaderEffectSource {
-        id: ghost
-        readonly property Item held: hand.dragging
-                                     ? root.delegateOf(hand.dragIndex) : null
-        visible: held !== null
-        sourceItem: held
-        hideSource: true
+        visible: root.ghostSource !== null
+        sourceItem: root.ghostSource
+        hideSource: root.dragIndex >= 0
         live: true
-        width: held ? held.width : 0
-        height: held ? held.height : 0
-        x: hand.mouseX + flow.x - hand.grip.x
-        y: hand.mouseY + flow.y - hand.grip.y
-        opacity: hand.outside ? 0.4 : 0.9
+        width: root.ghostSource ? root.ghostSource.width : 0
+        height: root.ghostSource ? root.ghostSource.height : 0
+        x: root.pointer.x - root.grip.x
+        y: root.pointer.y - root.grip.y
+        opacity: root.outside ? 0.4 : 0.9
     }
 
     // Closes the item under the pointer in edit mode.
     IconButton {
         id: removeButton
-        readonly property Item over: root.editing && !hand.dragging
-                                     ? root.delegateOf(hand.hovered) : null
+        readonly property Item over: root.editing && !root.dragging
+                                     ? root.delegateOf(hover.index) : null
         visible: over !== null
         width: Math.round(root.itemSize * 0.45)
         x: over ? over.x + flow.x + over.width - width * 0.75 : 0
@@ -243,7 +383,7 @@ Item {
         iconScale: 0.7
         tip: qsTr("Remove from the toolbar")
         paint: Glyphs.remove
-        onClicked: strip.removeItem(hand.hovered)
+        onClicked: strip.removeItem(hover.index)
     }
 
     Row {
