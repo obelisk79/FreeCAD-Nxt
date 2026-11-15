@@ -23,7 +23,7 @@ sys.path.insert(0, str(ROOT / "tests"))
 
 import fakes  # noqa: E402
 import test_inspector_templates as pads  # noqa: E402
-from PySide6 import QtCore, QtQuick, QtWidgets  # noqa: E402
+from PySide6 import QtCore, QtGui, QtQuick, QtWidgets  # noqa: E402
 from PySide6.QtTest import QTest  # noqa: E402
 
 App, Gui = fakes.install()
@@ -191,7 +191,7 @@ def texts(root: Any) -> set[str]:
     return {i.property("text") for i in items_of(root, "QQuickText")}
 
 
-def click(view: QtQuick.QQuickView, item: Any) -> None:
+def click(view: QtGui.QWindow, item: Any) -> None:
     centre = item.mapToScene(QtCore.QPointF(item.property("width") / 2,
                                             item.property("height") / 2))
     QTest.mouseClick(view, QtCore.Qt.MouseButton.LeftButton,
@@ -336,21 +336,31 @@ class Rebuilding(Bridge):
         self.changed.emit()
 
 
+def open_lists() -> list[Any]:
+    return [w for w in app.topLevelWindows()
+            if w is not view and w.isVisible()]
+
+
 bridge = Rebuilding(inspector.describe([pads.modern()]))
 view, root = load(bridge)
 kind = next(i for i in items_of(root, "DropBox")
             if "Dimension" in (i.property("text") or ""))
 click(view, kind)
-# The list opens on the window's content item, above the whole panel.
-choice = next(i for i in items_of(view.contentItem(), "QQuickText")
+click(view, kind)
+check("a second click on the field closes its list", not open_lists())
+settle(0.6)
+click(view, kind)
+# The list opens in a window of its own, free of the panel's edges.
+lists = open_lists()
+check("the list opens in a window of its own", len(lists) == 1)
+choice = next(i for i in items_of(lists[0].contentItem(), "QQuickText")
               if i.property("text") == "Up to face" and i.property("visible"))
-click(view, choice)
+click(lists[0], choice)
 settle()
 check("the choice reached the bridge",
       ("value", "Type", "UpToFace", "") in bridge.calls)
 check("the list closed though its field was rebuilt",
-      not [i for i in items_of(view.contentItem(), "ChoiceList")
-           if i.property("visible")])
+      not open_lists())
 check("the panel still takes clicks",
       any(i.property("text") == "Offset"
           for i in items_of(root, "QQuickText")))
