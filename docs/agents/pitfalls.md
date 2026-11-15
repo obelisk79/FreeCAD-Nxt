@@ -48,6 +48,10 @@ each, is "Decisions" and "Gotchas" in `freecad/nxt/tree/DESIGN.md`.
 - The app can't read the global pointer or place top-level windows. Open
   popups and menus from a 1 px anchor item at the click point, shifted by
   `quick_host.window_offset`.
+- **Never resize a `QQuickWidget` from a signal QML emits while laying
+  out** (`implicitHeightChanged`): the resize starts a frame inside the
+  frame, both are dropped ("beginFrame() must be followed by ...
+  endFrame()") and the view stays blank. Resize on a zero timer.
 - A translucent `QQuickWidget` doesn't make what's behind it redraw: call
   `host.repaintBehind()` on movement.
 - Reparenting a `QQuickWidget` to another top-level window needs

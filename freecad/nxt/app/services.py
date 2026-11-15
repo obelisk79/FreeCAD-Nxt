@@ -43,6 +43,7 @@ class Services(QtCore.QObject):
         self._escape: Any = None
         self._mass_bar: Any = None
         self._sketch_panel: Any = None
+        self._tool_strip: Any = None
         self._pending_edit: tuple[str, str] | None = None
         self._edit_timer = self._deferral(self._enter_pending_edit)
         self._restyle_timer = self._deferral(self._restyle)
@@ -123,9 +124,11 @@ class Services(QtCore.QObject):
             self._drag_guard = None
         self.quick_mass_changed()
         self.sketch_panel_changed()
+        self.tool_strip_changed()
 
     def remove(self) -> None:
         self._remove_isolation()
+        self._remove_tool_strip()
         if self._sketch_panel is not None:
             try:
                 self._sketch_panel.remove()
@@ -236,6 +239,33 @@ class Services(QtCore.QObject):
             self._mass_bar.sync()
         except Exception:
             log.error("could not update Quick Mass")
+
+    # -- experimental tool strip -- #
+
+    def tool_strip_changed(self) -> None:
+        """Put the tool strip up or take it down to match its setting."""
+        from ..core import settings
+        if not settings.get("ToolStrip"):
+            self._remove_tool_strip()
+            return
+        if self._tool_strip is not None:
+            return
+        try:
+            from ..toolbars import strip
+            self._tool_strip = strip.ToolStrip(self.theme(), self)
+            self._tool_strip.install()
+        except Exception:
+            log.error("could not set up the tool strip")
+            self._remove_tool_strip()
+
+    def _remove_tool_strip(self) -> None:
+        if self._tool_strip is None:
+            return
+        try:
+            self._tool_strip.remove()
+        except Exception:
+            log.error("could not remove the tool strip")
+        self._tool_strip = None
 
     # -- experimental sketch task panel -- #
 

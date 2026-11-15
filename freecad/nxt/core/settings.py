@@ -51,6 +51,9 @@ DEFAULTS: dict[str, bool | int | float | str] = {
     "SketchPanel": False,
     # Experimental: Nxt's attachment task panel (tools/attach_task.py).
     "AttachPanel": False,
+    # Experimental: one QML strip in place of FreeCAD's toolbars
+    # (toolbars/strip.py).
+    "ToolStrip": False,
     # A new sketch, container or feature opens in rename.
     "AutoRename": False,
     # Look for addon updates after startup (app/update_check.py).

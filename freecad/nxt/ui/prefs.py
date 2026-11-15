@@ -74,6 +74,11 @@ def apply(keys: set[str] | frozenset[str]) -> None:
         live = services.instance()
         if live is not None:
             live.sketch_panel_changed()
+    if "ToolStrip" in keys:
+        from ..app import services
+        live = services.instance()
+        if live is not None:
+            live.tool_strip_changed()
     for prefs in list(_live):
         prefs.changed.emit()
 
@@ -202,6 +207,12 @@ class NxtPreferencesPage:
                    "what they are, ways grouped by what they do, and the "
                    "offset shut until wanted."))
         layout.addRow(self._attach_panel)
+        self._tool_strip = QtWidgets.QCheckBox(translate(
+            "Nxt", "Experimental: Nxt's tool strip"), tree)
+        self._tool_strip.setToolTip(translate(
+            "Nxt", "One bar in place of FreeCAD's toolbars, with each "
+                   "command on its own."))
+        layout.addRow(self._tool_strip)
         self._attach = QtWidgets.QCheckBox(translate(
             "Nxt", "Attach a new sketch to three picked points without "
                    "asking"), tree)
@@ -340,6 +351,7 @@ class NxtPreferencesPage:
         self._rename.setChecked(bool(settings.get("AutoRename")))
         self._sketch_panel.setChecked(bool(settings.get("SketchPanel")))
         self._attach_panel.setChecked(bool(settings.get("AttachPanel")))
+        self._tool_strip.setChecked(bool(settings.get("ToolStrip")))
         self._attach.setChecked(bool(settings.get("AttachSketchByPoints")))
         self._arrows.setChecked(bool(settings.get("DependencyArrows")))
         self._related.setChecked(bool(settings.get("HighlightRelated")))
@@ -372,6 +384,7 @@ class NxtPreferencesPage:
         settings.put("AutoRename", self._rename.isChecked())
         settings.put("SketchPanel", self._sketch_panel.isChecked())
         settings.put("AttachPanel", self._attach_panel.isChecked())
+        settings.put("ToolStrip", self._tool_strip.isChecked())
         settings.put("AttachSketchByPoints", self._attach.isChecked())
         settings.put("DependencyArrows", self._arrows.isChecked())
         settings.put("HighlightRelated", self._related.isChecked())
@@ -395,7 +408,7 @@ class NxtPreferencesPage:
             "rotation": self._rotation.value(),
         })
         try:
-            apply(set(QUICK) | _VIEW | {menu_button.SETTING})
+            apply(set(QUICK) | _VIEW | {menu_button.SETTING, "ToolStrip"})
         except Exception as exc:
             App.Console.PrintError("Nxt: could not apply preferences: %s\n"
                                    % exc)
@@ -415,6 +428,7 @@ class NxtPreferencesPage:
             bool(settings.DEFAULTS["SketchPanel"]))
         self._attach_panel.setChecked(
             bool(settings.DEFAULTS["AttachPanel"]))
+        self._tool_strip.setChecked(bool(settings.DEFAULTS["ToolStrip"]))
         self._attach.setChecked(
             bool(settings.DEFAULTS["AttachSketchByPoints"]))
         self._arrows.setChecked(bool(settings.DEFAULTS["DependencyArrows"]))

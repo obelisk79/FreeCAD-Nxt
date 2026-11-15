@@ -73,6 +73,12 @@ _RELOAD_ORDER = (
     "freecad.nxt.core.fc",
     "freecad.nxt.tools.expressions",
     "freecad.nxt.tools.visibility",
+    "freecad.nxt.toolbars.source",
+    "freecad.nxt.toolbars.icons",
+    "freecad.nxt.toolbars.models",
+    "freecad.nxt.toolbars.hider",
+    "freecad.nxt.toolbars.bridge",
+    "freecad.nxt.toolbars.strip",
     "freecad.nxt.app.services",
 )
 
