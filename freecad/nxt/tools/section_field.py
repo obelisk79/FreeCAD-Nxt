@@ -13,7 +13,7 @@ import FreeCAD as App
 
 from ..app.i18n import translate
 from ..core import units, view3d, widgets
-from ..core.qt import QtCore
+from ..core.qt import QtCore, QtWidgets
 from ..ui import quick_host
 from . import expressions, placement
 from .float_input import Field
@@ -89,10 +89,41 @@ class OffsetField(Field):
         return length_text(self._section.offset + steps * STEP)
 
 
+class _WheelTaker(QtCore.QObject):
+    """Takes a wheel over a value box, so the 3D view underneath does not
+    zoom: FreeCAD's overlay manager otherwise sends it on to the view.
+    """
+
+    def __init__(self, box: _Floating) -> None:
+        super().__init__()
+        self._box = box
+
+    def eventFilter(self, watched: Any, event: Any) -> bool:  # noqa: N802
+        if event.type() != QtCore.QEvent.Type.Wheel:
+            return False
+        widget = self._box._widget
+        if not widgets.alive(widget) or not widget.isVisible() \
+                or not widget.rect().contains(
+                    widget.mapFromGlobal(event.globalPosition().toPoint())):
+            return False
+        root = widget.rootObject()
+        if root is not None:
+            QtCore.QMetaObject.invokeMethod(
+                root, "turn", QtCore.Qt.ConnectionType.DirectConnection,
+                QtCore.Q_ARG("QVariant", event.angleDelta().y()),
+                QtCore.Q_ARG("QVariant", bool(
+                    event.modifiers()
+                    & QtCore.Qt.KeyboardModifier.ControlModifier)))
+        event.accept()
+        return True
+
+
 class _Floating:
     """A QML item floating in the 3D view beside a model point."""
 
     source = ""
+    #: A value box (FloatingValue.qml): the wheel steps it.
+    takes_wheel = False
     #: Where the item's top left sits from the point, in pixels; None
     #: centres the item on it.
     nudge: tuple[int, int] | None = NUDGE
@@ -100,6 +131,7 @@ class _Floating:
     def __init__(self) -> None:
         self._widget: Any = None
         self._theme: Any = None
+        self._wheel: _WheelTaker | None = None
 
     def context(self) -> dict[str, Any]:
         return {}
@@ -128,6 +160,18 @@ class _Floating:
         if not widget.isVisible():
             widget.show()
             widget.raise_()
+            self._take_wheel()
+
+    def _take_wheel(self) -> None:
+        """After FreeCAD's overlay manager, so asked first, as each opens."""
+        if not self.takes_wheel:
+            return
+        app = QtWidgets.QApplication.instance()
+        if app is None:
+            return
+        if self._wheel is None:
+            self._wheel = _WheelTaker(self)
+        app.installEventFilter(self._wheel)
 
     def _ensure(self, viewport: Any) -> Any:
         if widgets.alive(self._widget) and \
@@ -156,6 +200,9 @@ class _Floating:
             self._widget.hide()
 
     def remove(self) -> None:
+        app = QtWidgets.QApplication.instance()
+        if self._wheel is not None and app is not None:
+            app.removeEventFilter(self._wheel)
         if widgets.alive(self._widget):
             self._widget.hide()
             self._widget.deleteLater()
@@ -166,6 +213,7 @@ class OffsetBox(_Floating):
     """The section's offset field, at the arrow's tip."""
 
     source = "FloatingValue.qml"
+    takes_wheel = True
 
     def __init__(self, section: Any) -> None:
         super().__init__()

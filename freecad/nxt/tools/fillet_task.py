@@ -157,6 +157,7 @@ class RadiusBox(_Floating):
     """The radius field, beside the first arrow's tip."""
 
     source = "FloatingValue.qml"
+    takes_wheel = True
 
     def __init__(self, task: FilletTask) -> None:
         super().__init__()

@@ -41,6 +41,9 @@ MODEL = ROOT / "tests" / "models" / ("%s_cases.FCStd" % KIND)
 RECORD = ROOT / "tests" / "models" / ("%s_cases.json" % KIND)
 #: Volumes may drift this much, relative, from the recorded ones.
 DRIFT = 1e-4
+#: A case checked against OCCT's own fillet or chamfer may differ from it
+#: by this share of the material it changes (summed both ways).
+OCCT_MATCH = 1e-3
 
 
 def edge_at(shape, point, kind=None):
@@ -73,6 +76,8 @@ class Case:
         self.tip = self.body.Group[0] if self.body.Group else None
         self.features = []
         self.expect_problems = False
+        #: Single edges, no corners: OCCT's result is the reference.
+        self.like_occt = False
 
     def add(self, picks, size, flat=FLAT, faces=(), tangent=True,
             corners=None):
@@ -398,7 +403,62 @@ def build(doc):
              "Radius larger than the side face: the round runs off it "
              "into the bottom face.")
     c.add([V(15, 0, 6)], 9.0)
+
+    # A user's part (STEP): a block with a pocket and an arched channel
+    # under it, the arch's cylinder meeting planes at odd angles.
+    arch = Part.read(str(ROOT / "tests" / "models"
+                         / "CharliesComplexity.step")).Solids[0]
+    for name, pick, size, note in (
+            ("Arch_foot", V(9.1275, -20, 1.588), 2.0,
+             "Arch's foot on the floor, 2: the ball against the arch's "
+             "circle, not walked on past it onto the pocket."),
+            ("Arch_side", V(-3.848, -20, 8.4277), 2.0,
+             "Arch meeting a pocket wall, 2: a chamfer's ends that far "
+             "from the edge on the curved face too."),
+            ("Arch_rim", V(0.0709, -12.0628, 9.2644), 1.0,
+             "Arch's rim on the pocket's end wall, 1: run on past its "
+             "end, where the floor slants across it, and capped there; "
+             "no wedge left standing."),
+            ("Arch_wall_end", V(-3.848, -29.7873, 14), 2.0,
+             "Pocket's corner edge ending on the arch, 2: run on and "
+             "capped by the curved face it ends on."),
+            ("Arch_floor_corner", V(8, -12.0628, 8.3678), 2.0,
+             "Pocket floor's inner edge, 2, added: carried on along the "
+             "end wall over the arch to the next wall, not stopped short "
+             "in a step.")):
+        c = case(name, arch, note)
+        c.add([pick], size)
+        c.like_occt = True
+
+    arch_end = V(7.3986, -29.7873, 5.5759)
+    c = case("Arch_end", arch,
+             "Arch's rim on the near end face, 6: wider than that face "
+             "where the pocket floor cuts it; the ball stays on the "
+             "edge's own faces, not walked round the outline to the far "
+             "wall (which cut the part through from 4.6 up).")
+    c.add([arch_end], 6.0)
+    c.like_occt = True
+
+    c = case("Arch_end_large", arch,
+             "The same rim, 14.2 (the user's value): own faces only, run "
+             "through the pocket's side wall as FreeCAD's does; not on "
+             "round the arch into its far leg, nor capped by the pocket "
+             "floor it ends on, which has nothing behind it.")
+    c.add([arch_end], 14.2)
+    c.like_occt = True
     return cases
+
+
+def occt_apart(obj):
+    """How far the feature is from OCCT's own: both ways, and the change."""
+    base = obj.BaseFeature.Shape
+    edges = [base.getElement(n) for n in obj.Proxy.names(obj, base)]
+    size = obj.Proxy.size(obj)
+    made = (base.makeChamfer(size, edges) if obj.Proxy.FLAT
+            else base.makeFillet(size, edges))
+    shape = obj.Shape
+    apart = shape.cut(made).Volume + made.cut(shape).Volume
+    return apart, abs(made.Volume - base.Volume)
 
 
 def check(cases, record):
@@ -429,6 +489,12 @@ def check(cases, record):
                 ok = False
                 problems = problems + ["BOP check: %s" % " ".join(
                     str(exc).split())[:120]]
+            if c.like_occt:
+                apart, change = occt_apart(obj)
+                if apart > change * OCCT_MATCH:
+                    ok = False
+                    problems = problems + ["%.4f apart from OCCT's"
+                                           % apart]
             volume = shape.Volume
             new[key] = round(volume, 4)
             if key in old and abs(volume - old[key]) > DRIFT * old[key]:

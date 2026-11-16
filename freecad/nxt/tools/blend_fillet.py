@@ -562,6 +562,43 @@ def _walks(wire: Any, point: App.Vector, tolerance: float) -> list[list[Leg]]:
     return walks
 
 
+#: Short of a half turn: a walk turned this far heads back the way it came.
+MAX_WALK_TURN = math.pi - 1e-3
+
+
+def _heading(leg: Leg, at: App.Vector) -> App.Vector:
+    """The leg's direction at `at`, the way it is walked."""
+    edge = leg.edge
+    ahead = edge.tangentAt(edge.Curve.parameter(at))
+    chord = leg.end - leg.start
+    if ahead.dot(chord) < 0:
+        ahead = -ahead
+    ahead.normalize()
+    return ahead
+
+
+def _unturned(walk: list[Leg], normal: App.Vector) -> list[Leg]:
+    """The legs walked before the outline turns back on itself.
+
+    Past a half turn it runs back alongside the faces it left: a ball
+    laid against those legs would span the part between, cutting it
+    through. Turning is measured in the section's plane (`normal`).
+    """
+    kept: list[Leg] = []
+    turned = 0.0
+    previous: App.Vector | None = None
+    for leg in walk:
+        for heading in (_heading(leg, leg.start), _heading(leg, leg.end)):
+            if previous is not None:
+                turned += math.atan2(previous.cross(heading).dot(normal),
+                                     previous.dot(heading))
+            previous = heading
+            if abs(turned) >= MAX_WALK_TURN:
+                return kept
+        kept.append(leg)
+    return kept
+
+
 class _UnsupportedError(ValueError):
     """The outline has curves other than lines and arcs."""
 
@@ -623,8 +660,13 @@ def _walked(shape: Any, edge: Any, u: float,
         if middle is None:
             return ("line", flat(at + d * radius),
                     (along.dot(e1), along.dot(e2)))
-        moved = (at + d * radius - middle).Length
-        return ("circle", flat(middle), moved)
+        # The ball's centre keeps its radius off the circle: outside it
+        # where `d` leads away from the centre, else inside. (`d` is
+        # taken mid-leg, so `at + d * radius` is off true across an arc.)
+        here = leg.edge.valueAt(_middle(leg.edge))
+        outward = (here - middle).dot(d) > 0
+        return ("circle", flat(middle),
+                size + radius if outward else abs(size - radius))
 
     def touch(form: Form, leg: Leg, d: App.Vector,
               centre: App.Vector) -> App.Vector:
@@ -706,29 +748,55 @@ def _walked(shape: Any, edge: Any, u: float,
                 return True
         return False
 
+    walks = [_unturned(walk, tangent) for walk in walks]
     pairs = sorted(((i, j) for i in range(len(walks[0]))
                     for j in range(len(walks[1]))), key=sum)
-    covered = False
+    covered = overlapped = False
     for i, j in pairs:
         if convex and (inward(walks[0][:i + 1]) or inward(walks[1][:j + 1])):
             covered = True
             continue
         leg1, leg2 = walks[0][i], walks[1][j]
         rolled = roll(leg1, leg2)
-        if rolled is not None:
-            centre, t1, t2 = rolled
-            if overlaps(walks[0][1:i + 1]) or overlaps(walks[1][1:j + 1]):
-                kind = "chamfers" if _noun() == "distance" else "fillets"
-                raise OverlapError(
-                    "Cannot generate overlapping %s; the largest %s "
-                    "that stays on its own faces is %.4g mm"
-                    % (kind, _noun(),
-                       _shown(_largest_fit(faces, edge, radius))))
-            return _outline(walks[0][:i], leg1, t1, walks[1][:j], leg2,
-                            t2, centre, radius, fit), convex, centre
+        if rolled is None:
+            continue
+        # A ball on a face curving against it fits no blend; another
+        # pair, as far along the other way, may still.
+        if overlaps(walks[0][1:i + 1]) or overlaps(walks[1][1:j + 1]):
+            overlapped = True
+            continue
+        centre, t1, t2 = rolled
+        if _flat and _flat[-1]:
+            t1 = _at_distance(leg1, point, tangent, _shown(radius), t1)
+            t2 = _at_distance(leg2, point, tangent, _shown(radius), t2)
+        return _outline(walks[0][:i], leg1, t1, walks[1][:j], leg2,
+                        t2, centre, radius, fit), convex, centre
+    # A chamfer is a plane through its two distances, wherever the ball
+    # would sit: on the edge's own faces, extended, it still is one.
+    if overlapped and not (_flat and _flat[-1]):
+        kind = "chamfers" if _noun() == "distance" else "fillets"
+        raise OverlapError(
+            "Cannot generate overlapping %s; the largest %s "
+            "that stays on its own faces is %.4g mm"
+            % (kind, _noun(), _shown(_largest_fit(faces, edge, radius))))
     if covered:
         raise _CoveredError("a face stands within the %s's reach" % _noun())
     raise ValueError("the %s does not fit between the faces" % _noun())
+
+
+def _at_distance(leg: Leg, corner: App.Vector, tangent: App.Vector,
+                 distance: float, rolled: App.Vector) -> App.Vector:
+    """Where a chamfer meets the leg: `distance` straight from the corner.
+
+    The ball's contact is that point only where the faces are flat; on a
+    curved face it lands short or long. Kept where the leg does not
+    reach that far (the chamfer runs on past it).
+    """
+    ring = Part.Circle(corner, tangent, distance).toShape()
+    found = [v.Point for v in leg.edge.section(ring).Vertexes]
+    if not found:
+        return rolled
+    return min(found, key=lambda p: (p - rolled).Length)
 
 
 #: (centre or None for a line, radius, a point on it, its direction,
@@ -962,20 +1030,20 @@ def _straight(shape: Any, faces: list[Any], edge: Any,
 
 def _slanted_end(shape: Any, edge: Any, at: App.Vector,
                  tangent: App.Vector) -> bool:
-    """Whether a planar face met at the end slants across the edge.
+    """Whether a face met at the end slants or curves across the edge.
 
     A cut stopped square there would leave a wedge of the corner; it
-    runs on instead and the face caps it.
+    runs on instead and the face caps it. A curved face is judged by
+    its normal where the edge meets it.
     """
     own = _faces_of(shape, edge)
     tolerance = max(edge.Length * 1e-6, 1e-7)
     vertex = Part.Vertex(at)
     for face in shape.Faces:
-        if any(face.isSame(f) for f in own) or \
-                not isinstance(face.Surface, Part.Plane) or \
+        if any(face.isSame(f) for f in own) or not _trimming(face) or \
                 face.distToShape(vertex)[0] > tolerance:
             continue
-        if 1 - abs(App.Vector(face.Surface.Axis).dot(tangent)) > MIN_TURN:
+        if 1 - abs(_normal(face, at).dot(tangent)) > MIN_TURN:
             return True
     return False
 
@@ -986,7 +1054,9 @@ def _end_reach(shape: Any, faces: list[Any], edge: Any, at: App.Vector,
 
     Only where one of its faces ends there at a sharp outer edge onto a
     face that can trim it: the blend then reaches that end face however
-    it slants or curves, and the trim cuts it back to it.
+    it slants or curves, and the trim cuts it back to it. It runs on as
+    far as the other face still carries it, as other CAD systems do;
+    stopped short, it would end in a step standing on that face.
     """
     tolerance = radius * WALK_TOLERANCE * 10
     if _joined(at, tolerance):
@@ -1017,8 +1087,20 @@ def _end_reach(shape: Any, faces: list[Any], edge: Any, at: App.Vector,
                 outward = _is_convex(face, point, tangent, n1, n2)
             finally:
                 _solid.pop()
-            if outward:
+            if not outward:
+                continue
+            if not isinstance(edge.Curve, Part.Line):
                 return radius * END_REACH
+            # Straight on, the faces' corner carries on as it is: the
+            # blend runs while a face and the end face trimming it still
+            # lie ahead. (Round a curve the corner turns away instead.)
+            leaving = -_leaving(edge, at)
+
+            def ahead(f: Any) -> float:
+                return max((v.Point - at).dot(leaving) for v in f.Vertexes)
+
+            carried = min(max(ahead(f) for f in faces), ahead(beyond[0]))
+            return max(radius * END_REACH, carried)
     return 0.0
 
 
@@ -1240,12 +1322,31 @@ def _revolved(shape: Any, faces: list[Any], edge: Any,
             edge.valueAt(edge.LastParameter))
     if convex:
         near = radius * WALK_TOLERANCE * 10
-        back = reach if (_open_beyond(shape, turned(-reach / 2))
-                         or _mitre(shape, edge, ends[0])) \
-            and not _joined(ends[0], near) else 0.0
-        forth = reach if (_open_beyond(shape, turned(sweep + reach / 2))
-                          or _mitre(shape, edge, ends[1])) \
-            and not _joined(ends[1], near) else 0.0
+        tangents = (edge.tangentAt(edge.FirstParameter).normalize(),
+                    edge.tangentAt(edge.LastParameter).normalize())
+        # No further than the cap there reaches (_capped).
+        most = min(radius * CAP_REACH / circle.Radius,
+                   (FULL_TURN - sweep) / 2)
+        back = forth = 0.0
+        # Another round met there mitres it; a face slanting across caps
+        # it, so it runs on only as far as that cap trims; else, past an
+        # end into empty space, it runs on to cut clean through.
+        if not _joined(ends[0], near):
+            if _mitre(shape, edge, ends[0]):
+                back = reach
+            elif _slanted_end(shape, edge, ends[0], tangents[0]):
+                back = _past_end(shape, edge, face, circle, ends[0],
+                                 0.0, -1.0, most)
+            elif _open_beyond(shape, turned(-reach / 2)):
+                back = reach
+        if not _joined(ends[1], near):
+            if _mitre(shape, edge, ends[1]):
+                forth = reach
+            elif _slanted_end(shape, edge, ends[1], tangents[1]):
+                forth = _past_end(shape, edge, face, circle, ends[1],
+                                  sweep, 1.0, most)
+            elif _open_beyond(shape, turned(sweep + reach / 2)):
+                forth = reach
     else:
         most = (FULL_TURN - sweep) / 2
         back, forth = (min(_end_reach(shape, faces, edge, at, radius)
@@ -2517,8 +2618,11 @@ def _finished_tool(shape: Any, edge: Any, size: float,
     finally:
         _scale.pop()
     # A loft gone wrong (twisted, or inside out) reaches far from its
-    # edge; added or cut, it would swallow the part.
+    # edge; added or cut, it would swallow the part. A blend run on past
+    # an end stays over its own faces.
     reach = edge.BoundBox
+    for face in _faces_of(shape, edge):
+        reach.add(face.BoundBox)
     reach.enlarge(radius * 6)
     if not reach.isInside(tool.BoundBox) or tool.Volume <= 0:
         raise ValueError("no blend could be built along it")
@@ -2612,6 +2716,7 @@ def _capped(shape: Any, edge: Any, tool: Any, radius: float) -> Any:
         side = (keep_side(point) - point).dot(normal)
         away = normal * (-1 if side > 0 else 1)
         tool = cap(tool, point, away)
+    step = max(shape.BoundBox.DiagonalLength * 1e-5, 1e-5)
     for face, near in stops:
         if not isinstance(face.Surface, Part.Plane):
             tool = _on_side_of(tool, face, near, middle, size)
@@ -2621,12 +2726,54 @@ def _capped(shape: Any, edge: Any, tool: Any, radius: float) -> Any:
         if abs(side) < tolerance:
             continue
         away = normal * (-1 if side > 0 else 1)
+        # A face stops the cut only where material lies behind it (a
+        # wall the edge runs into). Past one with nothing behind (a
+        # floor the edge ends on), the cut runs on as far as its own
+        # faces carry it, through whatever else stands there.
+        if not _contains(shape, face.CenterOfMass + away * step, step / 10):
+            continue
         tool = cap(tool, near, away)
     return tool
 
 
 #: How far, in radii, a cap across a curved edge's end reaches.
 CAP_REACH = 2
+#: Steps tried, turning a section on past a curved edge's end.
+PAST_END_STEPS = 32
+
+
+def _past_end(shape: Any, edge: Any, section: Any, circle: Any,
+              at: App.Vector, start: float, turn: float,
+              most: float) -> float:
+    """How far round to run a cut past the end at `at` (an angle).
+
+    Until the section, turned on, lies wholly past the plane of the face
+    slanting across the end there, which caps it; within `most`, the
+    cap's reach. Not at all if it never gets past within that: run on
+    regardless, it would cut into whatever stands on the near side of
+    that plane further round. Past a curved end face: `most`.
+    """
+    stops = [f for f in shape.Faces
+             if isinstance(f.Surface, Part.Plane)
+             and not any(f.isSame(g) for g in _faces_of(shape, edge))
+             and f.distToShape(Part.Vertex(at))[0]
+             <= max(edge.Length * 1e-6, 1e-7)]
+    if not stops:
+        return most
+    inner = edge.valueAt(_middle(edge))
+    tolerance = max(edge.Length * 1e-6, 1e-7)
+    for k in range(1, PAST_END_STEPS + 1):
+        angle = most * k / PAST_END_STEPS
+        turned = section.copy()
+        turned.rotate(circle.Center, circle.Axis,
+                      math.degrees(start + turn * angle))
+        for stop in stops:
+            normal = App.Vector(stop.Surface.Axis)
+            side = (inner - at).dot(normal)
+            if all((v.Point - at).dot(normal) * side < -tolerance
+                   for v in turned.Vertexes):
+                return angle
+    return 0.0
 
 
 def _inside_near(edge: Any, point: App.Vector, radius: float) -> App.Vector:
