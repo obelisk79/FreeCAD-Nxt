@@ -167,16 +167,9 @@ Item {
         return 0;
     }
 
-    // Matches DetailStrip.hasContent, so the mark never promises an
-    // empty strip.
-    readonly property bool hasDetail:
-        (row.notes && row.notes.length > 0)
-        || (row.refs && row.refs.length > 0)
-        || (row.consumers && row.consumers.length > 0)
-        || row.isProfile || row.isLifted
-        || (row.keyProps && row.keyProps.length > 0)
-        || row.propertyCount > 0
-        || row.attachable
+    // Every object has one: at the least its "All properties" link
+    // (propertyCount is read only once the strip is open).
+    readonly property bool hasDetail: !row.isTotal
     readonly property bool showDetail: row.detailOpen && row.hasDetail
 
     // A failure owned by a profile reddens the chip, not the label.

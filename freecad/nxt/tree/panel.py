@@ -346,6 +346,10 @@ class ModelPanel(QtWidgets.QDockWidget):
         return self._view_overlay is not None \
             and self._view_overlay.attached()
 
+    def view_overlay(self) -> Any:
+        """Nxt's own overlay while the panel is in the 3D view, else None."""
+        return self._view_overlay if self.in_view_overlay() else None
+
     def set_view_overlay(self, on: bool) -> None:
         """Into the 3D view as Nxt's own overlay, or back into the dock."""
         if on == self.in_view_overlay():

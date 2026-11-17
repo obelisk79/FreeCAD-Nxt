@@ -97,6 +97,9 @@ class ViewOverlay(QtCore.QObject):
         self._passing = False
         self._through = False
         self._owning = False
+        #: A press over the panel taken from a window above it (the
+        #: Property Inspector): its moves and release follow it here.
+        self._taking = False
         #: The View3DInventor around `_host`, watched for closing.
         self._holder: Any = None
         self._parked = False
@@ -524,6 +527,42 @@ class ViewOverlay(QtCore.QObject):
         quick_widget = _quick_modules()[2].QQuickWidget
         quick_widget.event(self._dock._view, event)
         event.accept()
+
+    def take(self, event: Any) -> bool:
+        """Give the panel a mouse event aimed at a widget lying under it.
+
+        The panel draws over the 3D view's other overlays (the Property
+        Inspector) but, a child of the 3D view, is under them for input:
+        a press where the panel draws goes to it, as what is seen. True
+        if taken.
+        """
+        view = self._dock._view
+        if not self.shown() or self._parked or not widgets.alive(view) \
+                or not view.isVisible():
+            return False
+        kind = event.type()
+        where = event.globalPosition().toPoint()
+        local = view.mapFromGlobal(where)
+        if kind in _PRESSES:
+            if not view.rect().contains(local) \
+                    or not self._wants_at(QtCore.QPointF(local)):
+                return False
+            self._taking = True
+        elif kind in _FOLLOWERS:
+            hovering = kind == QtCore.QEvent.Type.MouseMove \
+                and not event.buttons() and view.rect().contains(local) \
+                and self._wants_at(QtCore.QPointF(local))
+            if not (self._taking or hovering):
+                return False
+            if kind == QtCore.QEvent.Type.MouseButtonRelease:
+                self._taking = False
+        else:
+            return False
+        self._set_through(False)
+        self._deliver(QtGui.QMouseEvent(
+            kind, QtCore.QPointF(local), event.globalPosition(),
+            event.button(), event.buttons(), event.modifiers()))
+        return True
 
     def _set_through(self, on: bool) -> None:
         """Make the panel transparent to the mouse, or not.

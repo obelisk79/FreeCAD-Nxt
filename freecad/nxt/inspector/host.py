@@ -558,6 +558,10 @@ class PropertyInspector(QtWidgets.QFrame):
         if (event.type() == QtCore.QEvent.Type.Resize
                 and obj is self.parentWidget()):
             self._keep_inside()
+        if (event.type() in _MOUSE and isinstance(obj, QtWidgets.QWidget)
+                and (obj is self or self.isAncestorOf(obj))
+                and _panel_takes(cast(QtGui.QMouseEvent, event))):
+            return True
         if (event.type() == QtCore.QEvent.Type.MouseButtonPress
                 and not self.pinned
                 and not (self._inspector_bridge is not None
@@ -590,6 +594,21 @@ class PropertyInspector(QtWidgets.QFrame):
         painter.setBrush(self.palette().color(QtGui.QPalette.ColorRole.Window))
         painter.drawRoundedRect(QtCore.QRectF(self.rect()).adjusted(
             0.5, 0.5, -0.5, -0.5), INSPECTOR_RADIUS, INSPECTOR_RADIUS)
+
+
+#: Mouse events the Nxt panel may take where it draws over the inspector.
+_MOUSE = (QtCore.QEvent.Type.MouseButtonPress,
+          QtCore.QEvent.Type.MouseButtonDblClick,
+          QtCore.QEvent.Type.MouseButtonRelease,
+          QtCore.QEvent.Type.MouseMove)
+
+
+def _panel_takes(event: QtGui.QMouseEvent) -> bool:
+    """Whether the Nxt panel, over the 3D view, took this event."""
+    from ..tree import panel
+    model = panel.instance()
+    overlay = model.view_overlay() if model is not None else None
+    return overlay is not None and bool(overlay.take(event))
 
 
 def _make_inspector(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
