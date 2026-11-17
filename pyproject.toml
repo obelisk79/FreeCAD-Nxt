@@ -31,7 +31,7 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 # Qt and FreeCAD dictate camelCase names for overrides, slots, properties
 # and signals; PEP 8 defers to an existing API's conventions.
-"freecad/nxt/{tree,ui,inspector,tools}/{bridge,models,panel,icons,observers,theme,float_input}.py" = ["N802", "N815"]
+"freecad/nxt/{tree,ui,inspector,tools,toolbars}/{bridge,models,panel,icons,observers,theme,float_input,hider,strip}.py" = ["N802", "N815"]
 "tests/*" = ["N802", "N815", "E402"]
 
 [tool.mypy]

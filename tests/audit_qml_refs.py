@@ -95,7 +95,8 @@ registered = set(module_of)
 #: Root views, usable from their neighbours (TaskLayout uses Inspector).
 roots = {path.stem for path in QML.glob("*.qml")}
 builtin = {"Item", "Rectangle", "Text", "TextInput", "Image", "Row", "Column",
-           "Flow", "Grid", "Canvas", "ListView", "Repeater", "MouseArea",
+           "Flow", "Grid", "GridView", "QtObject", "Canvas", "ListView",
+           "Repeater", "MouseArea",
            "DropArea",
            "HoverHandler", "TapHandler", "WheelHandler", "DragHandler",
            "Connections", "Gradient", "GradientStop",

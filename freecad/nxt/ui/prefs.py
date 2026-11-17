@@ -21,7 +21,7 @@ GROUP = "FreeCAD-Nxt"
 QUICK = ("PartLayout", "RowDensity", "ReferenceChips",
          "EditOnDoubleClick", "DependencyArrows", "HighlightRelated",
          "DetailAutoShow", "TreeLines", "RepairProfiles", "OverlayMode",
-         "QuickMass", "AutoRename", "SketchPanel", "AttachPanel")
+         "QuickMass", "AutoRename", "ToolStrip")
 
 #: Settings the theme reads: changing one restyles the panel.
 _VIEW = frozenset({"RowDensity", "ReferenceChips", "UnderConstrainedMarks",
@@ -69,11 +69,11 @@ def apply(keys: set[str] | frozenset[str]) -> None:
         live = services.instance()
         if live is not None:
             live.quick_mass_changed()
-    if "SketchPanel" in keys:
+    if "ToolStrip" in keys:
         from ..app import services
         live = services.instance()
         if live is not None:
-            live.sketch_panel_changed()
+            live.tool_strip_changed()
     for prefs in list(_live):
         prefs.changed.emit()
 
@@ -186,22 +186,12 @@ class NxtPreferencesPage:
             "Nxt", "When a new object's edit closes (or a container is "
                    "made), its name opens for editing in the tree."))
         layout.addRow(self._rename)
-        self._sketch_panel = QtWidgets.QCheckBox(translate(
-            "Nxt", "Experimental: Nxt's task panel while a sketch is edited"),
-            tree)
-        self._sketch_panel.setToolTip(translate(
-            "Nxt", "The solver's status moves to a pill in the 3D view, "
-                   "with the grid and snap settings. The task panel "
-                   "shows only problems and what is selected; FreeCAD's "
-                   "lists stay one click away."))
-        layout.addRow(self._sketch_panel)
-        self._attach_panel = QtWidgets.QCheckBox(translate(
-            "Nxt", "Experimental: Nxt's attachment task panel"), tree)
-        self._attach_panel.setToolTip(translate(
-            "Nxt", "Edit attachment opens Nxt's panel: picks named for "
-                   "what they are, ways grouped by what they do, and the "
-                   "offset shut until wanted."))
-        layout.addRow(self._attach_panel)
+        self._tool_strip = QtWidgets.QCheckBox(translate(
+            "Nxt", "Experimental: Dynamic toolbars"), tree)
+        self._tool_strip.setToolTip(translate(
+            "Nxt", "Nxt's toolbars in place of FreeCAD's: each command "
+                   "on its own, arranged per workbench in edit mode."))
+        layout.addRow(self._tool_strip)
         self._attach = QtWidgets.QCheckBox(translate(
             "Nxt", "Attach a new sketch to three picked points without "
                    "asking"), tree)
@@ -338,8 +328,7 @@ class NxtPreferencesPage:
         self._dbl.setChecked(bool(settings.get("EditOnDoubleClick")))
         self._repair.setChecked(bool(settings.get("RepairProfiles")))
         self._rename.setChecked(bool(settings.get("AutoRename")))
-        self._sketch_panel.setChecked(bool(settings.get("SketchPanel")))
-        self._attach_panel.setChecked(bool(settings.get("AttachPanel")))
+        self._tool_strip.setChecked(bool(settings.get("ToolStrip")))
         self._attach.setChecked(bool(settings.get("AttachSketchByPoints")))
         self._arrows.setChecked(bool(settings.get("DependencyArrows")))
         self._related.setChecked(bool(settings.get("HighlightRelated")))
@@ -370,8 +359,7 @@ class NxtPreferencesPage:
         settings.put("EditOnDoubleClick", self._dbl.isChecked())
         settings.put("RepairProfiles", self._repair.isChecked())
         settings.put("AutoRename", self._rename.isChecked())
-        settings.put("SketchPanel", self._sketch_panel.isChecked())
-        settings.put("AttachPanel", self._attach_panel.isChecked())
+        settings.put("ToolStrip", self._tool_strip.isChecked())
         settings.put("AttachSketchByPoints", self._attach.isChecked())
         settings.put("DependencyArrows", self._arrows.isChecked())
         settings.put("HighlightRelated", self._related.isChecked())
@@ -411,10 +399,7 @@ class NxtPreferencesPage:
         self._dbl.setChecked(bool(settings.DEFAULTS["EditOnDoubleClick"]))
         self._repair.setChecked(bool(settings.DEFAULTS["RepairProfiles"]))
         self._rename.setChecked(bool(settings.DEFAULTS["AutoRename"]))
-        self._sketch_panel.setChecked(
-            bool(settings.DEFAULTS["SketchPanel"]))
-        self._attach_panel.setChecked(
-            bool(settings.DEFAULTS["AttachPanel"]))
+        self._tool_strip.setChecked(bool(settings.DEFAULTS["ToolStrip"]))
         self._attach.setChecked(
             bool(settings.DEFAULTS["AttachSketchByPoints"]))
         self._arrows.setChecked(bool(settings.DEFAULTS["DependencyArrows"]))

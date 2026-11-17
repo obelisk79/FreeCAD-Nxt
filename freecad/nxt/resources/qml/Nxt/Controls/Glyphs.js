@@ -31,6 +31,40 @@ function pen(ctx, w, ink) {
     ctx.beginPath();
 }
 
+// Edit: a pencil, point down-left, its cap marked off.
+function pencil(ctx, w, h, ink) {
+    pen(ctx, w, ink);
+    ctx.moveTo(w * 0.16, h * 0.84);
+    ctx.lineTo(w * 0.22, h * 0.6);
+    ctx.lineTo(w * 0.64, h * 0.18);
+    ctx.lineTo(w * 0.82, h * 0.36);
+    ctx.lineTo(w * 0.4, h * 0.78);
+    ctx.closePath();
+    ctx.moveTo(w * 0.54, h * 0.28);
+    ctx.lineTo(w * 0.72, h * 0.46);
+    ctx.stroke();
+}
+
+// A padlock, shut: a body and its shackle.
+function lock(ctx, w, h, ink) {
+    padlock(ctx, w, h, ink, 0);
+}
+
+// A padlock, open: the shackle lifted off to one side.
+function unlock(ctx, w, h, ink) {
+    padlock(ctx, w, h, ink, w * 0.22);
+}
+
+function padlock(ctx, w, h, ink, lift) {
+    pen(ctx, w, ink);
+    ctx.rect(w * 0.2, h * 0.46, w * 0.6, h * 0.42);
+    ctx.moveTo(w * 0.32 + lift, h * 0.46 - (lift ? h * 0.08 : 0));
+    ctx.lineTo(w * 0.32 + lift, h * 0.3);
+    ctx.arc(w * 0.5 + lift, h * 0.3, w * 0.18, Math.PI, 0);
+    ctx.lineTo(w * 0.68 + lift, lift ? h * 0.36 : h * 0.46);
+    ctx.stroke();
+}
+
 // A constraint's Deactivate: a circle struck through.
 function deactivate(ctx, w, h, ink) {
     pen(ctx, w, ink);

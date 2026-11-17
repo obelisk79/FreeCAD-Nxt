@@ -85,6 +85,53 @@
     </message>
 </context>
 <context>
+    <name>CommandDrawer</name>
+    <message>
+        <source>Already on the toolbar</source>
+        <translation>既にツールバーにあります</translation>
+    </message>
+    <message>
+        <source>Search commands</source>
+        <translation>コマンドを検索</translation>
+    </message>
+    <message>
+        <source>Separator</source>
+        <translation>区切り</translation>
+    </message>
+    <message>
+        <source>Drag a separator onto the toolbar</source>
+        <translation>区切りをツールバーへドラッグ</translation>
+    </message>
+    <message>
+        <source>New group</source>
+        <translation>新しいグループ</translation>
+    </message>
+    <message>
+        <source>Drag onto the toolbar, then drop commands on it</source>
+        <translation>ツールバーへドラッグし、コマンドをその上にドロップ</translation>
+    </message>
+    <message>
+        <source>Other icons</source>
+        <translation>その他のアイコン</translation>
+    </message>
+    <message>
+        <source>Reset</source>
+        <translation>リセット</translation>
+    </message>
+    <message>
+        <source>Done</source>
+        <translation>完了</translation>
+    </message>
+    <message>
+        <source>Reading commands…</source>
+        <translation>コマンドを読み込み中…</translation>
+    </message>
+    <message>
+        <source>No command matches</source>
+        <translation>一致するコマンドはありません</translation>
+    </message>
+</context>
+<context>
     <name>ContextMenu</name>
     <message>
         <source>More</source>
@@ -245,6 +292,25 @@
     <message>
         <source>Refine result</source>
         <translation>結果をリファイン</translation>
+    </message>
+</context>
+<context>
+    <name>GroupEditor</name>
+    <message>
+        <source>Group name</source>
+        <translation>グループ名</translation>
+    </message>
+    <message>
+        <source>Remove from the group</source>
+        <translation>グループから削除</translation>
+    </message>
+    <message>
+        <source>Ungroup</source>
+        <translation>グループ解除</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation>閉じる</translation>
     </message>
 </context>
 <context>
@@ -623,20 +689,12 @@ The panel needs PySide6.QtQuickWidgets.</source>
         <translation>新しいオブジェクトの編集を閉じると (またはコンテナを作成すると)、ツリーで名前の編集が始まります。</translation>
     </message>
     <message>
-        <source>Experimental: Nxt&apos;s task panel while a sketch is edited</source>
-        <translation>試験的: スケッチ編集中に Nxt のタスクパネル</translation>
+        <source>Experimental: Dynamic toolbars</source>
+        <translation>試験的: ダイナミックツールバー</translation>
     </message>
     <message>
-        <source>The solver&apos;s status moves to a pill in the 3D view, with the grid and snap settings. The task panel shows only problems and what is selected; FreeCAD&apos;s lists stay one click away.</source>
-        <translation>ソルバーの状態は 3D ビューのピルに移り、グリッドとスナップの設定もそこにあります。タスクパネルには問題と選択中のものだけを表示し、FreeCAD のリストはワンクリックで開けます。</translation>
-    </message>
-    <message>
-        <source>Experimental: Nxt&apos;s attachment task panel</source>
-        <translation>試験的: Nxt のアタッチメントパネル</translation>
-    </message>
-    <message>
-        <source>Edit attachment opens Nxt&apos;s panel: picks named for what they are, ways grouped by what they do, and the offset shut until wanted.</source>
-        <translation>「アタッチメントを編集」で Nxt のパネルを開きます。選択は種類で表示し、方法は働きごとにまとめ、オフセットは必要になるまで閉じておきます。</translation>
+        <source>Nxt&apos;s toolbars in place of FreeCAD&apos;s: each command on its own, arranged per workbench in edit mode.</source>
+        <translation>FreeCADのツールバーの代わりにNxtのツールバー: コマンドごとに独立し、編集モードでワークベンチごとに配置。</translation>
     </message>
     <message>
         <source>Attach a new sketch to three picked points without asking</source>
@@ -1094,6 +1152,16 @@ The sketch&apos;s axes, by their geometry index.</extracomment>
     <message>
         <source>%d DoF</source>
         <translation>自由度 %d</translation>
+    </message>
+    <message>
+        <source>Group</source>
+        <extracomment>Wait after the last toolbar change before reading them all again. Proxied buttons emit nothing when their text or state changes (Draft Tray shows the current layer): read again this often. FreeCAD&apos;s toolbar icon sizes, offered in edit mode. Where on screen a strip&apos;s view is: its area and the point in it. The drawer&apos;s separator and New group tiles, as their drags carry them. dropCarried&apos;s &quot;not on a new-row zone&quot;. The areas holding something changed (a side strip shows or goes). The carried item is over `area`&apos;s strip at x, y; &quot;&quot; over none. The carried item was let go over `area`&apos;s strip at x, y. The group open in the editor row, by identity: rows move. Group key -&gt; the member key last used, kept across rebuilds. The item dragged out of its view: (area, row) or a drawer key.</extracomment>
+        <translation>グループ</translation>
+    </message>
+    <message>
+        <source>Tool strip</source>
+        <extracomment>Each strip&apos;s toolbar name and where it docks. Toolbars that are the strips&apos; own and never covered.</extracomment>
+        <translation>ツールストリップ</translation>
     </message>
 </context>
 <context>
@@ -2293,6 +2361,21 @@ The sketch&apos;s axes, by their geometry index.</extracomment>
     </message>
 </context>
 <context>
+    <name>SizeStepper</name>
+    <message>
+        <source>Smaller icons</source>
+        <translation>アイコンを小さく</translation>
+    </message>
+    <message>
+        <source>%1 px</source>
+        <translation>%1 px</translation>
+    </message>
+    <message>
+        <source>Larger icons</source>
+        <translation>アイコンを大きく</translation>
+    </message>
+</context>
+<context>
     <name>SketchContents</name>
     <message>
         <source>Free</source>
@@ -2491,6 +2574,25 @@ The sketch&apos;s axes, by their geometry index.</extracomment>
     <message>
         <source>Sketch settings</source>
         <translation>スケッチ設定</translation>
+    </message>
+</context>
+<context>
+    <name>ToolStrip</name>
+    <message>
+        <source>Remove from the toolbar</source>
+        <translation>ツールバーから削除</translation>
+    </message>
+    <message>
+        <source>Locked: the same in every workbench</source>
+        <translation>ロック中: すべてのワークベンチで共通</translation>
+    </message>
+    <message>
+        <source>Lock: the same in every workbench</source>
+        <translation>ロック: すべてのワークベンチで共通</translation>
+    </message>
+    <message>
+        <source>Edit the toolbar</source>
+        <translation>ツールバーを編集</translation>
     </message>
 </context>
 <context>
@@ -2730,12 +2832,8 @@ The sketch&apos;s axes, by their geometry index.</extracomment>
         <translation>「Wire not closed」を自動修復</translation>
     </message>
     <message>
-        <source>Experimental sketch task panel</source>
-        <translation>試験的なスケッチパネル</translation>
-    </message>
-    <message>
-        <source>Experimental attachment panel</source>
-        <translation>試験的なアタッチメントパネル</translation>
+        <source>Experimental dynamic toolbars</source>
+        <translation>試験的なダイナミックツールバー</translation>
     </message>
     <message>
         <source>Rename new objects</source>

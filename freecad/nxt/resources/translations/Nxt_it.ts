@@ -85,6 +85,53 @@
     </message>
 </context>
 <context>
+    <name>CommandDrawer</name>
+    <message>
+        <source>Already on the toolbar</source>
+        <translation>Già nella barra degli strumenti</translation>
+    </message>
+    <message>
+        <source>Search commands</source>
+        <translation>Cerca comandi</translation>
+    </message>
+    <message>
+        <source>Separator</source>
+        <translation>Separatore</translation>
+    </message>
+    <message>
+        <source>Drag a separator onto the toolbar</source>
+        <translation>Trascina un separatore sulla barra degli strumenti</translation>
+    </message>
+    <message>
+        <source>New group</source>
+        <translation>Nuovo gruppo</translation>
+    </message>
+    <message>
+        <source>Drag onto the toolbar, then drop commands on it</source>
+        <translation>Trascina sulla barra degli strumenti, poi rilascia i comandi sopra</translation>
+    </message>
+    <message>
+        <source>Other icons</source>
+        <translation>Altre icone</translation>
+    </message>
+    <message>
+        <source>Reset</source>
+        <translation>Ripristina</translation>
+    </message>
+    <message>
+        <source>Done</source>
+        <translation>Fatto</translation>
+    </message>
+    <message>
+        <source>Reading commands…</source>
+        <translation>Lettura dei comandi…</translation>
+    </message>
+    <message>
+        <source>No command matches</source>
+        <translation>Nessun comando corrisponde</translation>
+    </message>
+</context>
+<context>
     <name>ContextMenu</name>
     <message>
         <source>More</source>
@@ -245,6 +292,25 @@
     <message>
         <source>Refine result</source>
         <translation>Affina il risultato</translation>
+    </message>
+</context>
+<context>
+    <name>GroupEditor</name>
+    <message>
+        <source>Group name</source>
+        <translation>Nome del gruppo</translation>
+    </message>
+    <message>
+        <source>Remove from the group</source>
+        <translation>Rimuovi dal gruppo</translation>
+    </message>
+    <message>
+        <source>Ungroup</source>
+        <translation>Separa</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation>Chiudi</translation>
     </message>
 </context>
 <context>
@@ -623,20 +689,12 @@ Il pannello richiede PySide6.QtQuickWidgets.</translation>
         <translation>Alla chiusura della modifica di un nuovo oggetto (o alla creazione di un contenitore), il suo nome si apre per la modifica nell&apos;albero.</translation>
     </message>
     <message>
-        <source>Experimental: Nxt&apos;s task panel while a sketch is edited</source>
-        <translation>Sperimentale: pannello attività Nxt nella modifica schizzi</translation>
+        <source>Experimental: Dynamic toolbars</source>
+        <translation>Sperimentale: barre degli strumenti dinamiche</translation>
     </message>
     <message>
-        <source>The solver&apos;s status moves to a pill in the 3D view, with the grid and snap settings. The task panel shows only problems and what is selected; FreeCAD&apos;s lists stay one click away.</source>
-        <translation>Lo stato del risolutore passa in una pillola nella vista 3D, con griglia e aggancio. Il pannello mostra solo problemi e selezione; gli elenchi di FreeCAD restano a un clic.</translation>
-    </message>
-    <message>
-        <source>Experimental: Nxt&apos;s attachment task panel</source>
-        <translation>Sperimentale: pannello collegamento Nxt</translation>
-    </message>
-    <message>
-        <source>Edit attachment opens Nxt&apos;s panel: picks named for what they are, ways grouped by what they do, and the offset shut until wanted.</source>
-        <translation>Modifica collegamento apre il pannello Nxt: selezioni chiamate per ciò che sono, modi raggruppati per effetto, offset chiuso finché non serve.</translation>
+        <source>Nxt&apos;s toolbars in place of FreeCAD&apos;s: each command on its own, arranged per workbench in edit mode.</source>
+        <translation>Le barre degli strumenti di Nxt al posto di quelle di FreeCAD: ogni comando a sé, disposto per ambiente in modalità modifica.</translation>
     </message>
     <message>
         <source>Attach a new sketch to three picked points without asking</source>
@@ -1094,6 +1152,16 @@ The sketch&apos;s axes, by their geometry index.</extracomment>
     <message>
         <source>%d DoF</source>
         <translation>%d GdL</translation>
+    </message>
+    <message>
+        <source>Group</source>
+        <extracomment>Wait after the last toolbar change before reading them all again. Proxied buttons emit nothing when their text or state changes (Draft Tray shows the current layer): read again this often. FreeCAD&apos;s toolbar icon sizes, offered in edit mode. Where on screen a strip&apos;s view is: its area and the point in it. The drawer&apos;s separator and New group tiles, as their drags carry them. dropCarried&apos;s &quot;not on a new-row zone&quot;. The areas holding something changed (a side strip shows or goes). The carried item is over `area`&apos;s strip at x, y; &quot;&quot; over none. The carried item was let go over `area`&apos;s strip at x, y. The group open in the editor row, by identity: rows move. Group key -&gt; the member key last used, kept across rebuilds. The item dragged out of its view: (area, row) or a drawer key.</extracomment>
+        <translation>Gruppo</translation>
+    </message>
+    <message>
+        <source>Tool strip</source>
+        <extracomment>Each strip&apos;s toolbar name and where it docks. Toolbars that are the strips&apos; own and never covered.</extracomment>
+        <translation>Striscia strumenti</translation>
     </message>
 </context>
 <context>
@@ -2293,6 +2361,21 @@ The sketch&apos;s axes, by their geometry index.</extracomment>
     </message>
 </context>
 <context>
+    <name>SizeStepper</name>
+    <message>
+        <source>Smaller icons</source>
+        <translation>Icone più piccole</translation>
+    </message>
+    <message>
+        <source>%1 px</source>
+        <translation>%1 px</translation>
+    </message>
+    <message>
+        <source>Larger icons</source>
+        <translation>Icone più grandi</translation>
+    </message>
+</context>
+<context>
     <name>SketchContents</name>
     <message>
         <source>Free</source>
@@ -2491,6 +2574,25 @@ The sketch&apos;s axes, by their geometry index.</extracomment>
     <message>
         <source>Sketch settings</source>
         <translation>Impostazioni schizzo</translation>
+    </message>
+</context>
+<context>
+    <name>ToolStrip</name>
+    <message>
+        <source>Remove from the toolbar</source>
+        <translation>Rimuovi dalla barra degli strumenti</translation>
+    </message>
+    <message>
+        <source>Locked: the same in every workbench</source>
+        <translation>Bloccata: uguale in ogni ambiente</translation>
+    </message>
+    <message>
+        <source>Lock: the same in every workbench</source>
+        <translation>Blocca: uguale in ogni ambiente</translation>
+    </message>
+    <message>
+        <source>Edit the toolbar</source>
+        <translation>Modifica la barra degli strumenti</translation>
     </message>
 </context>
 <context>
@@ -2730,12 +2832,8 @@ The sketch&apos;s axes, by their geometry index.</extracomment>
         <translation>Ripara «Wire not closed»</translation>
     </message>
     <message>
-        <source>Experimental sketch task panel</source>
-        <translation>Pannello schizzi sperimentale</translation>
-    </message>
-    <message>
-        <source>Experimental attachment panel</source>
-        <translation>Pannello collegamento sperimentale</translation>
+        <source>Experimental dynamic toolbars</source>
+        <translation>Barre degli strumenti dinamiche sperimentali</translation>
     </message>
     <message>
         <source>Rename new objects</source>

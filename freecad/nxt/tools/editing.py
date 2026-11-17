@@ -64,10 +64,7 @@ def edit_attachment(doc_name: str, name: str) -> None:
 
 
 def open_nxt_attachment(obj: Any) -> bool:
-    """Nxt's attachment panel for `obj`, if it is on; False if not shown."""
-    from ..core import settings
-    if not settings.get("AttachPanel"):
-        return False
+    """Nxt's attachment panel for `obj`; False if not shown."""
     from . import attach_task
     return attach_task.open_for(obj)
 

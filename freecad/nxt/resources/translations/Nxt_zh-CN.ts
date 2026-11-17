@@ -85,6 +85,53 @@
     </message>
 </context>
 <context>
+    <name>CommandDrawer</name>
+    <message>
+        <source>Already on the toolbar</source>
+        <translation>已在工具栏上</translation>
+    </message>
+    <message>
+        <source>Search commands</source>
+        <translation>搜索命令</translation>
+    </message>
+    <message>
+        <source>Separator</source>
+        <translation>分隔符</translation>
+    </message>
+    <message>
+        <source>Drag a separator onto the toolbar</source>
+        <translation>将分隔符拖到工具栏上</translation>
+    </message>
+    <message>
+        <source>New group</source>
+        <translation>新建组</translation>
+    </message>
+    <message>
+        <source>Drag onto the toolbar, then drop commands on it</source>
+        <translation>拖到工具栏上，然后把命令拖放到它上面</translation>
+    </message>
+    <message>
+        <source>Other icons</source>
+        <translation>其他图标</translation>
+    </message>
+    <message>
+        <source>Reset</source>
+        <translation>重置</translation>
+    </message>
+    <message>
+        <source>Done</source>
+        <translation>完成</translation>
+    </message>
+    <message>
+        <source>Reading commands…</source>
+        <translation>正在读取命令…</translation>
+    </message>
+    <message>
+        <source>No command matches</source>
+        <translation>没有匹配的命令</translation>
+    </message>
+</context>
+<context>
     <name>ContextMenu</name>
     <message>
         <source>More</source>
@@ -245,6 +292,25 @@
     <message>
         <source>Refine result</source>
         <translation>消除多余边(Refine)</translation>
+    </message>
+</context>
+<context>
+    <name>GroupEditor</name>
+    <message>
+        <source>Group name</source>
+        <translation>组名</translation>
+    </message>
+    <message>
+        <source>Remove from the group</source>
+        <translation>从组中移除</translation>
+    </message>
+    <message>
+        <source>Ungroup</source>
+        <translation>取消分组</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation>关闭</translation>
     </message>
 </context>
 <context>
@@ -623,20 +689,12 @@ The panel needs PySide6.QtQuickWidgets.</source>
         <translation>新对象的编辑关闭时 (或创建容器时)，在树中打开其名称以供编辑。</translation>
     </message>
     <message>
-        <source>Experimental: Nxt&apos;s task panel while a sketch is edited</source>
-        <translation>实验性：编辑草图时使用 Nxt 任务面板</translation>
+        <source>Experimental: Dynamic toolbars</source>
+        <translation>实验性：动态工具栏</translation>
     </message>
     <message>
-        <source>The solver&apos;s status moves to a pill in the 3D view, with the grid and snap settings. The task panel shows only problems and what is selected; FreeCAD&apos;s lists stay one click away.</source>
-        <translation>求解器状态移至 3D 视图中的状态条，附带网格和吸附设置。任务面板只显示问题和所选内容；FreeCAD 的列表一键可达。</translation>
-    </message>
-    <message>
-        <source>Experimental: Nxt&apos;s attachment task panel</source>
-        <translation>实验性：Nxt 附着任务面板</translation>
-    </message>
-    <message>
-        <source>Edit attachment opens Nxt&apos;s panel: picks named for what they are, ways grouped by what they do, and the offset shut until wanted.</source>
-        <translation>“编辑附着”会打开 Nxt 面板：选取按类型命名，方式按作用分组，偏移在需要前保持收起。</translation>
+        <source>Nxt&apos;s toolbars in place of FreeCAD&apos;s: each command on its own, arranged per workbench in edit mode.</source>
+        <translation>用 Nxt 的工具栏代替 FreeCAD 的：每个命令独立，在编辑模式下按工作台排列。</translation>
     </message>
     <message>
         <source>Attach a new sketch to three picked points without asking</source>
@@ -1094,6 +1152,16 @@ The sketch&apos;s axes, by their geometry index.</extracomment>
     <message>
         <source>%d DoF</source>
         <translation>%d 自由度</translation>
+    </message>
+    <message>
+        <source>Group</source>
+        <extracomment>Wait after the last toolbar change before reading them all again. Proxied buttons emit nothing when their text or state changes (Draft Tray shows the current layer): read again this often. FreeCAD&apos;s toolbar icon sizes, offered in edit mode. Where on screen a strip&apos;s view is: its area and the point in it. The drawer&apos;s separator and New group tiles, as their drags carry them. dropCarried&apos;s &quot;not on a new-row zone&quot;. The areas holding something changed (a side strip shows or goes). The carried item is over `area`&apos;s strip at x, y; &quot;&quot; over none. The carried item was let go over `area`&apos;s strip at x, y. The group open in the editor row, by identity: rows move. Group key -&gt; the member key last used, kept across rebuilds. The item dragged out of its view: (area, row) or a drawer key.</extracomment>
+        <translation>组</translation>
+    </message>
+    <message>
+        <source>Tool strip</source>
+        <extracomment>Each strip&apos;s toolbar name and where it docks. Toolbars that are the strips&apos; own and never covered.</extracomment>
+        <translation>工具条</translation>
     </message>
 </context>
 <context>
@@ -2293,6 +2361,21 @@ The sketch&apos;s axes, by their geometry index.</extracomment>
     </message>
 </context>
 <context>
+    <name>SizeStepper</name>
+    <message>
+        <source>Smaller icons</source>
+        <translation>缩小图标</translation>
+    </message>
+    <message>
+        <source>%1 px</source>
+        <translation>%1 像素</translation>
+    </message>
+    <message>
+        <source>Larger icons</source>
+        <translation>放大图标</translation>
+    </message>
+</context>
+<context>
     <name>SketchContents</name>
     <message>
         <source>Free</source>
@@ -2491,6 +2574,25 @@ The sketch&apos;s axes, by their geometry index.</extracomment>
     <message>
         <source>Sketch settings</source>
         <translation>草图设置</translation>
+    </message>
+</context>
+<context>
+    <name>ToolStrip</name>
+    <message>
+        <source>Remove from the toolbar</source>
+        <translation>从工具栏移除</translation>
+    </message>
+    <message>
+        <source>Locked: the same in every workbench</source>
+        <translation>已锁定：所有工作台中相同</translation>
+    </message>
+    <message>
+        <source>Lock: the same in every workbench</source>
+        <translation>锁定：所有工作台中相同</translation>
+    </message>
+    <message>
+        <source>Edit the toolbar</source>
+        <translation>编辑工具栏</translation>
     </message>
 </context>
 <context>
@@ -2730,12 +2832,8 @@ The sketch&apos;s axes, by their geometry index.</extracomment>
         <translation>自动修复“线框未闭合”错误</translation>
     </message>
     <message>
-        <source>Experimental sketch task panel</source>
-        <translation>实验性草图任务面板</translation>
-    </message>
-    <message>
-        <source>Experimental attachment panel</source>
-        <translation>实验性附着面板</translation>
+        <source>Experimental dynamic toolbars</source>
+        <translation>实验性动态工具栏</translation>
     </message>
     <message>
         <source>Rename new objects</source>

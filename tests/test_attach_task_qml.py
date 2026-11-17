@@ -159,7 +159,7 @@ attach.show(ATTACHED)
 settle()
 check("an attached panel shows the way", find("Along path") is not None)
 check("a used offset opens with its fields", find("Move") is not None)
-check("the setting starts off", settings.DEFAULTS["AttachPanel"] is False)
+check("no setting turns it off", "AttachPanel" not in settings.DEFAULTS)
 
 print("ATTACH TASK QML PASSED" if not problems else "ATTACH TASK QML FAILED")
 for p in problems:

@@ -46,11 +46,18 @@ DEFAULTS: dict[str, bool | int | float | str] = {
     "AttachSketchByPoints": True,
     "SnapToFaces": True,
     "RepairProfiles": True,
-    # Experimental: Nxt's task panel while a sketch is edited
-    # (tools/sketch_panel.py). Off until it has proved itself.
-    "SketchPanel": False,
-    # Experimental: Nxt's attachment task panel (tools/attach_task.py).
-    "AttachPanel": False,
+    # Experimental: dynamic toolbars, QML strips in place of FreeCAD's
+    # toolbars (toolbars/strip.py).
+    "ToolStrip": False,
+    # JSON: the tool strip's order per workbench (toolbars/layouts.py).
+    "ToolStripLayouts": "",
+    # The top strip's first row's icon size in pixels; 0 follows
+    # FreeCAD's toolbars.
+    "ToolStripIconSize": 0,
+    # Every other row's icon size, side strips' too; 0 as above.
+    "ToolStripOtherIconSize": 0,
+    # What ("first-row,left,right") is the same in every workbench.
+    "ToolStripLocked": "",
     # A new sketch, container or feature opens in rename.
     "AutoRename": False,
     # Look for addon updates after startup (app/update_check.py).
