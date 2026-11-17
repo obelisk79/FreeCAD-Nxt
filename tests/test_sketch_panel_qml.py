@@ -296,6 +296,19 @@ check("a row selects what it names", selected == ["Edge2"])
 bridge.touch()
 settle()
 check("and opens its strip", "Construction" in texts(cards))
+click(cards, text_item(cards, "2  Width"))
+settle(0.6)         # a single tap waits out the double-click interval
+bridge.touch()
+settle(0.3)
+check("a constraint chip opens the constraints tab on it",
+      model.tab == "constraints" and selected == ["Constraint2"]
+      and "Width" in texts(cards))
+click(cards, text_item(cards, "Line 2"))
+settle(0.6)
+bridge.touch()
+settle(0.3)
+check("and a geometry chip goes back to the elements",
+      model.tab == "elements" and selected == ["Edge2"])
 sketch.Constraints[1].Driving = True     # made a reference above
 bridge.edited()
 model.setTab("constraints")

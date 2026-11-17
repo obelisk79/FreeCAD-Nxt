@@ -342,6 +342,26 @@ class ActivateTests(unittest.TestCase):
         self.bridge.activate("B")
         self.assertEqual((self.started, self.toggled), ([], ["B"]))
 
+    def test_what_opens_itself_on_a_double_click(self) -> None:
+        opens = bridge_mod.activation.opens_itself
+
+        class Simulation:
+            def doubleClicked(self, _vobj: object) -> bool:  # noqa: N802
+                return True
+
+        class Draft(Simulation):
+            def setEdit(self, _vobj: object, _mode: int) -> bool:  # noqa: N802
+                return True
+
+        def obj(proxy: object, type_id: str = "App::FeaturePython") -> object:
+            return types.SimpleNamespace(
+                TypeId=type_id, ViewObject=types.SimpleNamespace(Proxy=proxy))
+
+        self.assertTrue(opens(obj(Simulation())))
+        self.assertFalse(opens(obj(Draft())))
+        self.assertFalse(opens(obj(None, "PartDesign::Pad")))
+        self.assertTrue(opens(obj(None, "Image::ImagePlane")))
+
     def test_the_keys(self) -> None:
         key = bridge_mod.activation.active_key
         part = types.SimpleNamespace(

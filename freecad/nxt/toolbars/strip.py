@@ -45,6 +45,19 @@ def _see_through(view: Any) -> None:
 MOST_OF_WINDOW = 1 / 3
 
 
+#: The least share of the window's width the top strip takes when docked
+#: as it should be; narrower, FreeCAD's restored layout squeezed it.
+LEAST_OF_WIDTH = 1 / 2
+#: How long after FreeCAD rearranges its toolbars (a restored layout, a
+#: workbench change) the strips' docking is checked.
+DOCK_CHECK_MS = 100
+
+
+def squeezed(strip_width: int, window_width: int) -> bool:
+    """Whether the top strip is narrower than its line would make it."""
+    return strip_width < window_width * LEAST_OF_WIDTH
+
+
 def fitted_height(wanted: float, window_height: int) -> int:
     """The top strip's height: what QML wants, within MOST_OF_WINDOW."""
     return min(math.ceil(wanted), max(1, int(window_height * MOST_OF_WINDOW)))
@@ -89,15 +102,36 @@ class _Host(QtCore.QObject):
          else root.implicitWidthChanged).connect(self._fit_timer.start)
         self._fit_timer.start()
         self.toolbar.addWidget(self.view)
-        # A line of its own: sharing one, it was given only a sliver.
-        if across:
-            main.addToolBarBreak(dock)
-        main.addToolBar(dock, self.toolbar)
         self._main = main
+        self._dock = dock
+        self._place()
         self.toolbar.installEventFilter(self)
         # A new width lays QML out again: fit to what it then wants.
         self.view.installEventFilter(self)
         self.toolbar.setVisible(self.wanted)
+
+    def _place(self) -> None:
+        # A line of its own: sharing one, it was given only a sliver.
+        if self.area == state.TOP:
+            self._main.addToolBarBreak(self._dock)
+        self._main.addToolBar(self._dock, self.toolbar)
+
+    def check_dock(self) -> None:
+        """Dock again where FreeCAD's restored layout moved or squeezed it.
+
+        FreeCAD 1.1 restores its saved toolbar layout after the strips
+        are placed; the top strip then sat in a sliver of its line.
+        """
+        if not self.wanted or not self._main.isVisible():
+            return
+        moved = self._main.toolBarArea(self.toolbar) != self._dock
+        if not moved and not (self.area == state.TOP and squeezed(
+                self.toolbar.width(), self._main.width())):
+            return
+        _drop(self._main, self.toolbar)
+        self._place()
+        self.toolbar.setVisible(True)
+        self._fit_timer.start()
 
     def _fit(self) -> None:
         root = self.view.rootObject()
@@ -155,6 +189,10 @@ class ToolStrip(QtCore.QObject):
         self._hosts: dict[str, _Host] = {}
         self._hider: ToolbarHider | None = None
         self.bridge: ToolStripBridge | None = None
+        self._dock_timer = QtCore.QTimer(self)
+        self._dock_timer.setSingleShot(True)
+        self._dock_timer.setInterval(DOCK_CHECK_MS)
+        self._dock_timer.timeout.connect(self._check_docks)
 
     def install(self) -> None:
         main = Gui.getMainWindow()
@@ -170,9 +208,24 @@ class ToolStrip(QtCore.QObject):
         self.bridge.editingChanged.connect(self._show_sides)
         self._hider = ToolbarHider(main, OWN, self)
         self._hider.toolbarsChanged.connect(self.bridge.schedule)
+        self._hider.toolbarsChanged.connect(self._dock_timer.start)
         self._hider.install()
         main.workbenchActivated.connect(self.bridge.schedule)
+        main.workbenchActivated.connect(self._dock_timer.start)
+        # At startup the window shows after FreeCAD restores its layout.
+        main.installEventFilter(self)
         self.bridge.rebuild()
+        self._dock_timer.start()
+
+    def eventFilter(self, watched: QtCore.QObject,  # noqa: N802
+                    event: QtCore.QEvent) -> bool:
+        if watched is self._main and event.type() == QtCore.QEvent.Type.Show:
+            self._dock_timer.start()
+        return False
+
+    def _check_docks(self) -> None:
+        for host in self._hosts.values():
+            host.check_dock()
 
     def _show_sides(self) -> None:
         if self.bridge is None:
@@ -183,9 +236,14 @@ class ToolStrip(QtCore.QObject):
 
     def remove(self) -> None:
         main = self._main
+        self._dock_timer.stop()
+        if main is not None:
+            main.removeEventFilter(self)
         if self.bridge is not None:
             with contextlib.suppress(RuntimeError, TypeError):
                 main.workbenchActivated.disconnect(self.bridge.schedule)
+            with contextlib.suppress(RuntimeError, TypeError):
+                main.workbenchActivated.disconnect(self._dock_timer.start)
             self.bridge.stop()
         if self._hider is not None:
             self._hider.remove()

@@ -14,6 +14,19 @@ from ..tools import editing
 DOUBLE_CLICKED = frozenset({"Image::ImagePlane"})
 
 
+def opens_itself(obj: Any) -> bool:
+    """Whether its view provider opens it on a double-click, not an edit.
+
+    A Python one with doubleClicked but no setEdit (an Assembly
+    Simulation, say): editing it would do nothing.
+    """
+    if getattr(obj, "TypeId", "") in DOUBLE_CLICKED:
+        return True
+    proxy = getattr(getattr(obj, "ViewObject", None), "Proxy", None)
+    return callable(getattr(proxy, "doubleClicked", None)) \
+        and not callable(getattr(proxy, "setEdit", None))
+
+
 def active_key(obj: Any) -> str:
     """The key FreeCAD keeps this kind of active container under."""
     type_id = str(getattr(obj, "TypeId", ""))
@@ -51,19 +64,20 @@ class Activation:
         if doc is None or editing.is_reference_pick(doc.getObject(name)):
             return
         node = self._snapshot.nodes.get(name)
+        obj = doc.getObject(name)
         if node is not None and node.is_container and not node.is_lifted:
-            key = active_key(doc.getObject(name))
+            key = active_key(obj)
             if key and name != self._current(key):
                 # Deferred: activating can switch workbench or open a task.
                 self._pending_active = name
                 self._activate_timer.start()
                 return
-            self._bridge.toggleExpanded(name)
-            return
-        obj = doc.getObject(name)
+            if key or not opens_itself(obj):
+                self._bridge.toggleExpanded(name)
+                return
         if obj is None:
             return
-        if getattr(obj, "TypeId", "") in DOUBLE_CLICKED:
+        if opens_itself(obj):
             # Their view provider's own double-click opens their task;
             # editing them instead opens a bare transform.
             self._pending_native = name

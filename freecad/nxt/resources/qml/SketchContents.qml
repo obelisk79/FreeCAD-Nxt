@@ -495,7 +495,10 @@ Rectangle {
                             readonly property var item: line.chips[index]
                                                         || ({})
                             text: item.title || ""
-                            onClicked: sketch.pick(item.name)
+                            onClicked: {
+                                contents.showTabOf(item.name);
+                                sketch.pick(item.name);
+                            }
                         }
                     }
                     Chip {

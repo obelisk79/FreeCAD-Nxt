@@ -134,6 +134,20 @@ class ContentsModel(QtCore.QAbstractListModel):
             self._layout()
 
     @QtCore.Slot(str)
+    def showTabOf(self, name: str) -> None:  # noqa: N802
+        """The tab that lists `name` ("Constraint3", "Edge2"), unfiltered.
+
+        A chip names something on the other tab: it opens there, and the
+        selection that follows scrolls to it.
+        """
+        tab = contents.CONSTRAINTS if name.startswith("Constraint") \
+            else contents.ELEMENTS
+        if tab == self._view.tab:
+            return
+        self._view.query = ""
+        self.setTab(tab)
+
+    @QtCore.Slot(str)
     def setQuery(self, text: str) -> None:  # noqa: N802
         if text != self._view.query:
             self._view.query = text
