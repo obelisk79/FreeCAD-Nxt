@@ -19,12 +19,13 @@ from typing import Any
 import FreeCAD as App
 import FreeCADGui as Gui
 
+from ..app.i18n import translate
 from ..core import log, widgets
 from ..core.qt import QtCore, QtWidgets
 from ..core.transaction import transaction
 from ..core.view3d import active_viewport
 from ..ui.view_notice import TopNotice
-from . import sketch_state
+from . import expressions, sketch_contents, sketch_state
 from .sketch_contents_model import ContentsModel
 from .task_layout import RENEW_MS, TaskLayout, fitted_view, tab_in_order
 
@@ -129,6 +130,12 @@ def _vertex_geo(sketch: Any, names: list[str]) -> dict[str, int]:
     return found
 
 
+def _path(sketch: Any, index: int) -> str:
+    """The expression path of the sketch's constraint `index`."""
+    return sketch_contents.constraint_path(
+        str(sketch.Constraints[index].Name or ""), index)
+
+
 def selected_names(sketch: Any) -> list[str]:
     """What is selected in `sketch`, as Sketcher names it ("Edge3")."""
     names: list[str] = []
@@ -167,7 +174,7 @@ class SketchBridge(QtCore.QObject):
     #: A stock list was asked for, or sent away.
     browsed = QtCore.Signal()
 
-    _IDLE: tuple[Any, ...] = (False, {}, [], {"kind": ""}, {}, {})
+    _IDLE: tuple[Any, ...] = (False, {}, [], {"kind": ""}, {}, {}, "")
 
     def __init__(self, parent: QtCore.QObject | None = None) -> None:
         super().__init__(parent)
@@ -216,7 +223,8 @@ class SketchBridge(QtCore.QObject):
                          sketch_state.selection(sketch, names),
                          _switches(sketch.ViewObject),
                          {"constraints": int(sketch.ConstraintCount),
-                          "elements": int(sketch.GeometryCount)})
+                          "elements": int(sketch.GeometryCount)},
+                         "%s#%s" % (sketch.Document.Name, sketch.Name))
             except Exception:  # noqa: BLE001 - called from a Qt timer
                 log.error("could not read the sketch for its task panel")
         if state != self._state:
@@ -346,10 +354,42 @@ class SketchBridge(QtCore.QObject):
 
     @QtCore.Slot(int, str)
     def setValue(self, index: int, text: str) -> None:  # noqa: N802
-        """A dimension's value, as typed with its unit."""
+        """A dimension's value, as typed with its unit.
+
+        A value typed over an expression replaces it: the expression
+        would otherwise set the value back on the next recompute.
+        """
+        removed: list[str] = []
+
         def datum(sketch: Any) -> None:
+            path = _path(sketch, index)
+            if path.lstrip(".") in sketch_contents.expressions(sketch):
+                sketch.setExpression(path, None)
+                removed.append(str(sketch.Constraints[index].Name or "")
+                               or "#%d" % (index + 1))
             sketch.setDatum(index, App.Units.Quantity(text))
+
+        def say(sketch: Any) -> None:
+            if removed:
+                from ..app import services
+                services.toast(sketch.Document, translate(
+                    "Nxt", "Removed the expression on %s") % removed[0])
         self._edit("Modify sketch constraints", datum)
+        # After the edit's undo step is closed, so Undo takes it back.
+        self._queue("say what changed", say)
+
+    @QtCore.Slot(int, str)
+    def setExpression(self, index: int, text: str) -> None:  # noqa: N802
+        """An expression to set a dimension, as typed after its "="."""
+        def bind(sketch: Any) -> None:
+            sketch.setExpression(_path(sketch, index),
+                                 expressions.strip_marker(text) or None)
+        self._edit("Set expression", bind)
+
+    @QtCore.Property(str, notify=changed)
+    def owner(self) -> str:
+        """The edited sketch, as expression help names it."""
+        return str(self._state[6])
 
     @QtCore.Slot()
     def validate(self) -> None:
@@ -527,7 +567,8 @@ class _Documents:
         self._touch = touch
 
     def slotChangedObject(self, obj: Any, prop: str) -> None:  # noqa: N802
-        if prop in ("Constraints", "Geometry", "ExternalGeo"):
+        if prop in ("Constraints", "Geometry", "ExternalGeo",
+                    "ExpressionEngine"):
             self._touch()
 
     def slotRecomputedObject(self, _obj: Any) -> None:  # noqa: N802
@@ -622,7 +663,8 @@ class SketchPanel(TaskLayout):
         if not isinstance(layout, QtWidgets.QBoxLayout):
             return
         cards = fitted_view(holder, "SketchPanel.qml",
-                            {"sketch": self._bridge})
+                            {"sketch": self._bridge,
+                             "expressions": expressions.helper()})
         layout.insertWidget(layout.indexOf(lead), cards)
         self._cards = cards
         for delay in RENEW_MS:

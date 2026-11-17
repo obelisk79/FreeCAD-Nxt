@@ -223,6 +223,7 @@ Rectangle {
             required property int more
             required property bool fixes
             required property string value
+            required property string expression
 
             readonly property bool isRow: kind === "element"
                                           || kind === "constraint"
@@ -356,14 +357,25 @@ Rectangle {
                         id: valueField
 
                         property bool typed: false
+                        readonly property bool bound: line.expression.length > 0
+                        //: What the field edits: the expression after its
+                        //: "=", else the value.
+                        readonly property string stored: bound
+                            ? "= " + line.expression : line.value
 
                         function revert() {
-                            text = line.value;
+                            text = stored;
                             typed = false;
                         }
+                        // "=..." sets an expression; anything else is a
+                        // value, which replaces an expression.
                         function apply() {
-                            if (typed && text !== line.value)
-                                sketch.setValue(line.ref, text);
+                            if (typed && text.trim() !== stored) {
+                                if (text.trim().charAt(0) === "=")
+                                    sketch.setExpression(line.ref, text);
+                                else
+                                    sketch.setValue(line.ref, text);
+                            }
                             typed = false;
                         }
 
@@ -371,8 +383,16 @@ Rectangle {
                         anchors.verticalCenter: parent.verticalCenter
                         width: Math.round(theme.fontSmall * 7)
                         height: Math.round(theme.rowHeight * 0.85)
+                        owner: sketch.owner
+                        // At rest: the value an expression gives, in the
+                        // accent, marked fx as FreeCAD marks a bound
+                        // field; the field edits the expression.
+                        styled: bound
+                            ? "<font color=\"%1\">%2</font> <font color=\"%3\"><i>f</i>x</font>"
+                              .arg(theme.accent).arg(line.value).arg(theme.textDim)
+                            : ""
                         // As the 3D handles step: fine, coarse with Shift.
-                        stepFor: function (modifiers) {
+                        stepFor: bound ? null : function (modifiers) {
                             return modifiers & Qt.ShiftModifier ? 10 : 1;
                         }
                         onEdited: if (input.activeFocus) typed = true
@@ -389,12 +409,12 @@ Rectangle {
                             if (!input.activeFocus)
                                 apply();
                         }
-                        Connections {
-                            target: line
-                            function onValueChanged() {
-                                if (!valueField.typed)
-                                    valueField.revert();
-                            }
+                        onStoredChanged: if (!typed) revert()
+                        HoverHandler { id: valueHover }
+                        NxtToolTip {
+                            shown: valueHover.hovered && valueField.bound
+                                   && !valueField.input.activeFocus
+                            text: "= " + line.expression
                         }
                         Component.onCompleted: revert()
                     }

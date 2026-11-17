@@ -22,7 +22,7 @@ _ROLE: int = QtCore.Qt.ItemDataRole.UserRole
 #: The row fields QML reads, in role order; "value" is formatted late.
 FIELDS = ("key", "kind", "title", "detail", "number", "mark", "dashed",
           "selected", "folded", "count", "index", "name", "editable",
-          "driving", "active", "chips", "more", "fixes")
+          "driving", "active", "chips", "more", "fixes", "expression")
 VALUE_ROLE = _ROLE + len(FIELDS) + 1
 #: Changes closer together than this are one drag: read at its end.
 SETTLE_MS = 150

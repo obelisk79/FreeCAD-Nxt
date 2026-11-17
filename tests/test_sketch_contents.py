@@ -139,6 +139,24 @@ class ConstraintTests(unittest.TestCase):
             tab=contents.CONSTRAINTS, query="32"), {1: "32.00 mm"})
         self.assertEqual(keys(rows), ["g:dimensions", "c1"])
 
+    def test_an_expression_is_read_by_name_or_index(self) -> None:
+        sketch = Sketch()
+        sketch.Constraints.append(Constraint("Radius", 3, value=8.0))
+        sketch.ExpressionEngine = [(".Constraints.Width", "Sheet.w"),
+                                   ("Constraints[4]", "Width / 4")]
+        snap = contents.read(sketch)
+        self.assertEqual(snap.constraints[1].expression, "Sheet.w")
+        self.assertEqual(snap.constraints[4].expression, "Width / 4")
+        self.assertEqual(snap.constraints[0].expression, "")
+        row = next(r for r in contents.rows(snap, contents.View(
+            tab=contents.CONSTRAINTS)) if r["key"] == "c1")
+        self.assertEqual(row["expression"], "Sheet.w")
+
+    def test_paths_follow_freecad(self) -> None:
+        self.assertEqual(contents.constraint_path("Width", 1),
+                         "Constraints.Width")
+        self.assertEqual(contents.constraint_path("", 4), "Constraints[4]")
+
     def test_filters_keep_reference_and_inactive(self) -> None:
         sketch = Sketch()
         sketch.Constraints[1].Driving = False

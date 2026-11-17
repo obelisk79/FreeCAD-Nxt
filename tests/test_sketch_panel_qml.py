@@ -10,6 +10,7 @@ Run with: python3 tests/test_sketch_panel_qml.py
 
 from __future__ import annotations
 
+import importlib
 import os
 import sys
 import types
@@ -316,6 +317,42 @@ check("a typed value is set in one undo step",
       sketch.Constraints[1].Value == 40.0
       and sketch.Document.steps[-2:]
       == ["Modify sketch constraints", "commit"])
+toasts: list[tuple[Any, str, bool]] = []
+services_module = importlib.import_module("freecad.nxt.app.services")
+services_module.toast = (
+    lambda doc, message, after_undo=None, undoable=True, actions=(),
+    sticky=False: toasts.append((doc, message, undoable)))
+sketch.ExpressionEngine = [(".Constraints.Width", "Sheet.w")]
+cards.rootObject().forceActiveFocus()     # leave the value field
+bridge.edited()
+settle(0.4)
+check("a value an expression sets shows marked fx",
+      "<i>f</i>x" in "".join(str(i.property("text")) for i in items_of(
+          cards.contentItem()) if i.inherits("QQuickText") and shown(i)))
+field = next(i for i in items_of(cards.contentItem())
+             if i.inherits("QQuickTextInput")
+             and i.property("text") == "= Sheet.w")
+check("and the field holds the expression to edit", field is not None)
+cards.requestActivate()
+field.forceActiveFocus()
+field.setProperty("text", "45 mm")
+QTest.keyClick(cards, QtCore.Qt.Key.Key_Space)
+QTest.keyClick(cards, QtCore.Qt.Key.Key_Backspace)
+QTest.keyClick(cards, QtCore.Qt.Key.Key_Return)
+settle()
+check("a value typed over it replaces the expression",
+      sketch.Constraints[1].Value == 45.0
+      and sketch.ExpressionEngine == [])
+check("and a toast says so, with Undo",
+      toasts and toasts[-1][1] == "Removed the expression on Width"
+      and toasts[-1][2])
+bridge.setExpression(1, "= Sheet.h")
+settle()
+check("an expression typed after = binds it",
+      sketch.ExpressionEngine == [("Constraints.Width", "Sheet.h")])
+sketch.ExpressionEngine = []
+bridge.edited()
+settle(0.3)
 reads.clear()
 for _ in range(5):
     bridge.edited()

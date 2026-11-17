@@ -62,6 +62,8 @@ class Sketch:
         self.MalformedConstraints: list[int] = []
         self.PartiallyRedundantConstraints: list[int] = []
         self.solved = 0
+        #: (path, expression), as FreeCAD's ExpressionEngine lists them.
+        self.ExpressionEngine: list[tuple[str, str]] = []
         #: The axes, then one external edge.
         self.ExternalGeo: list[Any] = [LineSegment(), LineSegment(),
                                        LineSegment()]
@@ -97,6 +99,14 @@ class Sketch:
 
     def setDatum(self, index: int, value: Any) -> None:
         self.Constraints[index].Value = float(value.UserString.split()[0])
+
+    def setExpression(self, path: str, expression: str | None) -> None:
+        # FreeCAD files ".Constraints.Width" and "Constraints.Width" alike.
+        self.ExpressionEngine = [
+            (p, e) for p, e in self.ExpressionEngine
+            if p.lstrip(".") != path.lstrip(".")]
+        if expression is not None:
+            self.ExpressionEngine.append((path, expression))
 
     def solve(self) -> int:
         self.solved += 1

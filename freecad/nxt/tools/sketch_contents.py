@@ -80,6 +80,8 @@ class Constraint:
     active: bool
     raw: float
     mark: int
+    #: What sets the value, if an expression does; "" if none.
+    expression: str = ""
 
     @property
     def dimensional(self) -> bool:
@@ -137,6 +139,27 @@ def _marks(sketch: Any) -> dict[int, int]:
     return marks
 
 
+def constraint_path(name: str, index: int) -> str:
+    """The expression path of a constraint, as FreeCAD files it.
+
+    A named constraint's expression is kept under its name, so it
+    follows the constraint when others are deleted; an unnamed one's
+    under its index.
+    """
+    return "Constraints.%s" % name if name else "Constraints[%d]" % index
+
+
+def expressions(sketch: Any) -> dict[str, str]:
+    """Each constraint expression, by its path without the leading dot."""
+    found: dict[str, str] = {}
+    with contextlib.suppress(Exception):  # an object without the engine
+        for path, expression in sketch.ExpressionEngine:
+            path = str(path).lstrip(".")
+            if path.startswith("Constraints"):
+                found[path] = str(expression)
+    return found
+
+
 def read(sketch: Any) -> Snapshot:
     """The sketch's contents, read once."""
     snap = Snapshot()
@@ -152,17 +175,19 @@ def read(sketch: Any) -> Snapshot:
         for number, _geometry in enumerate(
             external[AXES_IN_EXTERNAL_GEO:], start=1)]
     marks = _marks(sketch)
+    set_by = expressions(sketch)
     for index, constraint in enumerate(sketch.Constraints):
         kind = str(constraint.Type)
+        name = str(constraint.Name or "")
         geometry = tuple(dict.fromkeys(
             geo for geo in (constraint.First, constraint.Second,
                             constraint.Third) if geo != UNSET))
         snap.constraints.append(Constraint(
             index, kind, translate("Nxt", CONSTRAINT_LABELS.get(kind, kind)),
-            str(constraint.Name or ""), geometry,
-            bool(constraint.Driving),
+            name, geometry, bool(constraint.Driving),
             bool(getattr(constraint, "IsActive", True)),
-            float(constraint.Value), marks.get(index, MARK_NONE)))
+            float(constraint.Value), marks.get(index, MARK_NONE),
+            set_by.get(constraint_path(name, index), "")))
         for geo in geometry:
             snap.on.setdefault(geo, []).append(index)
     return snap
@@ -212,7 +237,7 @@ def _row(key: str, kind: str, **fields: Any) -> dict[str, Any]:
             "selected": False, "folded": False, "count": 0, "index": -1,
             "name": "", "editable": False, "driving": False,
             "active": True, "chips": [], "more": 0, "fixes": False,
-            "raw": 0.0}
+            "raw": 0.0, "expression": ""}
     base.update(fields)
     return base
 
@@ -278,7 +303,8 @@ def _constraint_row(c: Constraint, selected: bool) -> dict[str, Any]:
                 name="Constraint%d" % (c.index + 1), mark=c.mark,
                 dashed=not c.driving, selected=selected,
                 editable=c.dimensional and c.driving, driving=c.driving,
-                active=c.active, fixes=c.mark > MARK_FREE, raw=c.raw)
+                active=c.active, fixes=c.mark > MARK_FREE, raw=c.raw,
+                expression=c.expression)
 
 
 def _constraint_strip(snap: Snapshot, c: Constraint) -> dict[str, Any]:

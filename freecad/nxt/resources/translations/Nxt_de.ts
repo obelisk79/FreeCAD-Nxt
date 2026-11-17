@@ -967,7 +967,7 @@ Mit Alt beim Ziehen geht es hindurch.</translation>
     </message>
     <message>
         <source>%s is also a unit, which FreeCAD reads first: rename the variable</source>
-        <extracomment>Kinds that fit half a row. Everything else takes a whole one. Groups collapsed unless something in them has an expression. An enumeration this short is joined buttons, not a drop-down.</extracomment>
+        <extracomment>Kinds that fit half a row. Everything else takes a whole one. Groups collapsed unless something in them has an expression. An enumeration this short is joined buttons, not a drop-down. How close two unit axes&apos; dot product must come to 1 to point the same way. The rotation axis as last typed, per object and property. FreeCAD keeps a rotation as a quaternion and reads its axis back scaled to length 1, or as Z when the angle is 0; the typed numbers stay shown while the rotation still turns about them.</extracomment>
         <translation>%s ist auch eine Einheit, die FreeCAD zuerst liest: Variable umbenennen</translation>
     </message>
     <message>
@@ -1160,8 +1160,13 @@ The sketch&apos;s axes, by their geometry index.</extracomment>
     </message>
     <message>
         <source>Tool strip</source>
-        <extracomment>Each strip&apos;s toolbar name and where it docks. Toolbars that are the strips&apos; own and never covered.</extracomment>
+        <extracomment>Each strip&apos;s toolbar name and where it docks. Toolbars that are the strips&apos; own and never covered. The most of the window&apos;s height the top strip may take: a first layout at a sliver of its width (FreeCAD 1.1 lays toolbars out before the window has its size) wraps every item onto its own row, and a strip fixed at that height was never widened again.</extracomment>
         <translation>Werkzeugleiste</translation>
+    </message>
+    <message>
+        <source>Removed the expression on %s</source>
+        <extracomment>Set on a box of FreeCAD&apos;s that the panel hid, and so may show again. FreeCAD&apos;s boxes in the sketch dialog -&gt; the list each one is, if the panel offers to show it; the solver message is never shown. The box the panel&apos;s cards take the place of. Switches FreeCAD keeps in parameters: key -&gt; (group, name, default). Switches that are properties of the sketch&apos;s view provider. Which geometry is drawn, and picked, on top: parameters, top first. Each holds 1 (normal), 2 (construction) or 3 (external). FreeCAD&apos;s command that selects what a status link is about. Sketcher&apos;s own &quot;Auto-update&quot; switch: recompute after every edit. A stock list was asked for, or sent away.</extracomment>
+        <translation>Ausdruck an %s entfernt</translation>
     </message>
 </context>
 <context>
