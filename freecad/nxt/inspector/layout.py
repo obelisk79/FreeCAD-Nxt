@@ -55,6 +55,15 @@ LENGTH_UNIT = "mm"
 ANGLE_UNIT = "°"
 AXES = ("x", "y", "z")
 NUMBER_FORMAT = "%.6g"
+#: How close two unit axes' dot product must come to 1 to point the same
+#: way.
+SAME_DIRECTION = 1e-9
+
+#: The rotation axis as last typed, per object and property. FreeCAD keeps
+#: a rotation as a quaternion and reads its axis back scaled to length 1,
+#: or as Z when the angle is 0; the typed numbers stay shown while the
+#: rotation still turns about them.
+_typed_axes: dict[tuple[str, str, str], tuple[float, float, float]] = {}
 
 
 def label_for(name: str) -> str:
@@ -197,7 +206,7 @@ def _entry(container: Any, prop: str, expressions: dict[str, str]
             for axis in AXES]
     elif kind == "placement":
         base, rotation = value.Base, value.Rotation
-        axis = rotation.Axis
+        axis = shown_axis(container, prop, rotation)
         entry["parts"] = (
             [{"path": "Base." + a, "label": a.upper(),
               "text": _number(getattr(base, a)), "unit": LENGTH_UNIT}
@@ -399,13 +408,49 @@ def _assign_part(container: Any, prop: str, path: str, text: str) -> None:
     elif path.startswith("Base."):
         setattr(value.Base, path[len("Base."):], number)
     elif path.startswith("Axis."):
-        axis = value.Rotation.Axis
+        axis = shown_axis(container, prop, value.Rotation)
         setattr(axis, path[len("Axis."):], number)
+        _typed_axes[_axis_key(container, prop)] = (axis.x, axis.y, axis.z)
         value.Rotation = App.Rotation(axis, math.degrees(
             value.Rotation.Angle))
     elif path == "Angle":
-        value.Rotation = App.Rotation(value.Rotation.Axis, number)
+        value.Rotation = App.Rotation(
+            shown_axis(container, prop, value.Rotation), number)
     setattr(container, prop, value)
+
+
+def _axis_key(container: Any, prop: str) -> tuple[str, str, str]:
+    obj = getattr(container, "Object", container)
+    doc = getattr(obj, "Document", None)
+    return (str(getattr(doc, "Name", "")), str(getattr(obj, "Name", "")),
+            prop)
+
+
+def shown_axis(container: Any, prop: str, rotation: Any) -> Any:
+    """The rotation axis to show: as typed, while the rotation keeps it.
+
+    Changed elsewhere (dragged, undone, an expression), the rotation
+    turns about another axis: FreeCAD's is shown and the typed one
+    forgotten. At angle 0 any axis holds, so the typed one stays.
+    """
+    key = _axis_key(container, prop)
+    typed = _typed_axes.get(key)
+    stored = rotation.Axis
+    if typed is not None and (
+            not rotation.Angle
+            or _same_direction(typed, (stored.x, stored.y, stored.z))):
+        return type(stored)(*typed)
+    _typed_axes.pop(key, None)
+    return type(stored)(stored.x, stored.y, stored.z)
+
+
+def _same_direction(first: tuple[float, float, float],
+                    second: tuple[float, float, float]) -> bool:
+    lengths = math.hypot(*first) * math.hypot(*second)
+    if not lengths:
+        return False
+    dot = sum(a * b for a, b in zip(first, second, strict=True))
+    return dot / lengths > 1 - SAME_DIRECTION
 
 
 def edit_links(objects: list[DocObject], prop: str,

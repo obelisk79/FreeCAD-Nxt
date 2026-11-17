@@ -10,6 +10,7 @@ import sys
 import types
 import unittest
 from pathlib import Path
+from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -160,6 +161,37 @@ class ApplyTests(unittest.TestCase):
         inspector.apply([thing], "Placement", "45", part="Angle")
         self.assertAlmostEqual(math.degrees(thing.Placement.Rotation.Angle),
                                45.0)
+
+    def axis_shown(self, thing: Any) -> list[str]:
+        base = inspector.describe([thing])[1]["items"]
+        placement = next(i for i in base if i["name"] == "Placement")
+        return [p["text"] for p in placement["parts"][3:6]]
+
+    def type_axis(self, thing: Any, **parts: str) -> None:
+        for axis, text in parts.items():
+            inspector.apply([thing], "Placement", text, part="Axis." + axis)
+
+    def test_a_typed_axis_is_shown_as_typed(self) -> None:
+        thing = helix()
+        self.type_axis(thing, x="2", z="1")
+        self.assertEqual(self.axis_shown(thing), ["2", "0", "1"])
+        axis = thing.Placement.Rotation.Axis
+        self.assertAlmostEqual(axis.x / axis.z, 2.0)
+
+    def test_a_typed_axis_survives_angle_zero(self) -> None:
+        thing = helix()
+        self.type_axis(thing, x="2", z="1")
+        inspector.apply([thing], "Placement", "0", part="Angle")
+        inspector.apply([thing], "Placement", "30", part="Angle")
+        self.assertEqual(self.axis_shown(thing), ["2", "0", "1"])
+        axis = thing.Placement.Rotation.Axis
+        self.assertAlmostEqual(axis.x / axis.z, 2.0)
+
+    def test_a_rotation_changed_elsewhere_shows_freecads_axis(self) -> None:
+        thing = helix()
+        self.type_axis(thing, x="2", z="1")
+        thing.Placement.Rotation = fakes.Rotation(fakes.Vector(0, 3, 0), 10)
+        self.assertEqual(self.axis_shown(thing), ["0", "1", "0"])
 
     def test_a_colour(self) -> None:
         thing = helix()

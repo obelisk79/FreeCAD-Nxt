@@ -82,9 +82,13 @@ class Vector:
 
 
 class Rotation:
+    """As FreeCAD's: the axis reads back at length 1, or Z at angle 0."""
+
     def __init__(self, axis: Vector, angle_degrees: float) -> None:
-        self.Axis = axis
         self.Angle = math.radians(angle_degrees)
+        length = math.hypot(axis.x, axis.y, axis.z)
+        self.Axis = (Vector(axis.x / length, axis.y / length, axis.z / length)
+                     if self.Angle and length else Vector(0, 0, 1))
 
 
 class Placement:
