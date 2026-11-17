@@ -1,8 +1,10 @@
-"""The tool strip in the main window: its toolbar, view and covers.
+"""The tool strips in the main window: their toolbars, views and covers.
 
-One Nxt toolbar, fixed in place, holds the QML strip; every other
-toolbar is covered by the hider. FreeCAD hides toolbars it does not
-list as workbenches switch, so the strip's own is shown again.
+One Nxt toolbar per area (top, left, right), fixed in place, holds a QML
+strip; every other toolbar is covered by the hider. A side strip shows
+only while it holds something, or in edit mode, to be dropped on.
+FreeCAD hides toolbars it does not list as workbenches switch, so the
+strips' own are shown again.
 """
 
 from __future__ import annotations
@@ -16,14 +18,19 @@ import FreeCADGui as Gui
 from ..app.i18n import translate
 from ..core.qt import QtCore, QtGui, QtWidgets
 from ..ui import quick_host
-from . import layouts
+from . import layouts, state
 from .bridge import ToolStripBridge
 from .hider import ToolbarHider
 
 TOOLBAR = "NxtToolStrip"
 QML = "Nxt/Toolbar/ToolStrip.qml"
-#: Toolbars that are the strip's own and never covered.
-OWN = (TOOLBAR,)
+_AREA = QtCore.Qt.ToolBarArea
+#: Each strip's toolbar name and where it docks.
+PLACES = {state.TOP: (TOOLBAR, _AREA.TopToolBarArea),
+          state.LEFT: (TOOLBAR + "Left", _AREA.LeftToolBarArea),
+          state.RIGHT: (TOOLBAR + "Right", _AREA.RightToolBarArea)}
+#: Toolbars that are the strips' own and never covered.
+OWN = tuple(name for name, _dock in PLACES.values())
 
 
 def _see_through(view: Any) -> None:
@@ -31,8 +38,91 @@ def _see_through(view: Any) -> None:
     view.setClearColor(QtGui.QColor(0, 0, 0, 0))
 
 
+class _Host(QtCore.QObject):
+    """One area's toolbar and QML view."""
+
+    def __init__(self, main: Any, area: str, theme: Any,
+                 bridge: ToolStripBridge,
+                 parent: QtCore.QObject | None = None) -> None:
+        super().__init__(parent)
+        self.area = area
+        self.wanted = area == state.TOP
+        name, dock = PLACES[area]
+        self.toolbar = QtWidgets.QToolBar(translate("Nxt", "Tool strip"),
+                                          main)
+        self.toolbar.setObjectName(name)
+        self.toolbar.setMovable(False)
+        self.toolbar.setFloatable(False)
+        # Off the toolbars' own menu: hiding it would leave no toolbar.
+        self.toolbar.toggleViewAction().setVisible(False)
+        self.view = quick_host.make_view(
+            self.toolbar, QML,
+            {"theme": theme, "strip": bridge, "area": area},
+            prepare=_see_through)
+        # A QWidget refuses system drops unless told: items dragged here
+        # from another strip got the "no" cursor.
+        self.view.setAcceptDrops(True)
+        across = area == state.TOP
+        policy = QtWidgets.QSizePolicy.Policy
+        self.view.setSizePolicy(
+            policy.Expanding if across else policy.Fixed,
+            policy.Fixed if across else policy.Expanding)
+        # implicitHeight changes while QML lays out a frame; resizing the
+        # view inside that frame starts another and both are dropped
+        # ("beginFrame() must be followed by ... endFrame()"): blank strip.
+        self._fit_timer = _zero_timer(self, self._fit)
+        self._reshow_timer = _zero_timer(self, self._reshow)
+        root = self.view.rootObject()
+        (root.implicitHeightChanged if across
+         else root.implicitWidthChanged).connect(self._fit_timer.start)
+        self._fit_timer.start()
+        self.toolbar.addWidget(self.view)
+        main.addToolBar(dock, self.toolbar)
+        self.toolbar.installEventFilter(self)
+        self.toolbar.setVisible(self.wanted)
+
+    def _fit(self) -> None:
+        root = self.view.rootObject()
+        if self.area == state.TOP:
+            self.view.setFixedHeight(
+                math.ceil(root.property("implicitHeight") or 0))
+        else:
+            self.view.setFixedWidth(
+                math.ceil(root.property("implicitWidth") or 0))
+
+    def want(self, shown: bool) -> None:
+        self.wanted = shown
+        self.toolbar.setVisible(shown)
+
+    def _reshow(self) -> None:
+        if self.wanted and self.toolbar.isHidden():
+            self.toolbar.show()
+
+    def eventFilter(self, watched: QtCore.QObject,  # noqa: N802
+                    event: QtCore.QEvent) -> bool:
+        if event.type() == QtCore.QEvent.Type.Hide:
+            self._reshow_timer.start()
+        return False
+
+    def remove(self, main: Any) -> None:
+        self._fit_timer.stop()
+        self._reshow_timer.stop()
+        self.toolbar.removeEventFilter(self)
+        main.removeToolBar(self.toolbar)
+        # The view goes with its toolbar; its context is never nulled.
+        self.toolbar.deleteLater()
+
+
+def _zero_timer(owner: QtCore.QObject, slot: Any) -> QtCore.QTimer:
+    timer = QtCore.QTimer(owner)
+    timer.setSingleShot(True)
+    timer.setInterval(0)
+    timer.timeout.connect(slot)
+    return timer
+
+
 class ToolStrip(QtCore.QObject):
-    """Nxt's QML toolbar standing in for all of FreeCAD's."""
+    """Nxt's QML toolbars standing in for all of FreeCAD's."""
 
     def __init__(self, theme: Any,
                  parent: QtCore.QObject | None = None) -> None:
@@ -40,55 +130,36 @@ class ToolStrip(QtCore.QObject):
         self._theme = theme
         #: FreeCAD's main window, with its workbenchActivated signal.
         self._main: Any = None
-        self._toolbar: QtWidgets.QToolBar | None = None
-        self._view: Any = None
+        self._hosts: dict[str, _Host] = {}
         self._hider: ToolbarHider | None = None
         self.bridge: ToolStripBridge | None = None
-        self._reshow_timer = QtCore.QTimer(self)
-        self._reshow_timer.setSingleShot(True)
-        self._reshow_timer.setInterval(0)
-        self._reshow_timer.timeout.connect(self._reshow)
-        # implicitHeight changes while QML lays out a frame; resizing the
-        # view inside that frame starts another and both are dropped
-        # ("beginFrame() must be followed by ... endFrame()"): blank strip.
-        self._fit_timer = QtCore.QTimer(self)
-        self._fit_timer.setSingleShot(True)
-        self._fit_timer.setInterval(0)
-        self._fit_timer.timeout.connect(self._fit)
 
     def install(self) -> None:
         main = Gui.getMainWindow()
         self._main = main
         _remove_left_over(main)
-        toolbar = QtWidgets.QToolBar(translate("Nxt", "Tool strip"), main)
-        toolbar.setObjectName(TOOLBAR)
-        toolbar.setMovable(False)
-        toolbar.setFloatable(False)
-        # Off the toolbars' own menu: hiding it would leave no toolbar.
-        toolbar.toggleViewAction().setVisible(False)
-        self._toolbar = toolbar
         self.bridge = ToolStripBridge(main, OWN, self._to_global,
-                                      _layout_name, self)
-        self._view = quick_host.make_view(
-            toolbar, QML, {"theme": self._theme, "strip": self.bridge},
-            prepare=_see_through)
-        self._view.setSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding,
-                                 QtWidgets.QSizePolicy.Policy.Fixed)
-        root = self._view.rootObject()
-        root.implicitHeightChanged.connect(self._fit_timer.start)
-        self._fit_timer.start()
-        toolbar.addWidget(self._view)
-        main.addToolBar(QtCore.Qt.ToolBarArea.TopToolBarArea, toolbar)
-        toolbar.installEventFilter(self)
+                                      _layout_name, self,
+                                      locate=self._locate)
+        for area in state.AREAS:
+            self._hosts[area] = _Host(main, area, self._theme, self.bridge,
+                                      self)
+        self.bridge.areasChanged.connect(self._show_sides)
+        self.bridge.editingChanged.connect(self._show_sides)
         self._hider = ToolbarHider(main, OWN, self)
         self._hider.toolbarsChanged.connect(self.bridge.schedule)
         self._hider.install()
         main.workbenchActivated.connect(self.bridge.schedule)
         self.bridge.rebuild()
 
+    def _show_sides(self) -> None:
+        if self.bridge is None:
+            return
+        editing = bool(self.bridge.property("editing"))
+        for area in (state.LEFT, state.RIGHT):
+            self._hosts[area].want(editing or self.bridge.holds(area))
+
     def remove(self) -> None:
-        self._reshow_timer.stop()
-        self._fit_timer.stop()
         main = self._main
         if self.bridge is not None:
             with contextlib.suppress(RuntimeError, TypeError):
@@ -97,33 +168,25 @@ class ToolStrip(QtCore.QObject):
         if self._hider is not None:
             self._hider.remove()
             self._hider = None
-        if self._toolbar is not None:
-            self._toolbar.removeEventFilter(self)
-            main.removeToolBar(self._toolbar)
-            # The view goes with its toolbar; its context is never nulled.
-            self._toolbar.deleteLater()
-            self._toolbar = self._view = None
+        for host in self._hosts.values():
+            host.remove(main)
+        self._hosts.clear()
         self.bridge = None
 
-    def _fit(self) -> None:
-        if self._view is None:
-            return
-        height = self._view.rootObject().property("implicitHeight")
-        self._view.setFixedHeight(math.ceil(height or 0))
+    def _to_global(self, area: str, point: QtCore.QPoint) -> QtCore.QPoint:
+        host = self._hosts.get(area) or self._hosts[state.TOP]
+        return host.view.mapToGlobal(point)
 
-    def _to_global(self, point: QtCore.QPoint) -> QtCore.QPoint:
-        return self._view.mapToGlobal(point)
-
-    def _reshow(self) -> None:
-        if self._toolbar is not None and self._toolbar.isHidden():
-            self._toolbar.show()
-
-    def eventFilter(self, watched: QtCore.QObject,  # noqa: N802
-                    event: QtCore.QEvent) -> bool:
-        if watched is self._toolbar \
-                and event.type() == QtCore.QEvent.Type.Hide:
-            self._reshow_timer.start()
-        return False
+    def _locate(self, point: QtCore.QPoint
+                ) -> tuple[str, QtCore.QPointF] | None:
+        """The shown strip at screen `point`, and where in its view."""
+        for area, host in self._hosts.items():
+            if not host.view.isVisible():
+                continue
+            local = host.view.mapFromGlobal(point)
+            if host.view.rect().contains(local):
+                return area, QtCore.QPointF(local)
+        return None
 
 
 SKETCH = "Sketcher::SketchObject"
@@ -141,8 +204,9 @@ def _layout_name() -> str:
 
 
 def _remove_left_over(main: QtWidgets.QMainWindow) -> None:
-    """Drop a strip left by a reload of Nxt."""
-    old = main.findChild(QtWidgets.QToolBar, TOOLBAR)
-    if old is not None:
-        main.removeToolBar(old)
-        old.deleteLater()
+    """Drop strips left by a reload of Nxt."""
+    for name in OWN:
+        old = main.findChild(QtWidgets.QToolBar, name)
+        if old is not None:
+            main.removeToolBar(old)
+            old.deleteLater()

@@ -24,6 +24,7 @@ ROLES: dict[str, Any] = {
     "kind": "", "text": "", "tip": "", "enabled": True,
     "checkable": False, "checked": False, "icon": "", "dropdown": "",
     "choices": [], "current": -1, "editable": False, "members": 0,
+    "style": "", "more": False,
 }
 _ROLE_IDS = {QtCore.Qt.ItemDataRole.UserRole.value + i: name
              for i, name in enumerate(ROLES)}
@@ -66,19 +67,41 @@ def _button(entry: Entry, size: int) -> dict[str, Any]:
             "dropdown": INSTANT if has_menu else ""}
 
 
+#: How FreeCAD's workbench selector looks, by its preference.
+TABS = "tabs"
+COMBO = "combo"
+
+
+def choice_at(chooser: Any, index: int) -> tuple[Any, str]:
+    """(icon, label) of a tab bar's tab or a combo box's item."""
+    if isinstance(chooser, QtWidgets.QTabBar):
+        return chooser.tabIcon(index), plain(chooser.tabText(index))
+    return chooser.itemIcon(index), plain(chooser.itemText(index))
+
+
+def more_button(entry: Entry) -> Any:
+    """The selector's own + button beside its tabs, if it has one."""
+    if not isinstance(entry.action, QtWidgets.QWidgetAction):
+        return None
+    holder = entry.action.defaultWidget()
+    if holder is None or holder is entry.widget:
+        return None
+    # The tab bar's own scroll arrows are tool buttons too.
+    return next((b for b in holder.findChildren(QtWidgets.QToolButton)
+                 if not entry.widget.isAncestorOf(b)), None)
+
+
 def _choice(entry: Entry, size: int) -> dict[str, Any]:
     chooser = entry.widget
-    if isinstance(chooser, QtWidgets.QTabBar):
-        count, text, icon = (chooser.count(), chooser.tabText,
-                             chooser.tabIcon)
-    else:
-        count, text, icon = (chooser.count(), chooser.itemText,
-                             chooser.itemIcon)
-    return {"enabled": chooser.isEnabled(),
-            "choices": [{"text": plain(text(i)),
-                         "icon": icons.url(icon(i), size)}
-                        for i in range(count)],
-            "current": chooser.currentIndex()}
+    choices = []
+    for index in range(chooser.count()):
+        icon, text = choice_at(chooser, index)
+        choices.append({"text": text, "icon": icons.url(icon, size)})
+    return {"enabled": chooser.isEnabled(), "choices": choices,
+            "current": chooser.currentIndex(),
+            "style": TABS if isinstance(chooser, QtWidgets.QTabBar)
+            else COMBO,
+            "more": more_button(entry) is not None}
 
 
 def last_member(entry: Entry) -> Entry | None:
@@ -297,6 +320,13 @@ class CatalogModel(QtCore.QAbstractListModel):
         self._commands: list[Any] = []
         self._placed: set[str] = set()
         self._icon_urls: dict[str, str] = {}
+
+    def forget_icons(self) -> None:
+        """Draw icons afresh, at a new size."""
+        self._icon_urls.clear()
+        if self._commands:
+            self.dataChanged.emit(self.index(0),
+                                  self.index(len(self._commands) - 1))
 
     def set_commands(self, commands: list[Any]) -> None:
         self.beginResetModel()

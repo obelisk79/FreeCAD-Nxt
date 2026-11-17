@@ -39,8 +39,9 @@ APP = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 QML = ROOT / "freecad" / "nxt" / "resources" / "qml"
 BAD = ("binding loop", "is not defined", "cannot read property",
        "unable to assign", "typeerror", "referenceerror", "cannot assign",
-       "is not a function", "required property", "cannot override")
-WIDE, NARROW = 900, 120
+       "is not a function", "required property", "cannot override",
+       "insufficient arguments", "too many arguments")
+WIDE, NARROW = 1200, 120
 problems: list[str] = []
 
 
@@ -59,10 +60,15 @@ def settle(seconds: float = 0.15) -> None:
         QTest.qWait(10)
 
 
+#: Drag ghosts: drawn like strip items, but not ones.
+GHOST = "dragGhost"
+
+
 def items_of(item: Any, name: str) -> list[Any]:
     found = []
     for child in item.childItems():
-        if child.metaObject().className().startswith(name):
+        if child.metaObject().className().startswith(name) \
+                and child.objectName() != GHOST:
             found.append(child)
         found += items_of(child, name)
     return found
@@ -74,7 +80,7 @@ class StripView(unittest.TestCase):
         self.window = Window()
         layouts.save(WORKBENCH, None)
         self.bridge = ToolStripBridge(self.window.main, OWN,
-                                      lambda p: p, lambda: WORKBENCH)
+                                      lambda _area, p: p, lambda: WORKBENCH)
         self.bridge.rebuild()
         self.view = QtQuick.QQuickView()
         self.view.engine().addImportPath(str(QML))
@@ -82,6 +88,7 @@ class StripView(unittest.TestCase):
         self.theme = Theme()
         context.setContextProperty("theme", self.theme)
         context.setContextProperty("strip", self.bridge)
+        context.setContextProperty("area", "top")
         self.view.setResizeMode(
             QtQuick.QQuickView.ResizeMode.SizeRootObjectToView)
         self.view.setSource(QtCore.QUrl.fromLocalFile(
@@ -91,9 +98,17 @@ class StripView(unittest.TestCase):
         settle()
         self.root = self.view.rootObject()
 
+    def edit(self) -> None:
+        """Edit mode, the view grown to fit as the strip's host does."""
+        self.bridge.setEditing(True)
+        settle(0.3)
+        self.view.resize(WIDE, round(self.root.property("implicitHeight")))
+        settle(0.3)
+
     def tearDown(self) -> None:
         self.view.close()
         self.view.deleteLater()
+        settle()
         self.bridge.stop()
         self.window.close()
         self.assertEqual(problems, [])
@@ -133,10 +148,10 @@ class StripView(unittest.TestCase):
 
     def test_choice_switches_the_selector(self) -> None:
         bar = items_of(self.root, "ChoiceBar")[0]
-        row = items_of(bar, "QQuickRow")[0]
-        second = [c for c in row.childItems()
-                  if c.metaObject().className().startswith("QQuickItem")][1]
-        self.click(second, x_fraction=0.5)
+        pills = [p for p in items_of(bar, "Pill") if p.isVisible()]
+        self.assertEqual([p.property("label") for p in pills],
+                         ["Part Design", "Sketcher"])
+        self.click(pills[1], x_fraction=0.5)
         self.assertEqual(self.window.tabs.currentIndex(), 1)
 
     def texts(self) -> list[str]:
@@ -170,29 +185,26 @@ class StripView(unittest.TestCase):
         self.assertFalse(self.bridge.property("editing"))
 
     def test_drag_reorders_and_does_not_run(self) -> None:
-        self.bridge.setEditing(True)
-        settle()
+        self.edit()
         tools = self.tools()
         target = tools[2].mapToScene(QtCore.QPointF(
             tools[2].width() * 0.9, tools[2].height() / 2)).toPoint()
         self.drag(tools[0], target)
         self.assertEqual(self.texts()[:4], ["Open", "|", "Save", "New"])
         self.assertEqual(self.window.fired, [])
-        self.assertEqual(layouts.load(WORKBENCH).order[3], "&New")
+        self.assertEqual(layouts.load(WORKBENCH).areas["top"][3], "&New")
 
-    def test_drop_outside_removes(self) -> None:
-        self.bridge.setEditing(True)
-        settle()
+    def test_drop_below_the_strip_removes(self) -> None:
+        self.edit()
         first = self.tools()[0]
         below = QtCore.QPoint(
             round(first.mapToScene(QtCore.QPointF(0, 0)).x()) + 5,
-            round(self.root.height()) + 200)
+            round(self.root.height()) - 10)
         self.drag(first, below)
         self.assertNotIn("New", self.texts())
 
     def open_drawer(self) -> list[Any]:
-        self.bridge.setEditing(True)
-        settle(0.3)
+        self.edit()
         drawer = items_of(self.root, "CommandDrawer")[0]
         return [t for t in items_of(drawer, "Tile")
                 if t.property("key") and t.isVisible()]
@@ -222,7 +234,7 @@ class StripView(unittest.TestCase):
             first.width() / 4, first.height() / 2)).toPoint()
         self.drag(circle, target)
         self.assertEqual(self.texts()[0], "Circle")
-        self.assertEqual(layouts.load(WORKBENCH).order[0],
+        self.assertEqual(layouts.load(WORKBENCH).areas["top"][0],
                          "Sketcher_CreateCircle")
 
     def test_drag_back_onto_the_drawer_removes(self) -> None:
@@ -240,7 +252,7 @@ class StripView(unittest.TestCase):
             item.width() / 2, item.height() / 2)).toPoint()
 
     def make_group(self, *keys: str) -> None:
-        self.bridge.setEditing(True)
+        self.edit()
         row = self.bridge.insertGroup(0)
         for key in keys:
             self.bridge.addToGroup(key, row)
@@ -281,6 +293,131 @@ class StripView(unittest.TestCase):
         self.assertEqual(
             [m["key"] for m in self.bridge.property("groupMembers")],
             ["Sketcher_CreateCircle", "PartDesign_Pocket"])
+
+    def kinds(self) -> list[str]:
+        model = self.bridge.model
+        role = {v.data().decode(): k
+                for k, v in model.roleNames().items()}["kind"]
+        return [model.data(model.index(r), role)
+                for r in range(model.rowCount())]
+
+    def past_first_row(self) -> QtCore.QPoint:
+        """Empty space to the right of the first row's last item."""
+        first = self.tools()[0]
+        flow = first.parentItem()
+        return flow.mapToScene(QtCore.QPointF(
+            flow.width() - 2, first.y() + first.height() / 2)).toPoint()
+
+    def test_drop_past_a_rows_last_item_ends_the_row(self) -> None:
+        self.bridge.moveToNewRow(self.texts().index("Pad"), -1)
+        self.edit()
+        self.drag(self.tools()[0], self.past_first_row())
+        texts, kinds = self.texts(), self.kinds()
+        row = texts.index("New")
+        self.assertEqual(kinds[row + 1], "break")
+        self.assertNotEqual(kinds[row - 1], "break")
+
+    def test_row_end_bar_spans_the_strip_while_edited(self) -> None:
+        self.bridge.moveToNewRow(self.texts().index("Pad"), -1)
+        self.edit()
+        bar = items_of(self.root, "StripBreak")[0]
+        self.assertEqual(bar.width(), bar.parentItem().width())
+
+    def test_drop_on_a_rows_end_starts_a_new_row(self) -> None:
+        self.bridge.moveToNewRow(self.texts().index("Pad"), -1)
+        self.edit()
+        self.drag(self.tools()[0],
+                  self.middle(items_of(self.root, "StripBreak")[0]))
+        texts, kinds = self.texts(), self.kinds()
+        row = texts.index("New")
+        self.assertEqual(kinds[row - 1], "break")
+        self.assertEqual(kinds[row + 1], "break")
+
+    def test_first_row_has_its_own_size(self) -> None:
+        self.bridge.moveToNewRow(self.texts().index("Pad"), -1)
+        self.bridge.setIconSize(16)
+        self.bridge.setOtherIconSize(32)
+        self.addCleanup(self.bridge.setIconSize, 0)
+        self.addCleanup(self.bridge.setOtherIconSize, 0)
+        settle()
+        sizes = {t.property("tip"): t.height() for t in self.tools()}
+        self.assertLess(sizes["New"], sizes["Pad"])
+
+    def test_drop_after_the_last_row_starts_one(self) -> None:
+        self.edit()
+        zones = items_of(self.root, "StripBreak")
+        end_zone = zones[-1]
+        self.drag(self.tools()[0], self.middle(end_zone))
+        self.assertEqual(self.kinds()[-2], "break")
+        self.assertEqual(self.texts()[-1], "New")
+
+    def side_tools(self, editing: bool) -> list[QtQuick.QQuickItem]:
+        for _ in range(3):
+            self.bridge.moveAcross("top", 0, "left", -1)
+        self.bridge.setEditing(editing)
+        return list(items_of(self.side_view().rootObject(), "ToolItem"))
+
+    def side_view(self) -> QtQuick.QQuickView:
+        side = QtQuick.QQuickView()
+        self.addCleanup(settle)
+        self.addCleanup(side.deleteLater)
+        self.addCleanup(side.close)
+        side.engine().addImportPath(str(QML))
+        context = side.rootContext()
+        context.setContextProperty("theme", self.theme)
+        context.setContextProperty("strip", self.bridge)
+        context.setContextProperty("area", "left")
+        side.setResizeMode(QtQuick.QQuickView.ResizeMode.SizeRootObjectToView)
+        side.setSource(QtCore.QUrl.fromLocalFile(
+            str(QML / "Nxt" / "Toolbar" / "ToolStrip.qml")))
+        side.resize(120, 400)
+        side.show()
+        settle()
+        return side
+
+    def left_texts(self) -> list[str]:
+        model = self.bridge.modelOf("left")
+        role = {v.data().decode(): k
+                for k, v in model.roleNames().items()}["text"]
+        return [model.data(model.index(r), role)
+                for r in range(model.rowCount())]
+
+    def test_carried_item_drawn_on_the_strip_under_it(self) -> None:
+        self.edit()
+        side = self.side_view().rootObject()
+        self.bridge.carryKey("Sketcher_CreateCircle", "", "Circle")
+        self.bridge.carriedOver.emit("left", 20.0, 20.0)
+        settle()
+        ghosts = [g for g in side.findChildren(QtQuick.QQuickItem)
+                  if g.objectName() == GHOST and g.isVisible()]
+        self.assertEqual(len(ghosts), 1)
+        self.bridge.carriedDropped.emit("left", 20.0, 20.0)
+        settle()
+        self.assertEqual(self.left_texts(), ["Circle"])
+        self.assertFalse(any(g.isVisible() for g in ghosts))
+
+    def test_drag_out_of_the_view_lands_on_another_strip(self) -> None:
+        self.edit()
+        self.side_view()
+        self.bridge._locate = lambda point: ("left", QtCore.QPointF(20, 20)) \
+            if point.y() > self.view.height() else None
+        save = next(t for t in self.tools() if t.property("tip") == "Save")
+        below = QtCore.QPoint(self.middle(save).x(), self.view.height() + 40)
+        self.drag(save, below)
+        self.assertEqual(self.left_texts(), ["Save"])
+        self.assertNotIn("Save", self.texts())
+
+    def assert_stacked(self, tools: list[QtQuick.QQuickItem]) -> None:
+        self.assertEqual([t.property("tip") for t in tools],
+                         ["New", "Open", "Save"])
+        self.assertEqual(tools[0].x(), tools[1].x())
+        self.assertLess(tools[0].y(), tools[1].y())
+
+    def test_side_strip_stacks_its_items(self) -> None:
+        self.assert_stacked(self.side_tools(editing=False))
+
+    def test_side_strip_stacks_them_while_edited(self) -> None:
+        self.assert_stacked(self.side_tools(editing=True))
 
 
 if __name__ == "__main__":

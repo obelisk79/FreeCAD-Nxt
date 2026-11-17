@@ -180,7 +180,7 @@ Item {
         TextButton {
             anchors.verticalCenter: parent.verticalCenter
             text: qsTr("Close")
-            onClicked: strip.editGroup(-1)
+            onClicked: strip.editGroup(-1, "top")
         }
     }
 }

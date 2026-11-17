@@ -1,9 +1,11 @@
-"""The object the tool strip's QML calls: its model and its actions.
+"""The object the tool strips' QML calls: their models and actions.
 
-Rebuilds are deferred and coalesced: FreeCAD lays out a workbench's
-toolbars over several events after `workbenchActivated`. In edit mode
-items are reordered and removed instead of run; each finished drag or
-removal saves the workbench's layout once. The drawer's catalog is read
+One bridge serves every strip (top, left, right); each has its own
+model, and its view passes its area to the slots. Rebuilds are deferred
+and coalesced: FreeCAD lays out a workbench's toolbars over several
+events after `workbenchActivated`. In edit mode items are reordered,
+moved between rows and areas, and removed instead of run; each finished
+change saves the workbench's layout once. The drawer's catalog is read
 the first time edit mode opens, a turn after it is drawn.
 """
 
@@ -11,15 +13,14 @@ from __future__ import annotations
 
 import contextlib
 from collections.abc import Callable, Iterable, Iterator
-from pathlib import Path
 from typing import Any
 
 import FreeCAD as App
 
 from ..app.i18n import translate
-from ..core import log
+from ..core import log, settings
 from ..core.qt import QtCore, QtGui, QtWidgets
-from . import catalog, groups, icons, layouts, source
+from . import catalog, groups, icons, layouts, models, source, state
 from .models import CatalogModel, ToolModel, last_member
 from .source import Kind
 
@@ -28,8 +29,19 @@ REBUILD_MS = 50
 #: Proxied buttons emit nothing when their text or state changes
 #: (Draft Tray shows the current layer): read again this often.
 BUTTON_POLL_MS = 500
-LAYOUT_FILE = "toolbar-layouts.json"
-LAYOUT_FILTER = "JSON (*.json)"
+#: FreeCAD's toolbar icon sizes, offered in edit mode.
+ICON_SIZES = (16, 20, 24, 28, 32, 40, 48)
+ICON_SETTING = "ToolStripIconSize"
+OTHER_ICON_SETTING = "ToolStripOtherIconSize"
+LOCK_SETTING = "ToolStripLocked"
+TOP = state.TOP
+#: Where on screen a strip's view is: its area and the point in it.
+Locate = Callable[[QtCore.QPoint], tuple[str, QtCore.QPointF] | None]
+#: The drawer's separator and New group tiles, as their drags carry them.
+SEPARATOR_KEY = "|"
+GROUP_KEY = "+group"
+#: dropCarried's "not on a new-row zone".
+NOT_NEW_ROW = -2
 
 
 class _MenuPlacer(QtCore.QObject):
@@ -67,23 +79,33 @@ def menus_opened_at(at: QtCore.QPoint) -> Iterator[None]:
 
 
 class ToolStripBridge(QtCore.QObject):
-    """FreeCAD's toolbars as the strip's model, and its click handlers."""
+    """FreeCAD's toolbars as the strips' models, and their click handlers."""
 
     iconSizeChanged = QtCore.Signal()  # noqa: N815 - Qt API
     editingChanged = QtCore.Signal()  # noqa: N815 - Qt API
     drawerChanged = QtCore.Signal()  # noqa: N815 - Qt API
     groupChanged = QtCore.Signal()  # noqa: N815 - Qt API
+    #: The areas holding something changed (a side strip shows or goes).
+    areasChanged = QtCore.Signal()  # noqa: N815 - Qt API
+    lockChanged = QtCore.Signal()  # noqa: N815 - Qt API
+    carriedChanged = QtCore.Signal()  # noqa: N815 - Qt API
+    #: The carried item is over `area`'s strip at x, y; "" over none.
+    carriedOver = QtCore.Signal(str, float, float)  # noqa: N815 - Qt API
+    #: The carried item was let go over `area`'s strip at x, y.
+    carriedDropped = QtCore.Signal(str, float, float)  # noqa: N815
 
     def __init__(self, main: QtWidgets.QMainWindow, own: Iterable[str],
-                 to_global: Callable[[QtCore.QPoint], QtCore.QPoint],
+                 to_global: Callable[[str, QtCore.QPoint], QtCore.QPoint],
                  workbench: Callable[[], str],
-                 parent: QtCore.QObject | None = None) -> None:
+                 parent: QtCore.QObject | None = None, *,
+                 locate: Locate = lambda _point: None) -> None:
         super().__init__(parent)
+        self._locate = locate
         self._main = main
         self._own = tuple(own)
         self._to_global = to_global
         self._workbench = workbench
-        self._live: list[source.Entry] = []
+        self._live: source.Areas = {}
         self._missing: list[str] = []
         #: The group open in the editor row, by identity: rows move.
         self._edited: source.Entry | None = None
@@ -92,13 +114,16 @@ class ToolStripBridge(QtCore.QObject):
         self._last_used: dict[str, str] = {}
         self._editing = False
         self._dragging = False
-        self._icon_size = self._main_icon_size()
-        self._model = ToolModel(lambda: self._icon_size, self)
+        self._icon_size = self._wanted_icon_size(ICON_SETTING)
+        self._other_icon_size = self._wanted_icon_size(OTHER_ICON_SETTING)
+        self._locked = {a for a in str(settings.get(LOCK_SETTING)).split(",")
+                        if a in layouts.LOCKABLE}
+        self._models = {area: ToolModel(self._size_for(area), self)
+                        for area in state.AREAS}
         self._reported: set[str] = set()
         self._rebuild_timer = self._timer(REBUILD_MS, self.rebuild)
         self._rebuild_timer.setSingleShot(True)
-        self._poll_timer = self._timer(
-            BUTTON_POLL_MS, lambda: self._model.refresh_all(Kind.BUTTON))
+        self._poll_timer = self._timer(BUTTON_POLL_MS, self._poll_buttons)
         self._stand_ins = catalog.StandIns(self)
         self._commands: list[catalog.Command] | None = None
         self._filters: list[dict[str, str]] = []
@@ -108,12 +133,14 @@ class ToolStripBridge(QtCore.QObject):
                                      self)
         self._catalog_timer = self._timer(0, self._load_catalog)
         self._catalog_timer.setSingleShot(True)
-        self._file_action: Callable[[], None] = self._export
-        self._file_timer = self._timer(0, lambda: self._file_action())
-        self._file_timer.setSingleShot(True)
-        for signal in (self._model.modelReset, self._model.rowsInserted,
-                       self._model.rowsRemoved):
-            signal.connect(self._mark_placed)
+        #: The item dragged out of its view: (area, row) or a drawer key.
+        self._carried: tuple[str, int] | str | None = None
+        self._carried_look = ("", "")
+        self._carry_target: tuple[str, QtCore.QPointF] | None = None
+        for model in self._models.values():
+            for signal in (model.modelReset, model.rowsInserted,
+                           model.rowsRemoved):
+                signal.connect(self._changed_areas)
 
     def _timer(self, interval: int, slot: Callable[[], None]
                ) -> QtCore.QTimer:
@@ -122,8 +149,22 @@ class ToolStripBridge(QtCore.QObject):
         timer.timeout.connect(slot)
         return timer
 
-    def _main_icon_size(self) -> int:
-        return self._main.iconSize().width()
+    def _wanted_icon_size(self, setting: str) -> int:
+        chosen = int(settings.get(setting) or 0)
+        return chosen or self._main.iconSize().width()
+
+    def _size_for(self, area: str) -> Callable[[], int]:
+        # The top strip's icons serve both of its row sizes.
+        if area == TOP:
+            return lambda: max(self._icon_size, self._other_icon_size)
+        return lambda: self._other_icon_size
+
+    def _m(self, area: str) -> ToolModel:
+        return self._models.get(area, self._models[TOP])
+
+    def _poll_buttons(self) -> None:
+        for model in self._models.values():
+            model.refresh_all(Kind.BUTTON)
 
     def schedule(self, *_args: Any) -> None:
         """Read the toolbars again once they settle."""
@@ -133,26 +174,35 @@ class ToolStripBridge(QtCore.QObject):
         if self._dragging:
             self.schedule()
             return
-        size = self._main_icon_size()
-        if size != self._icon_size:
-            self._icon_size = size
+        sizes = (self._wanted_icon_size(ICON_SETTING),
+                 self._wanted_icon_size(OTHER_ICON_SETTING))
+        if sizes != (self._icon_size, self._other_icon_size):
+            self._icon_size, self._other_icon_size = sizes
+            self._catalog.forget_icons()
             self.iconSizeChanged.emit()
         try:
-            entries, unsupported = source.read(self._main, self._own)
+            live, unsupported = source.read(self._main, self._own)
         except Exception:  # noqa: BLE001 - a toolbar torn down mid-read
             log.error("could not read FreeCAD's toolbars")
             return
         self._report(unsupported)
-        self._live = entries
+        self._live = live
         arranged, self._missing = layouts.arrange(
-            entries, layouts.load(self._workbench()), self._resolve)
-        for entry in arranged:
-            used = self._last_used.get(entry.key)
-            member = next((m for m in entry.members if m.key == used), None)
-            if member is not None:
-                groups.use(entry, member)
-        self._model.set_entries(arranged)
-        if self._model.has(Kind.BUTTON):
+            live, layouts.load_for(self._workbench(), self._locked),
+            self._resolve, self._locked)
+        for entries in arranged.values():
+            for entry in entries:
+                used = self._last_used.get(entry.key)
+                member = next((m for m in entry.members if m.key == used),
+                              None)
+                if member is not None:
+                    groups.use(entry, member)
+        self._show(arranged)
+
+    def _show(self, areas: source.Areas) -> None:
+        for area, model in self._models.items():
+            model.set_entries(areas.get(area, []))
+        if any(m.has(Kind.BUTTON) for m in self._models.values()):
             self._poll_timer.start()
         else:
             self._poll_timer.stop()
@@ -173,12 +223,11 @@ class ToolStripBridge(QtCore.QObject):
 
     def _load_catalog(self) -> None:
         try:
-            self._commands, groups = catalog.read()
+            self._commands, found = catalog.read()
         except Exception:  # noqa: BLE001 - FreeCAD's command list
             log.error("could not read FreeCAD's commands")
-            self._commands, groups = [], []
-        self._filters = [{"id": key, "label": label}
-                         for key, label in groups]
+            self._commands, found = [], []
+        self._filters = [{"id": key, "label": label} for key, label in found]
         self._show_catalog()
         self.drawerChanged.emit()
 
@@ -187,32 +236,104 @@ class ToolStripBridge(QtCore.QObject):
             self._commands or [], self._query, self._filter))
         self._mark_placed()
 
+    def _keys(self) -> set[str]:
+        return set().union(*(m.keys() for m in self._models.values()))
+
     def _mark_placed(self, *_args: Any) -> None:
-        self._catalog.set_placed(self._model.keys())
+        self._catalog.set_placed(self._keys())
+
+    def _changed_areas(self, *_args: Any) -> None:
+        self._mark_placed()
+        self.areasChanged.emit()
+
+    def _shown(self) -> source.Areas:
+        return {area: m.entries() for area, m in self._models.items()}
 
     def _save(self) -> None:
         workbench = self._workbench()
-        layouts.save(workbench, layouts.capture(
-            self._model.entries(), self._live, layouts.load(workbench),
-            self._missing))
+        layout = layouts.capture(
+            self._shown(), self._live,
+            layouts.load_for(workbench, self._locked), self._missing)
+        layouts.save_for(workbench, layout, self._locked, self._live)
 
     def stop(self) -> None:
         self._rebuild_timer.stop()
         self._poll_timer.stop()
-        self._model.clear()
+        for model in self._models.values():
+            model.clear()
 
     # -- QML API -- #
 
     def _get_model(self) -> QtCore.QObject:
-        return self._model
+        return self._models[TOP]
 
     model = QtCore.Property(QtCore.QObject, _get_model, constant=True)
+
+    @QtCore.Slot(str, result=QtCore.QObject)
+    def modelOf(self, area: str) -> QtCore.QObject:  # noqa: N802
+        return self._m(area)
+
+    @QtCore.Slot(str, result=bool)
+    def holds(self, area: str) -> bool:
+        """Whether the strip of `area` has anything to show."""
+        return self._m(area).rowCount() > 0
 
     def _get_icon_size(self) -> int:
         return self._icon_size
 
     iconSize = QtCore.Property(  # noqa: N815 - QML API
         int, _get_icon_size, notify=iconSizeChanged)
+
+    def _get_other_icon_size(self) -> int:
+        return self._other_icon_size
+
+    otherIconSize = QtCore.Property(  # noqa: N815 - QML API
+        int, _get_other_icon_size, notify=iconSizeChanged)
+
+    def _get_icon_sizes(self) -> list[int]:
+        return sorted(set(ICON_SIZES)
+                      | {self._icon_size, self._other_icon_size})
+
+    iconSizes = QtCore.Property(  # noqa: N815 - QML API
+        list, _get_icon_sizes, notify=iconSizeChanged)
+
+    @QtCore.Slot(int)
+    def setIconSize(self, size: int) -> None:  # noqa: N802
+        """Draw the first row's icons at `size` pixels, as Nxt's own."""
+        settings.put(ICON_SETTING, size)
+        self._icon_size = size
+        self._catalog.forget_icons()
+        self._models[TOP].refresh_all()
+        self.iconSizeChanged.emit()
+
+    @QtCore.Slot(int)
+    def setOtherIconSize(self, size: int) -> None:  # noqa: N802
+        """Draw every other row's icons at `size` pixels, as Nxt's own."""
+        settings.put(OTHER_ICON_SETTING, size)
+        self._other_icon_size = size
+        for model in self._models.values():
+            model.refresh_all()
+        self.iconSizeChanged.emit()
+
+    def _get_locked(self) -> list[str]:
+        return sorted(self._locked)
+
+    lockedUnits = QtCore.Property(  # noqa: N815 - QML API
+        list, _get_locked, notify=lockChanged)
+
+    @QtCore.Slot(str, bool)
+    def setLocked(self, unit: str, on: bool) -> None:  # noqa: N802
+        """Make the first row or a side strip the same in every workbench.
+
+        Locking shares what `unit` holds now; unlocking keeps it as
+        this workbench's, while other workbenches go back to theirs.
+        """
+        if unit not in layouts.LOCKABLE or (unit in self._locked) == on:
+            return
+        self._locked = self._locked | {unit} if on else self._locked - {unit}
+        settings.put(LOCK_SETTING, ",".join(sorted(self._locked)))
+        self._save()
+        self.lockChanged.emit()
 
     def _get_editing(self) -> bool:
         return self._editing
@@ -263,15 +384,22 @@ class ToolStripBridge(QtCore.QObject):
         self._show_catalog()
         self.drawerChanged.emit()
 
-    @QtCore.Slot(str, int, result=int)
-    def insertCommand(self, key: str, at: int) -> int:  # noqa: N802
+    @QtCore.Slot(str, int, str, result=int)
+    def insertCommand(self, key: str, at: int,  # noqa: N802
+                      area: str = TOP) -> int:
         """Put a command at `at` while it is dragged in; its row, or -1."""
-        entry = None if key in self._model.keys() else self._resolve(key)
-        return -1 if entry is None else self._model.insert(at, entry)
+        entry = None if key in self._keys() else self._resolve(key)
+        return -1 if entry is None else self._m(area).insert(at, entry)
 
-    @QtCore.Slot(int, result=int)
-    def insertSeparator(self, at: int) -> int:  # noqa: N802
-        return self._model.insert(at, source.SEPARATOR)
+    @QtCore.Slot(int, str, result=int)
+    def insertSeparator(self, at: int,  # noqa: N802
+                        area: str = TOP) -> int:
+        return self._m(area).insert(at, source.SEPARATOR)
+
+    @QtCore.Slot(int, str, result=int)
+    def insertRow(self, at: int, area: str = TOP) -> int:  # noqa: N802
+        """End the row before `at`: what follows starts a new one."""
+        return self._m(area).insert(at, source.BREAK)
 
     @QtCore.Slot(str)
     def appendCommand(self, key: str) -> None:  # noqa: N802
@@ -285,126 +413,147 @@ class ToolStripBridge(QtCore.QObject):
 
     def _close_editing(self) -> None:
         self.editGroup(-1)
-        empty = [row for row, e in enumerate(self._model.entries())
-                 if groups.is_empty(e)]
-        for row in reversed(empty):
-            self._model.remove(row)
-        if empty:
+        changed = False
+        for model in self._models.values():
+            empty = [row for row, e in enumerate(model.entries())
+                     if groups.is_empty(e)]
+            for row in reversed(empty):
+                model.remove(row)
+            changed |= self._tidy(model) or bool(empty)
+        if changed:
             self._save()
+
+    def _tidy(self, model: ToolModel) -> bool:
+        """Drop empty rows and stray separators an edit left; any dropped."""
+        kept = source.tidy(model.entries())
+        if [id(e) for e in kept] == [id(e) for e in model.entries()]:
+            return False
+        model.set_entries(kept)
+        return True
 
     # -- groups -- #
 
-    def _row_of(self, entry: source.Entry | None) -> int:
-        for row, shown in enumerate(self._model.entries()):
-            if shown is entry:
-                return row
-        return -1
+    def _place_of(self, entry: source.Entry | None) -> tuple[str, int]:
+        for area, model in self._models.items():
+            for row, shown in enumerate(model.entries()):
+                if shown is entry:
+                    return area, row
+        return TOP, -1
 
-    def _group_at(self, row: int) -> source.Entry | None:
-        entry = self._model.entry(row)
+    def _group_at(self, row: int, area: str) -> source.Entry | None:
+        entry = self._m(area).entry(row)
         return entry if groups.editable(entry) else None
 
-    def _show_group(self, row: int, group: source.Entry) -> None:
+    def _show_group(self, area: str, row: int, group: source.Entry) -> None:
         """Put the changed `group` at `row`.
 
         A group left with one member becomes that command only as the
         editor closes, so removing members never moves the editor away.
         """
-        if self._edited is self._model.entry(row):
+        if self._edited is self._m(area).entry(row):
             self._edited = group
-        self._model.replace(row, group)
+        self._m(area).replace(row, group)
         self.groupChanged.emit()
         self._save()
 
-    @QtCore.Slot(int, result=int)
-    def insertGroup(self, at: int) -> int:  # noqa: N802
+    @QtCore.Slot(int, str, result=int)
+    def insertGroup(self, at: int, area: str = TOP) -> int:  # noqa: N802
         """A new empty group at `at`, while the New group tile is dragged."""
-        return self._model.insert(at, groups.new(translate("Nxt", "Group")))
+        return self._m(area).insert(
+            at, groups.new(translate("Nxt", "Group")))
 
-    @QtCore.Slot(str, int, result=bool)
-    def addToGroup(self, key: str, row: int) -> bool:  # noqa: N802
+    @QtCore.Slot(str, int, str, result=bool)
+    def addToGroup(self, key: str, row: int,  # noqa: N802
+                   area: str = TOP) -> bool:
         """Put a command from the drawer into the group at `row`."""
-        group = self._group_at(row)
-        member = None if group is None or key in self._model.keys() \
+        group = self._group_at(row, area)
+        member = None if group is None or key in self._keys() \
             else self._resolve(key)
         if group is None or member is None or member.kind is not Kind.COMMAND:
             return False
-        self._show_group(row, groups.added(group, member))
+        self._show_group(area, row, groups.added(group, member))
         return True
 
-    @QtCore.Slot(int, int)
-    def dropIntoGroup(self, row: int, group_row: int) -> None:  # noqa: N802
+    @QtCore.Slot(int, int, str)
+    def dropIntoGroup(self, row: int, group_row: int,  # noqa: N802
+                      area: str = TOP) -> None:
         """End a drag by moving the strip's command at `row` into a group."""
         self._dragging = False
-        entry, group = self._model.entry(row), self._group_at(group_row)
+        model = self._m(area)
+        entry, group = model.entry(row), self._group_at(group_row, area)
         if entry is None or group is None or entry.kind is not Kind.COMMAND:
             self._save()
             return
-        self._model.remove(row)
+        model.remove(row)
         group_row -= 1 if row < group_row else 0
-        self._show_group(group_row, groups.added(group, entry))
+        self._show_group(area, group_row, groups.added(group, entry))
 
-    @QtCore.Slot(int)
-    def editGroup(self, row: int) -> None:  # noqa: N802
+    @QtCore.Slot(int, str)
+    def editGroup(self, row: int, area: str = TOP) -> None:  # noqa: N802
         """Open the group at `row` in the editor row; -1 closes it."""
-        group = self._group_at(row)
+        group = self._group_at(row, area)
         closing = self._edited
         self._edited = group
         self.groupChanged.emit()
-        closed_row = self._row_of(closing)
+        closed_area, closed_row = self._place_of(closing)
         if closing is not None and closing is not group and closed_row >= 0:
             lone = groups.lone_member(closing)
             if lone is not None:
-                self._model.replace(closed_row, lone)
+                self._m(closed_area).replace(closed_row, lone)
                 self._save()
-
-    def _edited_row(self) -> int:
-        return self._row_of(self._edited)
 
     @QtCore.Slot(list)
     def setMemberOrder(self, keys: list[str]) -> None:  # noqa: N802
         """The edited group's members in the order the editor shows."""
-        row = self._edited_row()
+        area, row = self._place_of(self._edited)
         if row >= 0 and self._edited is not None:
-            self._show_group(row, groups.reordered(self._edited, keys))
+            self._show_group(area, row,
+                             groups.reordered(self._edited, keys))
 
     @QtCore.Slot(int)
     def removeMember(self, index: int) -> None:  # noqa: N802
-        row = self._edited_row()
+        area, row = self._place_of(self._edited)
         if row >= 0 and self._edited is not None:
-            self._show_group(row, groups.without(self._edited, index))
+            self._show_group(area, row, groups.without(self._edited, index))
 
     @QtCore.Slot(str)
     def renameGroup(self, name: str) -> None:  # noqa: N802
-        row = self._edited_row()
+        area, row = self._place_of(self._edited)
         if row >= 0 and self._edited is not None \
                 and self._edited.group is not None:
             self._edited.group.name = name.strip()
-            self._model.refresh(row)
+            self._m(area).refresh(row)
             self._save()
 
     @QtCore.Slot()
     def ungroup(self) -> None:
         """Put the edited group's commands on the strip in its place."""
-        row, group = self._edited_row(), self._edited
+        (area, row), group = self._place_of(self._edited), self._edited
         if row < 0 or group is None:
             return
         self._edited = None
-        self._model.remove(row)
+        model = self._m(area)
+        model.remove(row)
         for offset, member in enumerate(group.members):
-            self._model.insert(row + offset, member)
+            model.insert(row + offset, member)
         self.groupChanged.emit()
         self._save()
 
     def _get_edited_row(self) -> int:
-        return self._edited_row()
+        return self._place_of(self._edited)[1]
 
     editedGroup = QtCore.Property(  # noqa: N815 - QML API
         int, _get_edited_row, notify=groupChanged)
 
+    def _get_edited_area(self) -> str:
+        return self._place_of(self._edited)[0]
+
+    editedArea = QtCore.Property(  # noqa: N815 - QML API
+        str, _get_edited_area, notify=groupChanged)
+
     def _get_group_name(self) -> str:
-        state = None if self._edited is None else self._edited.group
-        return "" if state is None else state.name
+        group = None if self._edited is None else self._edited.group
+        return "" if group is None else group.name
 
     groupName = QtCore.Property(  # noqa: N815 - QML API
         str, _get_group_name, notify=groupChanged)
@@ -420,31 +569,200 @@ class ToolStripBridge(QtCore.QObject):
     groupMembers = QtCore.Property(  # noqa: N815 - QML API
         list, _get_group_members, notify=groupChanged)
 
+    # -- dragging -- #
+
     @QtCore.Slot()
     def beginDrag(self) -> None:  # noqa: N802
         self._dragging = True
 
     @QtCore.Slot()
     def cancelDrag(self) -> None:  # noqa: N802
-        """A drag from the drawer let go before reaching the strip."""
+        """A drag from the drawer let go before reaching a strip."""
         self._dragging = False
 
-    @QtCore.Slot(int, int)
-    def move(self, row: int, to: int) -> None:
+    @QtCore.Slot(int, int, str)
+    def move(self, row: int, to: int, area: str = TOP) -> None:
         """Move an item while it is dragged; saved when the drag ends."""
-        self._model.move(row, to)
+        self._m(area).move(row, to)
 
-    @QtCore.Slot(int, bool)
-    def endDrag(self, row: int, remove: bool) -> None:  # noqa: N802
+    @QtCore.Slot(str, int, str, int, result=int)
+    def moveAcross(self, from_area: str, row: int,  # noqa: N802
+                   to_area: str, at: int) -> int:
+        """Move an item to another strip, as it is dropped there; its row."""
+        entry = self._m(from_area).entry(row)
+        if entry is None or from_area == to_area:
+            return -1
+        self._m(from_area).remove(row)
+        placed = self._m(to_area).insert(at, entry)
+        self._tidy(self._m(from_area))
+        self._save()
+        return placed
+
+    def _new_row_place(self, model: ToolModel, after: int) -> int:
+        """Where a new row's first item goes.
+
+        After the row ending at the BREAK at `after`; -1: after the last.
+        """
+        if after < 0 or model.entry(after) is None:
+            if model.rowCount():
+                model.insert(-1, source.BREAK)
+            return model.rowCount()
+        return after + 1
+
+    def _finish_new_row(self, model: ToolModel, row: int) -> None:
+        if model.entry(row + 1) is not None:
+            model.insert(row + 1, source.BREAK)
+        self._tidy(model)
+        self._save()
+
+    @QtCore.Slot(int, int, str)
+    def moveToNewRow(self, row: int, after: int,  # noqa: N802
+                     area: str = TOP) -> None:
+        """End a drag by starting a row, after the row ending at `after`."""
+        self._dragging = False
+        model = self._m(area)
+        entry = model.entry(row)
+        if entry is None:
+            return
+        model.remove(row)
+        if 0 <= after and row < after:
+            after -= 1
+        placed = model.insert(self._new_row_place(model, after), entry)
+        self._finish_new_row(model, placed)
+
+    @QtCore.Slot(str, int, str, result=bool)
+    def addInNewRow(self, key: str, after: int,  # noqa: N802
+                    area: str = TOP) -> bool:
+        """A drawer item dropped on a new-row zone starts that row."""
+        self._dragging = False
+        entry = self._drawer_entry(key)
+        if entry is None:
+            return False
+        model = self._m(area)
+        placed = model.insert(self._new_row_place(model, after), entry)
+        self._finish_new_row(model, placed)
+        return True
+
+    def _drawer_entry(self, key: str) -> source.Entry | None:
+        if key == SEPARATOR_KEY:
+            return source.SEPARATOR
+        if key == GROUP_KEY:
+            return groups.new(translate("Nxt", "Group"))
+        return None if key in self._keys() else self._resolve(key)
+
+    # -- dragging between strips -- #
+
+    def _get_carried_icon(self) -> str:
+        return self._carried_look[0]
+
+    carriedIcon = QtCore.Property(  # noqa: N815 - QML API
+        str, _get_carried_icon, notify=carriedChanged)
+
+    def _get_carried_text(self) -> str:
+        return self._carried_look[1]
+
+    carriedText = QtCore.Property(  # noqa: N815 - QML API
+        str, _get_carried_text, notify=carriedChanged)
+
+    @QtCore.Slot(str, int, str, str)
+    def carryRow(self, area: str, row: int,  # noqa: N802
+                 icon: str = "", text: str = "") -> None:
+        """A strip item dragged out of its view, drawn as `icon`, `text`."""
+        self._carry((area, row), icon, text)
+
+    @QtCore.Slot(str, str, str)
+    def carryKey(self, key: str,  # noqa: N802
+                 icon: str = "", text: str = "") -> None:
+        """A drawer item dragged out of the drawer's view."""
+        self._carry(key, icon, text)
+
+    def _carry(self, carried: tuple[str, int] | str,
+               icon: str, text: str) -> None:
+        self._carried = carried
+        self._carried_look = (icon, text)
+        self._dragging = True
+        self.carriedChanged.emit()
+
+    @QtCore.Slot(str, float, float)
+    def carryTo(self, area: str, x: float, y: float) -> None:  # noqa: N802
+        """The carried item is at `x`, `y` in `area`'s view.
+
+        The view it is dragged from keeps the pointer; the strip under it,
+        told by carriedOver, shows where it would land.
+        """
+        found = self._locate(self._to_global(
+            area, QtCore.QPoint(round(x), round(y))))
+        self._carry_target = found
+        target, at = found or ("", QtCore.QPointF())
+        self.carriedOver.emit(target, at.x(), at.y())
+
+    @QtCore.Slot()
+    def carryEnd(self) -> None:  # noqa: N802
+        """Let go of the carried item: the strip under it places it."""
+        found, self._carry_target = self._carry_target, None
+        self._dragging = False
+        self.carriedOver.emit("", 0.0, 0.0)
+        if found is None:
+            self._carried = None
+            return
+        target, at = found
+        self.carriedDropped.emit(target, at.x(), at.y())
+
+    @QtCore.Slot()
+    def removeCarried(self) -> None:  # noqa: N802
+        """A strip item carried onto the drawer leaves its strip."""
+        carried, self._carried = self._carried, None
+        if isinstance(carried, tuple):
+            self.removeItem(carried[1], carried[0])
+
+    @QtCore.Slot(str, int, int, result=bool)
+    def dropCarried(self, area: str, at: int,  # noqa: N802
+                    new_row_after: int = NOT_NEW_ROW) -> bool:
+        """Place the carried item in `area`; whether it went.
+
+        At row `at`, or starting a new row after the row ending at
+        `new_row_after` (-1: after the last).
+        """
+        carried, self._carried = self._carried, None
+        if carried is None:
+            return False
+        if isinstance(carried, str):
+            if new_row_after != NOT_NEW_ROW:
+                return self.addInNewRow(carried, new_row_after, area)
+            entry = self._drawer_entry(carried)
+            if entry is None:
+                return False
+            self._m(area).insert(at, entry)
+            self._save()
+            return True
+        from_area, row = carried
+        if new_row_after != NOT_NEW_ROW:
+            moved = self.moveAcross(from_area, row, area, -1) \
+                if from_area != area else row
+            if moved < 0:
+                return False
+            self.moveToNewRow(moved, new_row_after, area)
+            return True
+        if from_area == area:
+            self._m(area).move(row, min(at, self._m(area).rowCount() - 1))
+            self._save()
+            return True
+        return self.moveAcross(from_area, row, area, at) >= 0
+
+    @QtCore.Slot(int, bool, str)
+    def endDrag(self, row: int, remove: bool,  # noqa: N802
+                area: str = TOP) -> None:
         """Finish a drag at `row`, removing the item if dropped outside."""
         self._dragging = False
         if remove:
-            self._model.remove(row)
+            self._m(area).remove(row)
+        self._tidy(self._m(area))
         self._save()
 
-    @QtCore.Slot(int)
-    def removeItem(self, row: int) -> None:  # noqa: N802
-        if self._model.remove(row):
+    @QtCore.Slot(int, str)
+    def removeItem(self, row: int, area: str = TOP) -> None:  # noqa: N802
+        if self._m(area).remove(row):
+            self._tidy(self._m(area))
             self._save()
 
     @QtCore.Slot()
@@ -452,56 +770,19 @@ class ToolStripBridge(QtCore.QObject):
         """Back to FreeCAD's own toolbars for this workbench."""
         layouts.save(self._workbench(), None)
         self._missing = []
-        self._model.set_entries(self._live)
-
-    @QtCore.Slot()
-    def exportLayouts(self) -> None:  # noqa: N802
-        self._later(self._export)
-
-    @QtCore.Slot()
-    def importLayouts(self) -> None:  # noqa: N802
-        self._later(self._import)
-
-    def _later(self, action: Callable[[], None]) -> None:
-        # A file dialog spins its own event loop, which must not run
-        # inside the QML click that asked for it.
-        self._file_action = action
-        self._file_timer.start()
-
-    def _export(self) -> None:
-        path, _filter = QtWidgets.QFileDialog.getSaveFileName(
-            self._main, translate("Nxt", "Export toolbar layouts"),
-            LAYOUT_FILE, LAYOUT_FILTER)
-        if not path:
-            return
-        try:
-            Path(path).write_text(layouts.export_text(), encoding="utf-8")
-        except OSError as exc:
-            App.Console.PrintError("Nxt: could not write %s: %s\n"
-                                   % (path, exc))
-
-    def _import(self) -> None:
-        path, _filter = QtWidgets.QFileDialog.getOpenFileName(
-            self._main, translate("Nxt", "Import toolbar layouts"), "",
-            LAYOUT_FILTER)
-        if not path:
-            return
-        try:
-            layouts.import_text(Path(path).read_text(encoding="utf-8"))
-        except (OSError, ValueError) as exc:
-            App.Console.PrintError("Nxt: could not import %s: %s\n"
-                                   % (path, exc))
-            return
         self.rebuild()
 
-    @QtCore.Slot(int, float, float)
-    def activate(self, row: int, x: float, y: float) -> None:
+    # -- running -- #
+
+    @QtCore.Slot(int, float, float, str)
+    def activate(self, row: int, x: float, y: float,
+                 area: str = TOP) -> None:
         """Run the command, or click the button, at `row`.
 
         (x, y) is below the item in the strip's view: where any menu the
         click opens is placed.
         """
-        entry = self._model.entry(row)
+        entry = self._m(area).entry(row)
         try:
             if entry is None or self._editing:
                 return
@@ -514,28 +795,53 @@ class ToolStripBridge(QtCore.QObject):
                     and entry.action.isEnabled():
                 entry.action.trigger()
             elif entry.kind is Kind.BUTTON and entry.widget.isEnabled():
-                with menus_opened_at(self._global(x, y)):
+                with menus_opened_at(self._global(x, y, area)):
                     entry.widget.click()
         except Exception:  # noqa: BLE001 - must not reach Qt's event loop
             log.error("tool strip command failed")
 
-    @QtCore.Slot(int, float, float)
-    def openMenu(self, row: int, x: float, y: float) -> None:  # noqa: N802
+    @QtCore.Slot(int, float, float, str)
+    def openMenu(self, row: int, x: float, y: float,  # noqa: N802
+                 area: str = TOP) -> None:
         """Open the dropdown of `row` at (x, y) in the strip's view."""
-        entry = self._model.entry(row)
-        if entry is not None and entry.kind is Kind.GROUP:
-            self._group_menu(entry).popup(self._global(x, y))
+        entry = self._m(area).entry(row)
+        at = self._global(x, y, area)
+        if entry is None:
             return
-        menu = None if entry is None or entry.widget is None \
-            else getattr(entry.widget, "menu", lambda: None)()
-        if menu is not None:
-            menu.popup(self._global(x, y))
+        if entry.kind is Kind.GROUP:
+            self._group_menu(area, entry).popup(at)
+        elif entry.kind is Kind.CHOICE:
+            self._choice_menu(area, row, entry).popup(at)
+        else:
+            menu = None if entry.widget is None \
+                else getattr(entry.widget, "menu", lambda: None)()
+            if menu is not None:
+                menu.popup(at)
 
-    def _group_menu(self, group: source.Entry) -> QtWidgets.QMenu:
-        """A menu of the group's members; the one picked becomes its face."""
+    @QtCore.Slot(int, float, float, str)
+    def openMore(self, row: int, x: float, y: float,  # noqa: N802
+                 area: str = TOP) -> None:
+        """Press the selector's own + button (workbenches not on tabs)."""
+        entry = self._m(area).entry(row)
+        more = None if entry is None else models.more_button(entry)
+        if more is None:
+            return
+        menu = more.menu()
+        if menu is not None:
+            menu.popup(self._global(x, y, area))
+            return
+        with menus_opened_at(self._global(x, y, area)):
+            more.click()
+
+    def _fresh_menu(self) -> QtWidgets.QMenu:
         if self._menu is not None:
             self._menu.deleteLater()
-        menu = QtWidgets.QMenu(self._main)
+        self._menu = QtWidgets.QMenu(self._main)
+        return self._menu
+
+    def _group_menu(self, area: str, group: source.Entry) -> QtWidgets.QMenu:
+        """A menu of the group's members; the one picked becomes its face."""
+        menu = self._fresh_menu()
         for member in group.members:
             if member.action is not None:
                 menu.addAction(member.action)
@@ -547,19 +853,32 @@ class ToolStripBridge(QtCore.QObject):
                 return
             self._last_used[group.key] = member.key
             if groups.use(group, member):
-                self._model.refresh(self._row_of(group))
+                self._m(area).refresh(self._place_of(group)[1])
 
         menu.triggered.connect(picked)
-        self._menu = menu
         return menu
 
-    def _global(self, x: float, y: float) -> QtCore.QPoint:
-        return self._to_global(QtCore.QPoint(round(x), round(y)))
+    def _choice_menu(self, area: str, row: int,
+                     entry: source.Entry) -> QtWidgets.QMenu:
+        """The selector's choices as a menu: the combo box style."""
+        menu = self._fresh_menu()
+        chooser = entry.widget
+        for index in range(chooser.count()):
+            icon, text = models.choice_at(chooser, index)
+            item = menu.addAction(icon, text)
+            item.setCheckable(True)
+            item.setChecked(index == chooser.currentIndex())
+            item.triggered.connect(
+                lambda _on=False, i=index: self.choose(row, i, area))
+        return menu
 
-    @QtCore.Slot(int, int)
-    def choose(self, row: int, index: int) -> None:
+    def _global(self, x: float, y: float, area: str) -> QtCore.QPoint:
+        return self._to_global(area, QtCore.QPoint(round(x), round(y)))
+
+    @QtCore.Slot(int, int, str)
+    def choose(self, row: int, index: int, area: str = TOP) -> None:
         """Pick choice `index` of the selector at `row`."""
-        entry = self._model.entry(row)
+        entry = self._m(area).entry(row)
         if entry is None or entry.kind is not Kind.CHOICE:
             return
         chooser = entry.widget

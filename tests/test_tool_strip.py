@@ -27,10 +27,12 @@ App, Gui = fakes.install()
 from PySide6 import QtCore, QtGui, QtWidgets  # noqa: E402
 
 from freecad.nxt.toolbars import (  # noqa: E402
+    bridge,
     catalog,
     layouts,
     models,
     source,
+    state,
 )
 from freecad.nxt.toolbars.bridge import ToolStripBridge  # noqa: E402
 from freecad.nxt.toolbars.hider import ToolbarHider  # noqa: E402
@@ -39,6 +41,7 @@ from freecad.nxt.toolbars.source import Kind  # noqa: E402
 APP = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 OWN = ("NxtToolStrip",)
 WORKBENCH = "PartDesignWorkbench"
+OTHER_WORKBENCH = "SketcherWorkbench"
 TOP = QtCore.Qt.ToolBarArea.TopToolBarArea
 SPLIT = QtWidgets.QToolButton.ToolButtonPopupMode.MenuButtonPopup
 
@@ -170,7 +173,8 @@ class Window:
 class Reading(unittest.TestCase):
     def setUp(self) -> None:
         self.window = Window()
-        self.entries, self.unsupported = source.read(self.window.main, OWN)
+        areas, self.unsupported = source.read(self.window.main, OWN)
+        self.entries = areas["top"]
 
     def tearDown(self) -> None:
         self.window.close()
@@ -261,7 +265,7 @@ class Acting(unittest.TestCase):
         self.global_point = QtCore.QPoint(5, 5)
         layouts.save(WORKBENCH, None)
         self.bridge = ToolStripBridge(self.window.main, OWN,
-                                      lambda _p: self.global_point,
+                                      lambda _area, _p: self.global_point,
                                       lambda: WORKBENCH)
         self.model = self.bridge.model
         self.bridge.rebuild()
@@ -355,36 +359,39 @@ class Layouts(unittest.TestCase):
                      entry("Pad"), entry("Pocket")]
         layouts.save(WORKBENCH, None)
 
+    def arranged(self, layout: layouts.Layout | None) -> list[str]:
+        return keys(layouts.arrange({"top": self.live}, layout)[0]["top"])
+
     def test_no_layout_keeps_freecads_order(self) -> None:
-        self.assertEqual(keys(layouts.arrange(self.live, None)[0]),
+        self.assertEqual(self.arranged(None),
                          ["New", "Open", "|", "Pad", "Pocket"])
 
     def test_saved_order_applied(self) -> None:
-        layout = layouts.Layout(["Pad", "|", "New"], ["Open", "Pocket"])
-        self.assertEqual(keys(layouts.arrange(self.live, layout)[0]),
+        layout = layouts.Layout.top(["Pad", "|", "New"], ["Open", "Pocket"])
+        self.assertEqual(self.arranged(layout),
                          ["Pad", "|", "New"])
 
     def test_unmentioned_items_appended_after_a_separator(self) -> None:
-        layout = layouts.Layout(["Pad", "New"], ["Open"])
-        self.assertEqual(keys(layouts.arrange(self.live, layout)[0]),
+        layout = layouts.Layout.top(["Pad", "New"], ["Open"])
+        self.assertEqual(self.arranged(layout),
                          ["Pad", "New", "|", "Pocket"])
 
     def test_items_no_longer_offered_skipped(self) -> None:
-        layout = layouts.Layout(["Gone", "Pad", "|", "Open"], [])
-        arranged = keys(layouts.arrange(self.live, layout)[0])
+        layout = layouts.Layout.top(["Gone", "Pad", "|", "Open"], [])
+        arranged = self.arranged(layout)
         self.assertNotIn("Gone", arranged)
 
     def test_capture_counts_what_was_left_out_as_removed(self) -> None:
         shown = [self.live[3], source.SEPARATOR, self.live[0]]
-        layout = layouts.capture(shown, self.live,
-                                 layouts.Layout([], ["Elsewhere"]))
-        self.assertEqual(layout.order, ["Pad", "|", "New"])
+        layout = layouts.capture({"top": shown}, {"top": self.live},
+                                 layouts.Layout.top([], ["Elsewhere"]))
+        self.assertEqual(layout.areas["top"], ["Pad", "|", "New"])
         self.assertEqual(layout.removed, ["Elsewhere", "Open", "Pocket"])
 
     def test_saved_layouts_round_trip(self) -> None:
-        layouts.save(WORKBENCH, layouts.Layout(["Pad"], ["New"]))
+        layouts.save(WORKBENCH, layouts.Layout.top(["Pad"], ["New"]))
         self.assertEqual(layouts.load(WORKBENCH),
-                         layouts.Layout(["Pad"], ["New"]))
+                         layouts.Layout.top(["Pad"], ["New"]))
         layouts.save(WORKBENCH, None)
         self.assertIsNone(layouts.load(WORKBENCH))
 
@@ -405,7 +412,7 @@ class Editing(Acting):
         self.bridge.beginDrag()
         self.bridge.move(self.row_of("Save"), 0)
         self.bridge.endDrag(0, False)
-        self.assertEqual(layouts.load(WORKBENCH).order[0], "Save")
+        self.assertEqual(layouts.load(WORKBENCH).areas["top"][0], "Save")
         self.bridge.rebuild()
         self.assertEqual(self.texts()[0], "Save")
 
@@ -549,7 +556,7 @@ class Adding(Acting):
 
     def test_separator_appended_and_saved(self) -> None:
         self.bridge.appendSeparator()
-        self.assertEqual(layouts.load(WORKBENCH).order[-1], "|")
+        self.assertEqual(layouts.load(WORKBENCH).areas["top"][-1], "|")
 
     def test_search_and_filter_narrow_the_drawer(self) -> None:
         self.open_drawer()
@@ -559,45 +566,24 @@ class Adding(Acting):
 
 
 class Lasting(Acting):
-    """What survives: commands not loadable yet, files, sketch editing."""
+    """What survives: commands not loadable yet, sketch editing."""
 
     def test_command_not_found_keeps_its_place_on_save(self) -> None:
-        layouts.save(WORKBENCH, layouts.Layout(
+        layouts.save(WORKBENCH, layouts.Layout.top(
             ["&New", "Draft_Line", "Open", "|", "Save"], []))
         self.bridge.rebuild()
         self.bridge.beginDrag()
         self.bridge.move(self.row_of("Save"), 0)
         self.bridge.endDrag(0, False)
-        order = layouts.load(WORKBENCH).order
+        order = layouts.load(WORKBENCH).areas["top"]
         self.assertEqual(order[:4], ["Save", "&New", "Draft_Line", "Open"])
 
     def test_missing_key_without_an_anchor_goes_first(self) -> None:
         live = [entry("New")]
-        layout = layouts.capture(live, live, layouts.Layout(
-            ["Gone", "New"], []), ["Gone"])
-        self.assertEqual(layout.order, ["Gone", "New"])
-
-    def test_export_and_import_round_trip(self) -> None:
-        layouts.save(WORKBENCH, layouts.Layout(["Pad"], ["New"]))
-        text = layouts.export_text()
-        layouts.save(WORKBENCH, None)
-        self.assertEqual(layouts.import_text(text), 1)
-        self.assertEqual(layouts.load(WORKBENCH).order, ["Pad"])
-
-    def test_import_rejects_other_files(self) -> None:
-        with self.assertRaises(ValueError):
-            layouts.import_text('{"PartDesignWorkbench": [1, 2]}')
-
-    def test_export_writes_the_chosen_file(self) -> None:
-        import tempfile
-        layouts.save(WORKBENCH, layouts.Layout(["Pad"], []))
-        with tempfile.TemporaryDirectory() as folder:
-            path = str(Path(folder) / "layouts.json")
-            with mock.patch.object(QtWidgets.QFileDialog, "getSaveFileName",
-                                   return_value=(path, "")):
-                self.bridge.exportLayouts()
-                settle()
-            self.assertIn("Pad", Path(path).read_text(encoding="utf-8"))
+        previous = layouts.Layout.top(["Gone", "New"], [])
+        layout = layouts.capture({"top": live}, {"top": live}, previous,
+                                 ["Gone"])
+        self.assertEqual(layout.areas["top"], ["Gone", "New"])
 
     def test_sketch_editing_has_its_own_layout(self) -> None:
         from freecad.nxt.toolbars import strip
@@ -636,7 +622,7 @@ class Grouping(Acting):
                 for r in range(self.model.rowCount())]
 
     def saved_groups(self) -> list[dict[str, object]]:
-        return [t for t in layouts.load(WORKBENCH).order
+        return [t for t in layouts.load(WORKBENCH).areas["top"]
                 if isinstance(t, dict)]
 
     def new_group(self, *keys: str) -> int:
@@ -732,7 +718,7 @@ class Grouping(Acting):
         self.assertNotEqual(self.value(0, "kind"), "group")
 
     def test_member_not_loadable_yet_stays_in_the_group(self) -> None:
-        layouts.save(WORKBENCH, layouts.Layout([
+        layouts.save(WORKBENCH, layouts.Layout.top([
             {"group": "group:abc", "name": "Mixed",
              "members": ["PartDesign_Pocket", "Draft_Line"]}], []))
         self.bridge.rebuild()
@@ -742,6 +728,228 @@ class Grouping(Acting):
                          ["PartDesign_Pocket", "Draft_Line"])
         self.bridge.editGroup(-1)
         self.assertEqual(self.value(0, "kind"), "group")
+
+
+class Rows(unittest.TestCase):
+    """FreeCAD's rows and areas, read from Qt's record of the layout."""
+
+    def setUp(self) -> None:
+        self.window = Window()
+        main = self.window.main
+        part = main.findChild(QtWidgets.QToolBar, "Part")
+        main.insertToolBarBreak(part)
+        tray = main.findChild(QtWidgets.QToolBar, "Tray")
+        main.addToolBar(QtCore.Qt.ToolBarArea.LeftToolBarArea, tray)
+        settle()
+
+    def tearDown(self) -> None:
+        self.window.close()
+
+    def test_state_lists_rows_in_order(self) -> None:
+        found = state.rows(bytes(self.window.main.saveState().data()))
+        tops = [names for area, names in found if area == state.TOP]
+        self.assertIn(["File", "Sketcher"], [n[:2] for n in tops])
+        self.assertIn(["Part", "Workbench", OWN[0]], tops)
+        self.assertIn((state.LEFT, ["Tray"]), found)
+
+    def test_unreadable_state_gives_none(self) -> None:
+        self.assertIsNone(state.rows(b"\x00\x01garbage"))
+
+    def test_read_splits_rows_and_areas(self) -> None:
+        areas, _unsupported = source.read(self.window.main, OWN)
+        kinds = [e.kind for e in areas["top"]]
+        self.assertEqual(kinds.count(Kind.BREAK), 1)
+        texts = [e.action.text() for e in source.rows_of(areas["top"])[1]
+                 if e.kind is Kind.COMMAND]
+        self.assertEqual(texts, ["Pad", "Fillet"])
+        self.assertEqual([e.kind for e in areas["left"]],
+                         [Kind.BUTTON, Kind.BUTTON])
+
+    def test_tidy_drops_empty_rows_and_stray_separators(self) -> None:
+        sep, brk, item = source.SEPARATOR, source.BREAK, entry("A")
+        self.assertEqual(source.tidy([brk, sep, item, sep, brk, brk, item,
+                                      brk]),
+                         [item, brk, item])
+
+    def test_old_one_row_layouts_still_load(self) -> None:
+        layouts.settings.put(layouts.SETTING,
+                             '{"W": {"order": ["Pad"], "removed": []}}')
+        self.assertEqual(layouts.load("W").areas, {"top": ["Pad"]})
+        layouts.settings.put(layouts.SETTING, "")
+
+
+class Arranging(Acting):
+    """New rows, other areas, carrying items, icon size, the selector."""
+
+    def texts(self, area: str = "top") -> list[str]:
+        model = self.bridge.modelOf(area)
+        names = {v.data().decode(): k for k, v in model.roleNames().items()}
+        return [model.data(model.index(r), names["text"])
+                or {"separator": "|", "break": "/"}.get(
+                    model.data(model.index(r), names["kind"]), "?")
+                for r in range(model.rowCount())]
+
+    def test_moved_to_a_new_row_after_the_last(self) -> None:
+        self.bridge.moveToNewRow(self.row_of("New"), -1)
+        self.assertEqual(self.texts()[-2:], ["/", "New"])
+        self.bridge.rebuild()
+        self.assertEqual(self.texts()[-2:], ["/", "New"])
+
+    def test_new_row_between_rows(self) -> None:
+        self.bridge.moveToNewRow(self.row_of("Pad"), -1)
+        first_break = self.texts().index("/")
+        self.bridge.moveToNewRow(self.row_of("New"), first_break)
+        texts = self.texts()
+        self.assertEqual(texts[texts.index("New") - 1:texts.index("New") + 2],
+                         ["/", "New", "/"])
+
+    def test_drawer_item_starts_a_row(self) -> None:
+        self.assertTrue(self.bridge.addInNewRow("Sketcher_CreateCircle", -1))
+        self.assertEqual(self.texts()[-2:], ["/", "Circle"])
+
+    def test_moved_to_the_left_strip_and_saved(self) -> None:
+        self.bridge.moveAcross("top", self.row_of("Save"), "left", 0)
+        self.assertEqual(self.texts("left"), ["Save"])
+        self.assertNotIn("Save", self.texts())
+        self.assertTrue(self.bridge.holds("left"))
+        self.bridge.rebuild()
+        self.assertEqual(self.texts("left"), ["Save"])
+
+    def test_carried_row_dropped_on_another_strip(self) -> None:
+        self.bridge._carried = ("top", self.row_of("Open"))
+        self.assertTrue(self.bridge.dropCarried("right", 0))
+        self.assertEqual(self.texts("right"), ["Open"])
+
+    def test_carried_drawer_key_dropped_on_a_side(self) -> None:
+        self.bridge._carried = "Sketcher_CreateCircle"
+        self.assertTrue(self.bridge.dropCarried("left", 0))
+        self.assertEqual(self.texts("left"), ["Circle"])
+
+    def carry_over(self, target: str | None) -> list[tuple[str, float]]:
+        """Carry "Open" to `target`'s strip (None: no strip); the signals."""
+        at = QtCore.QPointF(3, 4)
+        self.bridge._locate = lambda _point: None if target is None \
+            else (target, at)
+        seen: list[tuple[str, float]] = []
+        self.bridge.carriedOver.connect(lambda a, x, _y: seen.append((a, x)))
+        self.bridge.carriedDropped.connect(
+            lambda a, x, _y: seen.append(("dropped " + a, x)))
+        self.bridge.carryRow("top", self.row_of("Open"), "icon", "Open")
+        self.bridge.carryTo("top", 10, 10)
+        self.bridge.carryEnd()
+        return seen
+
+    def test_carried_item_shown_by_the_strip_under_it(self) -> None:
+        self.assertEqual(self.carry_over("left"),
+                         [("left", 3.0), ("", 0.0), ("dropped left", 3.0)])
+        self.assertEqual(self.bridge.property("carriedIcon"), "icon")
+
+    def test_carried_item_let_go_over_no_strip_stays(self) -> None:
+        self.assertEqual(self.carry_over(None), [("", 0.0), ("", 0.0)])
+        self.assertIn("Open", self.texts())
+        self.assertFalse(self.bridge.dropCarried("left", 0))
+
+    def test_carried_onto_the_drawer_is_removed(self) -> None:
+        self.bridge._carried = ("top", self.row_of("Open"))
+        self.bridge.removeCarried()
+        self.assertNotIn("Open", self.texts())
+
+    def test_icon_size_kept_as_nxts_own(self) -> None:
+        sizes = self.bridge.property("iconSizes")
+        self.assertIn(self.bridge.property("iconSize"), sizes)
+        self.bridge.setIconSize(40)
+        self.assertEqual(self.bridge.property("iconSize"), 40)
+        self.assertEqual(layouts.settings.get(bridge.ICON_SETTING), 40)
+        self.bridge.rebuild()
+        self.assertEqual(self.bridge.property("iconSize"), 40)
+        self.bridge.setIconSize(0)
+
+    def test_other_rows_share_their_own_icon_size(self) -> None:
+        self.bridge.setOtherIconSize(32)
+        self.assertEqual(self.bridge.property("otherIconSize"), 32)
+        self.assertNotEqual(self.bridge.property("iconSize"), 32)
+        self.assertEqual(layouts.settings.get(bridge.OTHER_ICON_SETTING), 32)
+        self.bridge.setOtherIconSize(0)
+
+    def other_workbench(self) -> ToolStripBridge:
+        other = ToolStripBridge(self.window.main, OWN,
+                                lambda _area, _p: self.global_point,
+                                lambda: OTHER_WORKBENCH)
+        self.addCleanup(other.stop)
+        self.addCleanup(layouts.save, OTHER_WORKBENCH, None)
+        other.rebuild()
+        return other
+
+    def test_locked_strip_is_the_same_in_every_workbench(self) -> None:
+        self.bridge.moveAcross("top", self.row_of("Save"), "left", 0)
+        self.bridge.setLocked("left", True)
+        self.addCleanup(self.bridge.setLocked, "left", False)
+        self.assertEqual(self.bridge.property("lockedUnits"), ["left"])
+        other = self.other_workbench()
+        self.assertEqual(self.texts_of(other, "left"), ["Save"])
+
+    def test_unlocked_strip_is_each_workbenchs_own(self) -> None:
+        self.bridge.moveAcross("top", self.row_of("Save"), "left", 0)
+        self.assertEqual(self.texts_of(self.other_workbench(), "left"), [])
+
+    def test_locked_first_row_is_the_same_in_every_workbench(self) -> None:
+        pad = self.model.entry(self.row_of("Pad"))
+        self.bridge.moveToNewRow(self.row_of("Pad"), -1)
+        self.bridge.setLocked(layouts.FIRST_ROW, True)
+        self.addCleanup(self.bridge.setLocked, layouts.FIRST_ROW, False)
+        first = source.rows_of(self.bridge.modelOf("top").entries())[0]
+        other = self.other_workbench()
+        other_rows = source.rows_of(other.modelOf("top").entries())
+        self.assertEqual([e.key for e in other_rows[0]],
+                         [e.key for e in first])
+        self.assertNotIn(pad.key, [e.key for e in other_rows[0]])
+        self.assertIn(pad.key, [e.key for e in other_rows[1]])
+
+    def test_locking_the_first_row_leaves_the_rest_own(self) -> None:
+        self.bridge.moveToNewRow(self.row_of("Pad"), -1)
+        self.bridge.setLocked(layouts.FIRST_ROW, True)
+        self.addCleanup(self.bridge.setLocked, layouts.FIRST_ROW, False)
+        self.assertEqual(layouts.load(layouts.SHARED).areas["top"].count(
+            layouts.ROW), 0)
+        self.assertIn(layouts.ROW, layouts.load(WORKBENCH).areas["top"])
+
+    def test_lock_needs_a_lockable_unit(self) -> None:
+        self.bridge.setLocked("top", True)
+        self.assertEqual(self.bridge.property("lockedUnits"), [])
+
+    def texts_of(self, other: ToolStripBridge, area: str) -> list[str]:
+        model = other.modelOf(area)
+        role = {v.data().decode(): k
+                for k, v in model.roleNames().items()}["text"]
+        return [model.data(model.index(r), role)
+                for r in range(model.rowCount())]
+
+    def test_selector_style_follows_freecads(self) -> None:
+        row = self.model.rowCount() - 1
+        self.assertEqual(self.value(row, "style"), models.TABS)
+        self.assertFalse(self.value(row, "more"))
+
+    def test_combo_selector_lists_choices_as_a_menu(self) -> None:
+        combo = QtWidgets.QComboBox()
+        combo.addItems(["Part Design", "Sketcher"])
+        picked: list[int] = []
+        combo.activated.connect(picked.append)
+        entry_ = source.Entry(Kind.CHOICE, None, combo, "Workbench#9")
+        self.model.insert(0, entry_)
+        self.assertEqual(self.value(0, "style"), models.COMBO)
+        with mock.patch.object(QtWidgets.QMenu, "popup"):
+            self.bridge.openMenu(0, 0.0, 0.0)
+        menu_items = self.bridge._menu.actions()
+        self.assertEqual([a.text() for a in menu_items],
+                         ["Part Design", "Sketcher"])
+        menu_items[1].trigger()
+        self.assertEqual(picked, [1])
+
+    def test_leaving_edit_mode_tidies_empty_rows(self) -> None:
+        self.bridge.setEditing(True)
+        self.bridge.insertRow(0)
+        self.bridge.setEditing(False)
+        self.assertNotEqual(self.texts()[0], "/")
 
 
 if __name__ == "__main__":

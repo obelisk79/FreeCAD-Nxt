@@ -25,6 +25,7 @@ Item {
 
     implicitHeight: header.height + gap + grid.height
 
+    // A strip item dragged back here from another strip is removed.
     function focusSearch() { search.input.forceActiveFocus() }
 
     // One draggable tile: an icon and a name.
@@ -106,7 +107,7 @@ Item {
                 if (tile.key === drawer.separatorKey)
                     strip.appendSeparator();
                 else if (tile.key === drawer.groupKey)
-                    strip.insertGroup(-1);
+                    strip.insertGroup(-1, "top");
                 else
                     strip.appendCommand(tile.key);
             }
@@ -150,7 +151,7 @@ Item {
 
         Flow {
             width: parent.width - search.width - drawer.cellWidth
-                   - fileButtons.width - 4 * drawer.gap
+                   - editButtons.width - 4 * drawer.gap
             spacing: drawer.gap
 
             Repeater {
@@ -185,19 +186,31 @@ Item {
             }
         }
 
-        // Every workbench's layout, to another computer or a backup.
+        // Every row's size but the top strip's first, and leaving edit
+        // mode.
         Row {
-            id: fileButtons
+            id: editButtons
             spacing: drawer.gap
 
-            TextButton {
-                text: qsTr("Import…")
-                onClicked: strip.importLayouts()
+            SizeStepper {
+                anchors.verticalCenter: parent.verticalCenter
+                label: qsTr("Other icons")
+                size: strip.otherIconSize
+                sizes: strip.iconSizes
+                onPicked: (size) => strip.setOtherIconSize(size)
             }
 
             TextButton {
-                text: qsTr("Export…")
-                onClicked: strip.exportLayouts()
+                anchors.verticalCenter: parent.verticalCenter
+                text: qsTr("Reset")
+                onClicked: strip.resetLayout()
+            }
+
+            TextButton {
+                anchors.verticalCenter: parent.verticalCenter
+                text: qsTr("Done")
+                primary: true
+                onClicked: strip.setEditing(false)
             }
         }
     }

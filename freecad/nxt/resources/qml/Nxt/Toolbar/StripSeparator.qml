@@ -1,13 +1,18 @@
 import QtQuick
 
-// A thin divider between groups of the tool strip; wider and framed in
-// edit mode, so it can be picked up.
+// A thin divider between groups of a tool strip, across a row (top) or a
+// column (sides); wider and framed in edit mode, so it can be picked up.
 Item {
     id: separator
 
+    property bool across: true
     property bool editing: false
+    property int size: 24
+    readonly property int thickness: Math.max(3, Math.round(
+        size * (editing ? 0.4 : 0.3)))
 
-    implicitWidth: Math.max(3, Math.round(height * (editing ? 0.4 : 0.3)))
+    implicitWidth: across ? thickness : size
+    implicitHeight: across ? size : thickness
 
     Rectangle {
         anchors.fill: parent
@@ -20,8 +25,8 @@ Item {
 
     Rectangle {
         anchors.centerIn: parent
-        width: 1
-        height: Math.round(parent.height * 0.6)
+        width: separator.across ? 1 : Math.round(separator.size * 0.6)
+        height: separator.across ? Math.round(separator.size * 0.6) : 1
         color: theme.border
     }
 }

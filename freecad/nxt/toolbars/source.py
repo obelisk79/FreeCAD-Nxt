@@ -1,9 +1,10 @@
-"""What FreeCAD's toolbars hold, flattened into one row of entries.
+"""What FreeCAD's toolbars hold, as rows of entries in each area.
 
 Toolbars of earlier workbenches linger as hidden children of the main
-window: only those FreeCAD has not hidden count. Each toolbar boundary
-becomes a separator. Read straight from Qt, so the strip shows exactly
-what FreeCAD would, addons and workbench manipulators included.
+window: only those FreeCAD has not hidden count. Rows follow FreeCAD's
+own (state.py); each toolbar boundary within a row becomes a separator.
+Read straight from Qt, so the strips show exactly what FreeCAD would,
+addons and workbench manipulators included.
 """
 
 from __future__ import annotations
@@ -14,6 +15,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from ..core.qt import QtCore, QtGui, QtWidgets
+from . import state
 
 #: Toolbar areas in the order the strip reads them.
 _AREA_ORDER = (QtCore.Qt.ToolBarArea.TopToolBarArea,
@@ -34,6 +36,8 @@ class Kind(enum.Enum):
     #: Several commands behind one button: the user's, or FreeCAD's own
     #: group added from the drawer.
     GROUP = "group"
+    #: The end of a row: what follows starts the next.
+    BREAK = "break"
 
 
 @dataclass(eq=False)
@@ -66,6 +70,10 @@ class Entry:
 
 
 SEPARATOR = Entry(Kind.SEPARATOR)
+BREAK = Entry(Kind.BREAK)
+
+#: Entries of each area (state.AREAS), rows split by BREAK.
+Areas = dict[str, list[Entry]]
 
 
 def shown_toolbars(main: QtWidgets.QMainWindow,
@@ -116,34 +124,90 @@ def entry_for(bar: QtWidgets.QToolBar, action: QtGui.QAction,
     return None
 
 
+_DIVIDERS = (Kind.SEPARATOR, Kind.BREAK)
+
+
 def tidy(entries: list[Entry]) -> list[Entry]:
-    """Without leading, trailing or repeated separators."""
+    """Without empty rows, or separators at a row's ends or repeated."""
     tidied: list[Entry] = []
     for entry in entries:
-        if entry.kind is Kind.SEPARATOR and (
-                not tidied or tidied[-1].kind is Kind.SEPARATOR):
-            continue
+        if entry.kind in _DIVIDERS:
+            if not tidied or tidied[-1].kind is Kind.BREAK:
+                continue
+            if tidied[-1].kind is Kind.SEPARATOR:
+                if entry.kind is Kind.SEPARATOR:
+                    continue
+                tidied.pop()
         tidied.append(entry)
-    if tidied and tidied[-1].kind is Kind.SEPARATOR:
+    while tidied and tidied[-1].kind in _DIVIDERS:
         tidied.pop()
     return tidied
 
 
+def rows_of(entries: list[Entry]) -> list[list[Entry]]:
+    """`entries` split at each BREAK."""
+    rows: list[list[Entry]] = [[]]
+    for entry in entries:
+        if entry.kind is Kind.BREAK:
+            rows.append([])
+        else:
+            rows[-1].append(entry)
+    return rows
+
+
+def toolbar_rows(main: QtWidgets.QMainWindow, own: Iterable[str]
+                 ) -> dict[str, list[list[QtWidgets.QToolBar]]]:
+    """The shown toolbars in FreeCAD's rows, by area.
+
+    Toolbars Qt's record does not place (added since) join the last row
+    of the top, in screen order.
+    """
+    shown = shown_toolbars(main, own)
+    by_name = {bar.objectName(): bar for bar in shown}
+    areas: dict[str, list[list[QtWidgets.QToolBar]]] = {
+        area: [] for area in state.AREAS}
+    placed: set[str] = set()
+    for area, names in state.rows(bytes(main.saveState().data())) or []:
+        row = [by_name[n] for n in names if n in by_name and n not in placed]
+        placed.update(bar.objectName() for bar in row)
+        if row:
+            areas[area].append(row)
+    rest = [bar for bar in shown if bar.objectName() not in placed]
+    if rest:
+        if areas[state.TOP]:
+            areas[state.TOP][-1].extend(rest)
+        else:
+            areas[state.TOP].append(rest)
+    return areas
+
+
 def read(main: QtWidgets.QMainWindow, own: Iterable[str]
-         ) -> tuple[list[Entry], list[str]]:
-    """The strip's entries, and the class names of widgets it cannot show."""
-    entries: list[Entry] = []
+         ) -> tuple[Areas, list[str]]:
+    """Each area's entries, and class names of widgets that cannot show."""
     unsupported: list[str] = []
-    for bar in shown_toolbars(main, own):
-        entries.append(SEPARATOR)
-        for place, action in enumerate(bar.actions()):
-            if not action.isVisible():
-                continue
-            entry = entry_for(bar, action, place)
-            if entry is None:
-                widget = bar.widgetForAction(action)
-                unsupported.append(widget.metaObject().className()
-                                   if widget is not None else "?")
-            else:
-                entries.append(entry)
-    return tidy(entries), unsupported
+    areas: Areas = {}
+    for area, rows in toolbar_rows(main, own).items():
+        entries: list[Entry] = []
+        for row in rows:
+            entries.append(BREAK)
+            for bar in row:
+                entries.append(SEPARATOR)
+                entries += _entries_of(bar, unsupported)
+        areas[area] = tidy(entries)
+    return areas, unsupported
+
+
+def _entries_of(bar: QtWidgets.QToolBar,
+                unsupported: list[str]) -> list[Entry]:
+    entries: list[Entry] = []
+    for place, action in enumerate(bar.actions()):
+        if not action.isVisible():
+            continue
+        entry = entry_for(bar, action, place)
+        if entry is None:
+            widget = bar.widgetForAction(action)
+            unsupported.append(widget.metaObject().className()
+                               if widget is not None else "?")
+        else:
+            entries.append(entry)
+    return entries

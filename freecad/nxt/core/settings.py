@@ -56,6 +56,13 @@ DEFAULTS: dict[str, bool | int | float | str] = {
     "ToolStrip": False,
     # JSON: the tool strip's order per workbench (toolbars/layouts.py).
     "ToolStripLayouts": "",
+    # The top strip's first row's icon size in pixels; 0 follows
+    # FreeCAD's toolbars.
+    "ToolStripIconSize": 0,
+    # Every other row's icon size, side strips' too; 0 as above.
+    "ToolStripOtherIconSize": 0,
+    # What ("first-row,left,right") is the same in every workbench.
+    "ToolStripLocked": "",
     # A new sketch, container or feature opens in rename.
     "AutoRename": False,
     # Look for addon updates after startup (app/update_check.py).

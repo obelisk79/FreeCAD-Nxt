@@ -111,12 +111,16 @@
         <translation>Arrástralo a la barra de herramientas y suelta comandos encima</translation>
     </message>
     <message>
-        <source>Import…</source>
-        <translation>Importar…</translation>
+        <source>Other icons</source>
+        <translation>Otros iconos</translation>
     </message>
     <message>
-        <source>Export…</source>
-        <translation>Exportar…</translation>
+        <source>Reset</source>
+        <translation>Restablecer</translation>
+    </message>
+    <message>
+        <source>Done</source>
+        <translation>Listo</translation>
     </message>
     <message>
         <source>Reading commands…</source>
@@ -1167,20 +1171,12 @@ The sketch&apos;s axes, by their geometry index.</extracomment>
     </message>
     <message>
         <source>Group</source>
-        <extracomment>Wait after the last toolbar change before reading them all again. Proxied buttons emit nothing when their text or state changes (Draft Tray shows the current layer): read again this often. The group open in the editor row, by identity: rows move. Group key -&gt; the member key last used, kept across rebuilds.</extracomment>
+        <extracomment>Wait after the last toolbar change before reading them all again. Proxied buttons emit nothing when their text or state changes (Draft Tray shows the current layer): read again this often. FreeCAD&apos;s toolbar icon sizes, offered in edit mode. Where on screen a strip&apos;s view is: its area and the point in it. The drawer&apos;s separator and New group tiles, as their drags carry them. dropCarried&apos;s &quot;not on a new-row zone&quot;. The areas holding something changed (a side strip shows or goes). The carried item is over `area`&apos;s strip at x, y; &quot;&quot; over none. The carried item was let go over `area`&apos;s strip at x, y. The group open in the editor row, by identity: rows move. Group key -&gt; the member key last used, kept across rebuilds. The item dragged out of its view: (area, row) or a drawer key.</extracomment>
         <translation>Grupo</translation>
     </message>
     <message>
-        <source>Export toolbar layouts</source>
-        <translation>Exportar disposiciones de barras de herramientas</translation>
-    </message>
-    <message>
-        <source>Import toolbar layouts</source>
-        <translation>Importar disposiciones de barras de herramientas</translation>
-    </message>
-    <message>
         <source>Tool strip</source>
-        <extracomment>Toolbars that are the strip&apos;s own and never covered. FreeCAD&apos;s main window, with its workbenchActivated signal.</extracomment>
+        <extracomment>Each strip&apos;s toolbar name and where it docks. Toolbars that are the strips&apos; own and never covered.</extracomment>
         <translation>Tira de herramientas</translation>
     </message>
 </context>
@@ -2381,6 +2377,21 @@ The sketch&apos;s axes, by their geometry index.</extracomment>
     </message>
 </context>
 <context>
+    <name>SizeStepper</name>
+    <message>
+        <source>Smaller icons</source>
+        <translation>Iconos más pequeños</translation>
+    </message>
+    <message>
+        <source>%1 px</source>
+        <translation>%1 px</translation>
+    </message>
+    <message>
+        <source>Larger icons</source>
+        <translation>Iconos más grandes</translation>
+    </message>
+</context>
+<context>
     <name>SketchContents</name>
     <message>
         <source>Free</source>
@@ -2588,16 +2599,16 @@ The sketch&apos;s axes, by their geometry index.</extracomment>
         <translation>Quitar de la barra de herramientas</translation>
     </message>
     <message>
+        <source>Locked: the same in every workbench</source>
+        <translation>Bloqueada: igual en todos los bancos de trabajo</translation>
+    </message>
+    <message>
+        <source>Lock: the same in every workbench</source>
+        <translation>Bloquear: igual en todos los bancos de trabajo</translation>
+    </message>
+    <message>
         <source>Edit the toolbar</source>
         <translation>Editar la barra de herramientas</translation>
-    </message>
-    <message>
-        <source>Reset</source>
-        <translation>Restablecer</translation>
-    </message>
-    <message>
-        <source>Done</source>
-        <translation>Listo</translation>
     </message>
 </context>
 <context>
