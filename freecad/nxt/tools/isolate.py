@@ -94,6 +94,16 @@ def plan(objects: Iterable[Any], targets: Iterable[Any]
 RESTORE_ROUNDS = 4
 
 
+def _tips(doc: Any) -> dict[str, str]:
+    """Each Body's Tip, by the Body's name."""
+    out: dict[str, str] = {}
+    for obj in doc.Objects:
+        tip = getattr(obj, "Tip", None)
+        if tip is not None and hasattr(tip, "Name"):
+            out[obj.Name] = tip.Name
+    return out
+
+
 def _visibility(doc: Any) -> dict[str, bool]:
     """Every object's visibility, not only the changed ones.
 
@@ -116,6 +126,9 @@ class Isolation(QtCore.QObject):
         self._kept: set[str] = set()
         self._saved: dict[str, bool] = {}
         self._changes: dict[str, bool] = {}
+        #: What the targets hold, and each Body's Tip, going in.
+        self._inside: set[str] = set()
+        self._tips: dict[str, str] = {}
         self._was_modified: bool | None = None
         self._saving = False
 
@@ -211,6 +224,8 @@ class Isolation(QtCore.QObject):
         self._kept = kept
         self._saved = saved
         self._changes = dict(changes)
+        self._inside = set().union(*(descendants(t) for t in targets))
+        self._tips = _tips(doc)
         self._reset_modified()
         self.changed.emit()
         return True
@@ -220,16 +235,39 @@ class Isolation(QtCore.QObject):
         if not self.active():
             return False
         doc_name = self._doc
-        self._restore(doc_name, self._saved)
+        self._restore(doc_name, self._to_restore())
         self._reset_modified()
         self._doc = None
         self._targets, self._labels = [], []
         self._kept, self._saved, self._changes = set(), {}, {}
+        self._inside, self._tips = set(), {}
         self._was_modified = None
         self.changed.emit()
         return True
 
     # -- helpers --
+
+    def _to_restore(self) -> dict[str, bool]:
+        """The saved visibility to put back on leaving.
+
+        Not inside the targets (the mode left them alone, so what is
+        shown there now is the user's own doing), nor in a Body whose
+        Tip moved meanwhile: FreeCAD showed the new Tip and hid the
+        old, and putting the old back would hide the work just done.
+        """
+        try:
+            doc = App.getDocument(self._doc) if self._doc else None
+        except Exception:
+            doc = None
+        skip = set(self._inside)
+        if doc is not None:
+            now = _tips(doc)
+            for body, tip in self._tips.items():
+                if now.get(body, tip) != tip:
+                    obj = doc.getObject(body)
+                    if obj is not None:
+                        skip |= descendants(obj)
+        return {n: v for n, v in self._saved.items() if n not in skip}
 
     @staticmethod
     def _restore(doc_name: str | None, saved: dict[str, bool]) -> None:

@@ -108,6 +108,36 @@ class ModeTests(unittest.TestCase):
         self.mode.exit()
         self.assertEqual(shown(self.doc), self.before)
 
+    def test_work_done_in_an_isolated_body_stays_shown(self) -> None:
+        # Issue #199: a Pad added meanwhile becomes the Tip and is shown;
+        # the old Tip, hidden by FreeCAD, must not come back over it.
+        body = self.doc.getObject("Body")
+        self.mode.isolate(["Body"])
+        pad2 = Obj("Pad001")
+        body.Group.append(pad2)
+        pad2.InList.append(body)
+        self.doc.Objects.append(pad2)
+        self.doc.getObject("Pocket").ViewObject.Visibility = False
+        self.mode.exit()
+        self.assertIn("Pad001", shown(self.doc))
+        self.assertNotIn("Pocket", shown(self.doc))
+        self.assertIn("Box", shown(self.doc))
+
+    def test_a_new_tip_in_another_feature_s_body_stays_shown(self) -> None:
+        body = self.doc.getObject("Body")
+        body.Tip = self.doc.getObject("Pocket")
+        self.mode.isolate(["Pad"])
+        pad2 = Obj("Pad001")
+        body.Group.append(pad2)
+        pad2.InList.append(body)
+        self.doc.Objects.append(pad2)
+        body.Tip = pad2
+        self.doc.getObject("Pad").ViewObject.Visibility = False
+        self.mode.exit()
+        self.assertIn("Pad001", shown(self.doc))
+        self.assertNotIn("Pocket", shown(self.doc))
+        self.assertIn("Box", shown(self.doc))
+
     def test_it_does_not_leave_the_document_modified(self) -> None:
         self.gui_doc.Modified = True        # as setting Visibility would
         self.mode._was_modified = None
