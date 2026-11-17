@@ -2,18 +2,8 @@
 <package format="1" xmlns="https://wiki.freecad.org/Package_Metadata">
   <name>Nxt</name>
   <description>A modern variation of the FreeCAD user-interface with usability and versatility in-mind.</description>
-<<<<<<< HEAD
   <version>0.7.0</version>
   <date>2026-11-17</date>
-=======
-<<<<<<< HEAD
-  <version>0.6.10</version>
-  <date>2026-11-15</date>
-=======
-  <version>0.7.0</version>
-  <date>2026-11-13</date>
->>>>>>> 9f65fb4 (make sketch/attachment tasks non-optional)
->>>>>>> 54bff83 (make sketch/attachment tasks non-optional)
   <maintainer email="obelisk79@gmail.com">Joe</maintainer>
   <author email="obelisk79@gmail.com">Joe</author>
   <license file="LICENSE">LGPL-2.1-or-later</license>
