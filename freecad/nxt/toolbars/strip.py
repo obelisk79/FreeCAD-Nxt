@@ -38,6 +38,18 @@ def _see_through(view: Any) -> None:
     view.setClearColor(QtGui.QColor(0, 0, 0, 0))
 
 
+#: The most of the window's height the top strip may take: a first layout
+#: at a sliver of its width (FreeCAD 1.1 lays toolbars out before the
+#: window has its size) wraps every item onto its own row, and a strip
+#: fixed at that height was never widened again.
+MOST_OF_WINDOW = 1 / 3
+
+
+def fitted_height(wanted: float, window_height: int) -> int:
+    """The top strip's height: what QML wants, within MOST_OF_WINDOW."""
+    return min(math.ceil(wanted), max(1, int(window_height * MOST_OF_WINDOW)))
+
+
 class _Host(QtCore.QObject):
     """One area's toolbar and QML view."""
 
@@ -77,15 +89,21 @@ class _Host(QtCore.QObject):
          else root.implicitWidthChanged).connect(self._fit_timer.start)
         self._fit_timer.start()
         self.toolbar.addWidget(self.view)
+        # A line of its own: sharing one, it was given only a sliver.
+        if across:
+            main.addToolBarBreak(dock)
         main.addToolBar(dock, self.toolbar)
+        self._main = main
         self.toolbar.installEventFilter(self)
+        # A new width lays QML out again: fit to what it then wants.
+        self.view.installEventFilter(self)
         self.toolbar.setVisible(self.wanted)
 
     def _fit(self) -> None:
         root = self.view.rootObject()
         if self.area == state.TOP:
-            self.view.setFixedHeight(
-                math.ceil(root.property("implicitHeight") or 0))
+            self.view.setFixedHeight(fitted_height(
+                root.property("implicitHeight") or 0, self._main.height()))
         else:
             self.view.setFixedWidth(
                 math.ceil(root.property("implicitWidth") or 0))
@@ -100,15 +118,19 @@ class _Host(QtCore.QObject):
 
     def eventFilter(self, watched: QtCore.QObject,  # noqa: N802
                     event: QtCore.QEvent) -> bool:
-        if event.type() == QtCore.QEvent.Type.Hide:
+        kind = event.type()
+        if watched is self.toolbar and kind == QtCore.QEvent.Type.Hide:
             self._reshow_timer.start()
+        elif watched is self.view and kind == QtCore.QEvent.Type.Resize:
+            self._fit_timer.start()
         return False
 
     def remove(self, main: Any) -> None:
         self._fit_timer.stop()
         self._reshow_timer.stop()
         self.toolbar.removeEventFilter(self)
-        main.removeToolBar(self.toolbar)
+        self.view.removeEventFilter(self)
+        _drop(main, self.toolbar)
         # The view goes with its toolbar; its context is never nulled.
         self.toolbar.deleteLater()
 
@@ -208,5 +230,12 @@ def _remove_left_over(main: QtWidgets.QMainWindow) -> None:
     for name in OWN:
         old = main.findChild(QtWidgets.QToolBar, name)
         if old is not None:
-            main.removeToolBar(old)
+            _drop(main, old)
             old.deleteLater()
+
+
+def _drop(main: QtWidgets.QMainWindow, toolbar: QtWidgets.QToolBar) -> None:
+    """Take `toolbar` out of the window, with the line break before it."""
+    if main.toolBarBreak(toolbar):
+        main.removeToolBarBreak(toolbar)
+    main.removeToolBar(toolbar)

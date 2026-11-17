@@ -33,6 +33,7 @@ from freecad.nxt.toolbars import (  # noqa: E402
     models,
     source,
     state,
+    strip,
 )
 from freecad.nxt.toolbars.bridge import ToolStripBridge  # noqa: E402
 from freecad.nxt.toolbars.hider import ToolbarHider  # noqa: E402
@@ -950,6 +951,31 @@ class Arranging(Acting):
         self.bridge.insertRow(0)
         self.bridge.setEditing(False)
         self.assertNotEqual(self.texts()[0], "/")
+
+
+class Fitting(unittest.TestCase):
+    """The top strip in FreeCAD's window, whatever its first layout."""
+
+    def test_height_follows_qml(self) -> None:
+        self.assertEqual(strip.fitted_height(40.2, 1200), 41)
+
+    def test_narrow_first_layout_cannot_fill_the_window(self) -> None:
+        self.assertEqual(strip.fitted_height(2556, 1200),
+                         int(1200 * strip.MOST_OF_WINDOW))
+
+    def test_dropped_with_its_line_break(self) -> None:
+        main = QtWidgets.QMainWindow()
+        self.addCleanup(main.deleteLater)
+        area = QtCore.Qt.ToolBarArea.TopToolBarArea
+        other = main.addToolBar("other")
+        main.addToolBarBreak(area)
+        bar = QtWidgets.QToolBar("strip", main)
+        main.addToolBar(area, bar)
+        self.assertTrue(main.toolBarBreak(bar))
+        strip._drop(main, bar)
+        self.assertFalse(main.toolBarBreak(other))
+        self.assertEqual(main.toolBarArea(bar),
+                         QtCore.Qt.ToolBarArea.NoToolBarArea)
 
 
 if __name__ == "__main__":
