@@ -97,6 +97,12 @@ def popup_offset(item: Any) -> QtCore.QPointF:
                          else None)
 
 
+def popup_room(item: Any) -> QtCore.QRectF:
+    """room_in_window for the view that holds the QML `item`."""
+    return room_in_window(view_of(item.window()) if item is not None
+                          else None)
+
+
 #: How the keyboard leaves a view for good, by the user's hand. Not to a
 #: menu it opened, nor as the window loses focus (it comes back to the
 #: same field), nor as the dialog rebuilds around the view.

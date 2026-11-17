@@ -1,7 +1,10 @@
 import QtQuick
+import QtQuick.Controls.Basic
 
-// A drop-down's list of options. Created on the window's content item,
-// since rows clip their content and later rows draw over earlier ones.
+// A drop-down's list of options, in a window of its own (Popup.Window):
+// it may reach past the panel to the edges of the application window,
+// and a long list scrolls in itself rather than the panel behind it.
+// Opens from a 1px anchor, which Wayland places popups against.
 Item {
     id: popup
 
@@ -13,19 +16,47 @@ Item {
     property real anchorHeight: 0
     property real minWidth: 80
 
-    signal chosen(string value)
+    readonly property int optionPad: 10
+    readonly property int gap: 2
+    //: As a combo box's maxVisibleItems.
+    readonly property int mostRows: 15
+    //: As the desktop's wheelScrollLines.
+    readonly property int wheelRows: 3
+    readonly property int notch: 120
+    readonly property alias listWidth: frame.width
 
-    anchors.fill: parent
-    z: 10000
-    focus: true
+    signal chosen(string value)
+    //: Closed by a press outside, which may be on the field it came from.
+    signal pressedAway()
+    property bool escaped: false
 
     // Destroyed after the closing event, or its release hits what is below.
     function dismiss() {
-        popup.visible = false;
-        Qt.callLater(popup.destroy);
+        frame.close();
     }
 
-    // Measured, since the Column's width derives from the box (circular).
+    function labelAt(i) {
+        return (popup.labels && popup.labels[i]) || popup.options[i];
+    }
+
+    // The tree's host knows its own placement; the Property Inspector's
+    // is found from this item's view (expressions).
+    function offset() {
+        if (typeof host !== "undefined" && host)
+            return host.menuAnchorOffset();
+        if (typeof expressions !== "undefined" && expressions)
+            return expressions.anchorOffset(popup);
+        return Qt.point(0, 0);
+    }
+    function room() {
+        if (typeof host !== "undefined" && host)
+            return host.menuRoom();
+        if (typeof expressions !== "undefined" && expressions)
+            return expressions.popupRoom(popup);
+        return Qt.rect(0, 0, 0, 0);
+    }
+
+    // Measured, since the list's width derives from the box (circular).
     FontMetrics {
         id: metrics
         font.pixelSize: theme.fontSmall
@@ -37,95 +68,143 @@ Item {
             most = Math.max(most, metrics.advanceWidth(popup.labelAt(i)));
         return most;
     }
-    readonly property int optionPad: 10
 
-    function labelAt(i) {
-        return (popup.labels && popup.labels[i]) || popup.options[i];
-    }
-
-    Keys.onEscapePressed: popup.dismiss()
-
-    // A click outside the view, or the view hidden, never reaches the
-    // MouseArea below: the list would stay over the view, eating input.
-    onActiveFocusChanged: if (!activeFocus && visible) popup.dismiss()
-    Connections {
-        target: popup.Window.window
-        function onVisibleChanged() {
-            if (!popup.Window.window.visible)
-                popup.dismiss();
+    // Below the field if it fits, else above, else as low as it fits;
+    // never taller than the room (the list scrolls).
+    function place() {
+        var wide = frame.width;
+        var tall = Math.min(popup.options.length, popup.mostRows)
+                   * theme.rowHeight + 2;
+        var at = Qt.point(popup.below.x, popup.below.y + popup.gap);
+        var space = popup.room();
+        if (space.width > 0 && space.height > 0) {
+            tall = Math.min(tall, space.height);
+            var bottom = space.y + space.height;
+            var above = popup.below.y - popup.anchorHeight - popup.gap - tall;
+            if (at.y + tall > bottom)
+                at.y = above >= space.y ? above : bottom - tall;
+            at.x = Math.max(space.x, Math.min(at.x, space.x + space.width
+                                                    - wide));
         }
+        frame.height = tall;
+        var shift = popup.offset();
+        anchor.x = at.x + shift.x;
+        anchor.y = at.y + shift.y;
     }
 
-    MouseArea {
-        anchors.fill: parent
-        onPressed: popup.dismiss()
+    Component.onCompleted: {
+        popup.place();
+        frame.open();
+        var at = popup.options.indexOf(popup.current);
+        if (at >= 0)
+            options.positionViewAtIndex(at, ListView.Center);
     }
 
-    Rectangle {
-        id: box
+    Item {
+        id: anchor
+        width: 1
+        height: 1
+    }
 
-        readonly property real gap: 2
-        readonly property bool fitsBelow:
-            popup.below.y + gap + height <= popup.height
+    Popup {
+        id: frame
 
-        x: Math.max(0, Math.min(popup.below.x, popup.width - width))
-        y: fitsBelow ? popup.below.y + gap
-                     : Math.max(0, popup.below.y - popup.anchorHeight
-                                   - gap - height)
+        parent: anchor
+        x: 0
+        y: 0
+        popupType: Popup.Window
+        focus: true
+        modal: false
+        closePolicy: Popup.CloseOnPressOutside
+        padding: 1
+        enter: null
+        exit: null
         width: Math.max(popup.minWidth,
                         Math.ceil(popup.widest) + 2 * popup.optionPad + 2)
-        height: list.implicitHeight + 2
-        radius: 3
-        color: theme.background
-        border.width: 1
-        border.color: theme.border
+        onClosed: {
+            if (!popup.escaped)
+                popup.pressedAway();
+            Qt.callLater(popup.destroy);
+        }
 
-        MouseArea { anchors.fill: parent }
+        background: Rectangle {
+            radius: 3
+            color: theme.background
+            border.width: 1
+            border.color: theme.border
+        }
 
-        Column {
-            id: list
-            x: 1
-            y: 1
+        contentItem: ListView {
+            id: options
 
-            Repeater {
-                model: popup.options
+            clip: true
+            // Stepped by the wheel at once, as a desktop list is: a
+            // flick still settling would eat the click that follows.
+            interactive: false
+            focus: true
+            model: popup.options
 
-                Rectangle {
-                    id: option
-                    required property string modelData
-                    required property int index
-                    readonly property bool isCurrent:
-                        modelData === popup.current
+            Keys.onEscapePressed: {
+                popup.escaped = true;
+                frame.close();
+            }
 
-                    width: box.width - 2
-                    height: theme.rowHeight
-                    color: hover.pressed ? theme.pressed
-                         : hover.hovered ? theme.hover : "transparent"
+            // Above the rows, taking only the wheel: clicks and hover
+            // still reach them.
+            MouseArea {
+                anchors.fill: parent
+                z: 1
+                acceptedButtons: Qt.NoButton
+                onWheel: function (wheel) {
+                    var step = wheel.pixelDelta.y !== 0 ? wheel.pixelDelta.y
+                             : wheel.angleDelta.y / popup.notch
+                               * popup.wheelRows * theme.rowHeight;
+                    bar.scrollTo(options.contentY - step);
+                }
+            }
 
-                    Text {
-                        id: label
-                        anchors.verticalCenter: parent.verticalCenter
-                        x: popup.optionPad
-                        text: popup.labelAt(option.index)
-                        font.pixelSize: theme.fontSmall
-                        font.bold: option.isCurrent
-                        color: theme.text
-                    }
+            NxtScrollBar {
+                id: bar
+                target: options
+                anchors.top: parent.top
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+            }
 
-                    // MouseArea, not TapHandler: nothing below sees the click.
-                    MouseArea {
-                        id: hover
-                        readonly property bool hovered: containsMouse
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        onClicked: {
-                            // Dismiss first: choosing can destroy the
-                            // field, and this context with it.
-                            var value = option.modelData;
-                            var list = popup;
-                            list.dismiss();
-                            list.chosen(value);
-                        }
+            delegate: Rectangle {
+                id: option
+                required property string modelData
+                required property int index
+                readonly property bool isCurrent:
+                    modelData === popup.current
+
+                width: ListView.view.width
+                height: theme.rowHeight
+                color: hover.pressed ? theme.pressed
+                     : hover.hovered ? theme.hover : "transparent"
+
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    x: popup.optionPad
+                    text: popup.labelAt(option.index)
+                    font.pixelSize: theme.fontSmall
+                    font.bold: option.isCurrent
+                    color: theme.text
+                }
+
+                // MouseArea, not TapHandler: nothing below sees the click.
+                MouseArea {
+                    id: hover
+                    readonly property bool hovered: containsMouse
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    onClicked: {
+                        // Dismiss first: choosing can destroy the
+                        // field, and this context with it.
+                        var value = option.modelData;
+                        var list = popup;
+                        list.dismiss();
+                        list.chosen(value);
                     }
                 }
             }
