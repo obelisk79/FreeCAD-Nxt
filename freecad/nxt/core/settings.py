@@ -46,13 +46,8 @@ DEFAULTS: dict[str, bool | int | float | str] = {
     "AttachSketchByPoints": True,
     "SnapToFaces": True,
     "RepairProfiles": True,
-    # Experimental: Nxt's task panel while a sketch is edited
-    # (tools/sketch_panel.py). Off until it has proved itself.
-    "SketchPanel": False,
-    # Experimental: Nxt's attachment task panel (tools/attach_task.py).
-    "AttachPanel": False,
-    # Experimental: one QML strip in place of FreeCAD's toolbars
-    # (toolbars/strip.py).
+    # Experimental: dynamic toolbars, QML strips in place of FreeCAD's
+    # toolbars (toolbars/strip.py).
     "ToolStrip": False,
     # JSON: the tool strip's order per workbench (toolbars/layouts.py).
     "ToolStripLayouts": "",

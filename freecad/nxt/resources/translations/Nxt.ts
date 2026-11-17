@@ -686,27 +686,11 @@ The panel needs PySide6.QtQuickWidgets.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Experimental: Nxt&apos;s task panel while a sketch is edited</source>
+        <source>Experimental: Dynamic toolbars</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>The solver&apos;s status moves to a pill in the 3D view, with the grid and snap settings. The task panel shows only problems and what is selected; FreeCAD&apos;s lists stay one click away.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Experimental: Nxt&apos;s attachment task panel</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Edit attachment opens Nxt&apos;s panel: picks named for what they are, ways grouped by what they do, and the offset shut until wanted.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Experimental: Nxt&apos;s tool strip</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>One bar in place of FreeCAD&apos;s toolbars, with each command on its own.</source>
+        <source>Nxt&apos;s toolbars in place of FreeCAD&apos;s: each command on its own, arranged per workbench in edit mode.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -2842,11 +2826,7 @@ The sketch&apos;s axes, by their geometry index.</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Experimental sketch task panel</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Experimental attachment panel</source>
+        <source>Experimental dynamic toolbars</source>
         <translation type="unfinished"></translation>
     </message>
     <message>

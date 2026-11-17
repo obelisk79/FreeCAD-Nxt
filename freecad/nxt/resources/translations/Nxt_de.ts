@@ -689,28 +689,12 @@ Das Panel benötigt PySide6.QtQuickWidgets.</translation>
         <translation>Schließt die Bearbeitung eines neuen Objekts (oder entsteht ein Container), wird sein Name im Baum zum Bearbeiten geöffnet.</translation>
     </message>
     <message>
-        <source>Experimental: Nxt&apos;s task panel while a sketch is edited</source>
-        <translation>Experimentell: Nxt-Aufgabenbereich beim Skizzieren</translation>
+        <source>Experimental: Dynamic toolbars</source>
+        <translation>Experimentell: Dynamische Symbolleisten</translation>
     </message>
     <message>
-        <source>The solver&apos;s status moves to a pill in the 3D view, with the grid and snap settings. The task panel shows only problems and what is selected; FreeCAD&apos;s lists stay one click away.</source>
-        <translation>Der Status des Lösers wandert in eine Pille in der 3D-Ansicht, mit Raster- und Fangeinstellungen. Der Aufgabenbereich zeigt nur Probleme und die Auswahl; FreeCADs Listen bleiben einen Klick entfernt.</translation>
-    </message>
-    <message>
-        <source>Experimental: Nxt&apos;s attachment task panel</source>
-        <translation>Experimentell: Nxt-Aufgabenbereich für Befestigung</translation>
-    </message>
-    <message>
-        <source>Edit attachment opens Nxt&apos;s panel: picks named for what they are, ways grouped by what they do, and the offset shut until wanted.</source>
-        <translation>„Befestigung bearbeiten“ öffnet den Nxt-Bereich: Auswahlen nach ihrer Art benannt, Arten nach ihrer Wirkung gruppiert, der Versatz geschlossen, bis er gebraucht wird.</translation>
-    </message>
-    <message>
-        <source>Experimental: Nxt&apos;s tool strip</source>
-        <translation>Experimentell: Nxt-Werkzeugleiste</translation>
-    </message>
-    <message>
-        <source>One bar in place of FreeCAD&apos;s toolbars, with each command on its own.</source>
-        <translation>Eine Leiste anstelle der FreeCAD-Symbolleisten, jeder Befehl einzeln.</translation>
+        <source>Nxt&apos;s toolbars in place of FreeCAD&apos;s: each command on its own, arranged per workbench in edit mode.</source>
+        <translation>Nxt-Symbolleisten anstelle der von FreeCAD: jeder Befehl einzeln, im Bearbeitungsmodus je Arbeitsbereich angeordnet.</translation>
     </message>
     <message>
         <source>Attach a new sketch to three picked points without asking</source>
@@ -2848,12 +2832,8 @@ The sketch&apos;s axes, by their geometry index.</extracomment>
         <translation>„Wire not closed“ automatisch reparieren</translation>
     </message>
     <message>
-        <source>Experimental sketch task panel</source>
-        <translation>Experimenteller Skizzenbereich</translation>
-    </message>
-    <message>
-        <source>Experimental attachment panel</source>
-        <translation>Experimenteller Befestigungsbereich</translation>
+        <source>Experimental dynamic toolbars</source>
+        <translation>Experimentelle dynamische Symbolleisten</translation>
     </message>
     <message>
         <source>Rename new objects</source>

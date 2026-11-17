@@ -689,28 +689,12 @@ Panel wymaga PySide6.QtQuickWidgets.</translation>
         <translation>Po zamknięciu edycji nowego obiektu (lub utworzeniu kontenera) jego nazwa otwiera się do edycji w drzewie.</translation>
     </message>
     <message>
-        <source>Experimental: Nxt&apos;s task panel while a sketch is edited</source>
-        <translation>Eksperymentalne: panel zadań Nxt przy edycji szkicu</translation>
+        <source>Experimental: Dynamic toolbars</source>
+        <translation>Eksperymentalne: dynamiczne paski narzędzi</translation>
     </message>
     <message>
-        <source>The solver&apos;s status moves to a pill in the 3D view, with the grid and snap settings. The task panel shows only problems and what is selected; FreeCAD&apos;s lists stay one click away.</source>
-        <translation>Stan solvera trafia do pigułki w widoku 3D, z siatką i przyciąganiem. Panel pokazuje tylko problemy i zaznaczenie; listy FreeCAD są o jedno kliknięcie.</translation>
-    </message>
-    <message>
-        <source>Experimental: Nxt&apos;s attachment task panel</source>
-        <translation>Eksperymentalne: panel dołączania Nxt</translation>
-    </message>
-    <message>
-        <source>Edit attachment opens Nxt&apos;s panel: picks named for what they are, ways grouped by what they do, and the offset shut until wanted.</source>
-        <translation>Edytuj dołączenie otwiera panel Nxt: wybory nazwane według rodzaju, sposoby pogrupowane według działania, odsunięcie zwinięte do czasu potrzeby.</translation>
-    </message>
-    <message>
-        <source>Experimental: Nxt&apos;s tool strip</source>
-        <translation>Eksperymentalne: pasek narzędzi Nxt</translation>
-    </message>
-    <message>
-        <source>One bar in place of FreeCAD&apos;s toolbars, with each command on its own.</source>
-        <translation>Jeden pasek zamiast pasków narzędzi FreeCAD, każde polecenie osobno.</translation>
+        <source>Nxt&apos;s toolbars in place of FreeCAD&apos;s: each command on its own, arranged per workbench in edit mode.</source>
+        <translation>Paski narzędzi Nxt zamiast pasków FreeCAD: każde polecenie osobno, ułożone dla każdego środowiska pracy w trybie edycji.</translation>
     </message>
     <message>
         <source>Attach a new sketch to three picked points without asking</source>
@@ -2848,12 +2832,8 @@ The sketch&apos;s axes, by their geometry index.</extracomment>
         <translation>Naprawiaj „Wire not closed”</translation>
     </message>
     <message>
-        <source>Experimental sketch task panel</source>
-        <translation>Eksperymentalny panel szkicu</translation>
-    </message>
-    <message>
-        <source>Experimental attachment panel</source>
-        <translation>Eksperymentalny panel dołączania</translation>
+        <source>Experimental dynamic toolbars</source>
+        <translation>Eksperymentalne dynamiczne paski narzędzi</translation>
     </message>
     <message>
         <source>Rename new objects</source>

@@ -1,6 +1,6 @@
-"""Experimental: Nxt's task panel while a sketch is edited.
+"""Nxt's task panel while a sketch is edited.
 
-Off unless the SketchPanel setting is on. FreeCAD's dialog stays, with
+FreeCAD's dialog stays, with
 its OK, Cancel and tool parameters. Its solver message goes to a pill at
 the top of the 3D view (SketchPill.qml), which also holds the grid, snap
 and render order settings; its constraint and element lists are hidden
@@ -19,7 +19,7 @@ from typing import Any
 import FreeCAD as App
 import FreeCADGui as Gui
 
-from ..core import log, settings, widgets
+from ..core import log, widgets
 from ..core.qt import QtCore, QtWidgets
 from ..core.transaction import transaction
 from ..core.view3d import active_viewport
@@ -28,7 +28,6 @@ from . import sketch_state
 from .sketch_contents_model import ContentsModel
 from .task_layout import RENEW_MS, TaskLayout, fitted_view, tab_in_order
 
-SETTING = "SketchPanel"
 SKETCH = "Sketcher::SketchObject"
 #: Set on a box of FreeCAD's that the panel hid, and so may show again.
 HIDDEN = "nxtSketchPanelHid"
@@ -205,7 +204,7 @@ class SketchBridge(QtCore.QObject):
     def refresh(self) -> None:
         """Read the edited sketch afresh; tell QML only of a change."""
         state = self._IDLE
-        sketch = edited_sketch() if settings.get(SETTING) else None
+        sketch = edited_sketch()
         if sketch is None:
             self._contents.clear()
         else:
@@ -541,7 +540,7 @@ class _Edits:
 
 
 class SketchPanel(TaskLayout):
-    """Swaps the sketch dialog's boxes and shows the pill, when on."""
+    """Swaps the sketch dialog's boxes and shows the pill."""
 
     def __init__(self, theme: Any, above: Callable[[], TopNotice | None],
                  parent: QtCore.QObject | None = None) -> None:
@@ -564,7 +563,9 @@ class SketchPanel(TaskLayout):
 
     def install(self) -> None:
         self.pill.install()
-        self.sync()
+        self._watch_sketch(True)
+        super().install()
+        self._swap()
 
     def remove(self) -> None:
         self._watch_sketch(False)
@@ -572,21 +573,6 @@ class SketchPanel(TaskLayout):
         self._restore()
         self.pill.remove()
         super().remove()
-
-    def sync(self) -> None:
-        """Follow the setting, also while a sketch is open.
-
-        While it is off nothing is watched: FreeCAD's dialog is its own.
-        """
-        on = bool(settings.get(SETTING))
-        self._watch_sketch(on)
-        if on:
-            super().install()
-            self._swap()
-        else:
-            self._restore()
-            super().remove()
-            self._bridge.refresh()
 
     def _watch_sketch(self, on: bool) -> None:
         if on == self._watching:

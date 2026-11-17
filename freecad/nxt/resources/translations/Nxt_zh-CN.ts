@@ -689,28 +689,12 @@ The panel needs PySide6.QtQuickWidgets.</source>
         <translation>新对象的编辑关闭时 (或创建容器时)，在树中打开其名称以供编辑。</translation>
     </message>
     <message>
-        <source>Experimental: Nxt&apos;s task panel while a sketch is edited</source>
-        <translation>实验性：编辑草图时使用 Nxt 任务面板</translation>
+        <source>Experimental: Dynamic toolbars</source>
+        <translation>实验性：动态工具栏</translation>
     </message>
     <message>
-        <source>The solver&apos;s status moves to a pill in the 3D view, with the grid and snap settings. The task panel shows only problems and what is selected; FreeCAD&apos;s lists stay one click away.</source>
-        <translation>求解器状态移至 3D 视图中的状态条，附带网格和吸附设置。任务面板只显示问题和所选内容；FreeCAD 的列表一键可达。</translation>
-    </message>
-    <message>
-        <source>Experimental: Nxt&apos;s attachment task panel</source>
-        <translation>实验性：Nxt 附着任务面板</translation>
-    </message>
-    <message>
-        <source>Edit attachment opens Nxt&apos;s panel: picks named for what they are, ways grouped by what they do, and the offset shut until wanted.</source>
-        <translation>“编辑附着”会打开 Nxt 面板：选取按类型命名，方式按作用分组，偏移在需要前保持收起。</translation>
-    </message>
-    <message>
-        <source>Experimental: Nxt&apos;s tool strip</source>
-        <translation>实验性：Nxt 工具条</translation>
-    </message>
-    <message>
-        <source>One bar in place of FreeCAD&apos;s toolbars, with each command on its own.</source>
-        <translation>用一条工具栏代替 FreeCAD 的工具栏，每个命令单独显示。</translation>
+        <source>Nxt&apos;s toolbars in place of FreeCAD&apos;s: each command on its own, arranged per workbench in edit mode.</source>
+        <translation>用 Nxt 的工具栏代替 FreeCAD 的：每个命令独立，在编辑模式下按工作台排列。</translation>
     </message>
     <message>
         <source>Attach a new sketch to three picked points without asking</source>
@@ -2848,12 +2832,8 @@ The sketch&apos;s axes, by their geometry index.</extracomment>
         <translation>自动修复“线框未闭合”错误</translation>
     </message>
     <message>
-        <source>Experimental sketch task panel</source>
-        <translation>实验性草图任务面板</translation>
-    </message>
-    <message>
-        <source>Experimental attachment panel</source>
-        <translation>实验性附着面板</translation>
+        <source>Experimental dynamic toolbars</source>
+        <translation>实验性动态工具栏</translation>
     </message>
     <message>
         <source>Rename new objects</source>

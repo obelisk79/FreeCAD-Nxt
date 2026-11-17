@@ -124,12 +124,8 @@ Popup {
             text: qsTr("Auto repair 'Wire not closed' errors")
         }
         Setting {
-            key: "SketchPanel"
-            text: qsTr("Experimental sketch task panel")
-        }
-        Setting {
-            key: "AttachPanel"
-            text: qsTr("Experimental attachment panel")
+            key: "ToolStrip"
+            text: qsTr("Experimental dynamic toolbars")
         }
         Setting {
             key: "AutoRename"

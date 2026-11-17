@@ -141,14 +141,10 @@ def load(source: str) -> QtQuick.QQuickView:
 theme = Theme()
 bridge = sketch_panel.SketchBridge()
 
-print("off by default")
-check("the setting starts off", settings.DEFAULTS["SketchPanel"] is False)
+print("always on")
+check("no setting turns it off", "SketchPanel" not in settings.DEFAULTS)
 bridge.refresh()
-check("nothing is read while it is off", not bridge.active)
-
-settings.put("SketchPanel", True)
-bridge.refresh()
-check("the edited sketch is read once it is on", bridge.active)
+check("the edited sketch is read", bridge.active)
 
 cards = load("SketchPanel.qml")
 pill = load("SketchPill.qml")

@@ -689,28 +689,12 @@ The panel needs PySide6.QtQuickWidgets.</source>
         <translation>新しいオブジェクトの編集を閉じると (またはコンテナを作成すると)、ツリーで名前の編集が始まります。</translation>
     </message>
     <message>
-        <source>Experimental: Nxt&apos;s task panel while a sketch is edited</source>
-        <translation>試験的: スケッチ編集中に Nxt のタスクパネル</translation>
+        <source>Experimental: Dynamic toolbars</source>
+        <translation>試験的: ダイナミックツールバー</translation>
     </message>
     <message>
-        <source>The solver&apos;s status moves to a pill in the 3D view, with the grid and snap settings. The task panel shows only problems and what is selected; FreeCAD&apos;s lists stay one click away.</source>
-        <translation>ソルバーの状態は 3D ビューのピルに移り、グリッドとスナップの設定もそこにあります。タスクパネルには問題と選択中のものだけを表示し、FreeCAD のリストはワンクリックで開けます。</translation>
-    </message>
-    <message>
-        <source>Experimental: Nxt&apos;s attachment task panel</source>
-        <translation>試験的: Nxt のアタッチメントパネル</translation>
-    </message>
-    <message>
-        <source>Edit attachment opens Nxt&apos;s panel: picks named for what they are, ways grouped by what they do, and the offset shut until wanted.</source>
-        <translation>「アタッチメントを編集」で Nxt のパネルを開きます。選択は種類で表示し、方法は働きごとにまとめ、オフセットは必要になるまで閉じておきます。</translation>
-    </message>
-    <message>
-        <source>Experimental: Nxt&apos;s tool strip</source>
-        <translation>実験的: Nxt ツールストリップ</translation>
-    </message>
-    <message>
-        <source>One bar in place of FreeCAD&apos;s toolbars, with each command on its own.</source>
-        <translation>FreeCAD のツールバーの代わりに1本のバー、各コマンドを個別に。</translation>
+        <source>Nxt&apos;s toolbars in place of FreeCAD&apos;s: each command on its own, arranged per workbench in edit mode.</source>
+        <translation>FreeCADのツールバーの代わりにNxtのツールバー: コマンドごとに独立し、編集モードでワークベンチごとに配置。</translation>
     </message>
     <message>
         <source>Attach a new sketch to three picked points without asking</source>
@@ -2848,12 +2832,8 @@ The sketch&apos;s axes, by their geometry index.</extracomment>
         <translation>「Wire not closed」を自動修復</translation>
     </message>
     <message>
-        <source>Experimental sketch task panel</source>
-        <translation>試験的なスケッチパネル</translation>
-    </message>
-    <message>
-        <source>Experimental attachment panel</source>
-        <translation>試験的なアタッチメントパネル</translation>
+        <source>Experimental dynamic toolbars</source>
+        <translation>試験的なダイナミックツールバー</translation>
     </message>
     <message>
         <source>Rename new objects</source>

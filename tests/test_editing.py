@@ -10,6 +10,7 @@ import types
 import unittest
 from pathlib import Path
 from typing import Any
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -71,6 +72,13 @@ class AttachmentTests(unittest.TestCase):
             clearSelection=lambda: None,
             addSelection=lambda _d, _n: None)
 
+    def decline(self) -> None:
+        """Nxt's panel does not open: FreeCAD's way is the fallback."""
+        patcher = mock.patch.object(editing, "open_nxt_attachment",
+                                    return_value=False)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
     def tearDown(self) -> None:
         sys.modules.pop("AttachmentEditor", None)
         sys.modules.pop("AttachmentEditor.Commands", None)
@@ -84,7 +92,16 @@ class AttachmentTests(unittest.TestCase):
         sys.modules["AttachmentEditor"] = package
         sys.modules["AttachmentEditor.Commands"] = commands
 
+    def test_nxts_panel_opens_first(self) -> None:
+        self.install_editor()
+        with mock.patch.object(editing, "open_nxt_attachment",
+                               return_value=True) as nxt:
+            editing.edit_attachment("Doc", "DatumPlane")
+        nxt.assert_called_once_with(self.plane)
+        self.assertEqual(self.opened, [])
+
     def test_the_attachment_editor_opens_with_its_own_undo_step(self):
+        self.decline()
         self.install_editor()
         editing.edit_attachment("Doc", "DatumPlane")
         self.assertEqual(self.opened, [(self.plane, {
@@ -92,6 +109,7 @@ class AttachmentTests(unittest.TestCase):
         self.assertEqual(self.ran, [])
 
     def test_without_it_the_command_is_run(self) -> None:
+        self.decline()
         sys.modules["AttachmentEditor"] = None  # type: ignore[assignment]
         editing.edit_attachment("Doc", "DatumPlane")
         self.assertEqual(self.ran, ["Part_EditAttachment"])

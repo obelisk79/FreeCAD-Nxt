@@ -689,28 +689,12 @@ El panel necesita PySide6.QtQuickWidgets.</translation>
         <translation>Al cerrar la edición de un objeto nuevo (o al crear un contenedor), su nombre se abre para editarlo en el árbol.</translation>
     </message>
     <message>
-        <source>Experimental: Nxt&apos;s task panel while a sketch is edited</source>
-        <translation>Experimental: panel de tareas de Nxt al editar croquis</translation>
+        <source>Experimental: Dynamic toolbars</source>
+        <translation>Experimental: barras de herramientas dinámicas</translation>
     </message>
     <message>
-        <source>The solver&apos;s status moves to a pill in the 3D view, with the grid and snap settings. The task panel shows only problems and what is selected; FreeCAD&apos;s lists stay one click away.</source>
-        <translation>El estado del solver pasa a una píldora en la vista 3D, con la rejilla y el ajuste. El panel muestra solo problemas y lo seleccionado; las listas de FreeCAD quedan a un clic.</translation>
-    </message>
-    <message>
-        <source>Experimental: Nxt&apos;s attachment task panel</source>
-        <translation>Experimental: panel de anclaje de Nxt</translation>
-    </message>
-    <message>
-        <source>Edit attachment opens Nxt&apos;s panel: picks named for what they are, ways grouped by what they do, and the offset shut until wanted.</source>
-        <translation>Editar anclaje abre el panel de Nxt: selecciones con el nombre de lo que son, modos agrupados por lo que hacen y el desfase cerrado hasta que se necesite.</translation>
-    </message>
-    <message>
-        <source>Experimental: Nxt&apos;s tool strip</source>
-        <translation>Experimental: tira de herramientas de Nxt</translation>
-    </message>
-    <message>
-        <source>One bar in place of FreeCAD&apos;s toolbars, with each command on its own.</source>
-        <translation>Una sola barra en lugar de las barras de herramientas de FreeCAD, cada comando por separado.</translation>
+        <source>Nxt&apos;s toolbars in place of FreeCAD&apos;s: each command on its own, arranged per workbench in edit mode.</source>
+        <translation>Las barras de herramientas de Nxt en lugar de las de FreeCAD: cada comando por separado, ordenado por banco de trabajo en modo edición.</translation>
     </message>
     <message>
         <source>Attach a new sketch to three picked points without asking</source>
@@ -2848,12 +2832,8 @@ The sketch&apos;s axes, by their geometry index.</extracomment>
         <translation>Reparar «Wire not closed»</translation>
     </message>
     <message>
-        <source>Experimental sketch task panel</source>
-        <translation>Panel de croquis experimental</translation>
-    </message>
-    <message>
-        <source>Experimental attachment panel</source>
-        <translation>Panel de anclaje experimental</translation>
+        <source>Experimental dynamic toolbars</source>
+        <translation>Barras de herramientas dinámicas experimentales</translation>
     </message>
     <message>
         <source>Rename new objects</source>

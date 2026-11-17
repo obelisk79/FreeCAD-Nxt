@@ -123,7 +123,7 @@ class Services(QtCore.QObject):
             log.error("could not install the stale drag guard")
             self._drag_guard = None
         self.quick_mass_changed()
-        self.sketch_panel_changed()
+        self._install_sketch_panel()
         self.tool_strip_changed()
 
     def remove(self) -> None:
@@ -240,7 +240,7 @@ class Services(QtCore.QObject):
         except Exception:
             log.error("could not update Quick Mass")
 
-    # -- experimental tool strip -- #
+    # -- experimental dynamic toolbars -- #
 
     def tool_strip_changed(self) -> None:
         """Put the tool strip up or take it down to match its setting."""
@@ -267,28 +267,18 @@ class Services(QtCore.QObject):
             log.error("could not remove the tool strip")
         self._tool_strip = None
 
-    # -- experimental sketch task panel -- #
+    # -- sketch task panel -- #
 
-    def sketch_panel_changed(self) -> None:
-        """Start or stop sketch_panel.py to match its setting."""
-        from ..core import settings
-        if self._sketch_panel is None:
-            if not settings.get("SketchPanel"):
-                return
-            try:
-                from ..tools import sketch_panel
-                self._sketch_panel = sketch_panel.SketchPanel(
-                    self.theme(), lambda: self._notice, self)
-                self._sketch_panel.pill.placed.connect(self._restack)
-                self._sketch_panel.install()
-            except Exception:
-                log.error("could not set up the sketch task panel")
-                self._sketch_panel = None
-            return
+    def _install_sketch_panel(self) -> None:
         try:
-            self._sketch_panel.sync()
+            from ..tools import sketch_panel
+            self._sketch_panel = sketch_panel.SketchPanel(
+                self.theme(), lambda: self._notice, self)
+            self._sketch_panel.pill.placed.connect(self._restack)
+            self._sketch_panel.install()
         except Exception:
-            log.error("could not update the sketch task panel")
+            log.error("could not set up the sketch task panel")
+            self._sketch_panel = None
 
     def _restack(self) -> None:
         """The sketch pill moved: what is under it follows."""

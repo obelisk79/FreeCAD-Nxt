@@ -1,6 +1,6 @@
-"""Experimental: Nxt's attachment task panel.
+"""Nxt's attachment task panel.
 
-Off unless the AttachPanel setting is on. AttachTask.qml shows a card per
+AttachTask.qml shows a card per
 step: what the object is attached to, the way, the offset. Picks in the
 3D view or the tree fill the next reference. Each change is written to
 the object at once, which is the preview.
@@ -23,7 +23,7 @@ import FreeCAD as App
 import FreeCADGui as Gui
 
 from ..app.i18n import translate
-from ..core import log, settings, units, widgets
+from ..core import log, units, widgets
 from ..core.qt import QtCore, QtWidgets
 from ..ui import quick_host
 from . import attach_ways
@@ -32,7 +32,6 @@ from .editing import DATUMS
 from .task_layout import RENEW_MS, TaskLayout, fitted_view, tab_in_order
 from .task_sync import SWAPPED
 
-SETTING = "AttachPanel"
 #: Offset fields in panel order: move X Y Z, then turn about X Y Z.
 MOVES = 3
 ANGLE = "°"
@@ -390,7 +389,7 @@ class AttachPanels(TaskLayout):
 
     def _swap(self) -> None:
         view = self._view
-        if not widgets.alive(view) or not settings.get(SETTING):
+        if not widgets.alive(view):
             return
         self._busy = True
         try:
