@@ -131,6 +131,10 @@ Popup {
             key: "AutoRename"
             text: qsTr("Rename new objects")
         }
+        Setting {
+            key: "AmbientOcclusion"
+            text: qsTr("Ambient occlusion")
+        }
 
         Rectangle {
             width: parent.width

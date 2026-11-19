@@ -44,6 +44,7 @@ class Services(QtCore.QObject):
         self._mass_bar: Any = None
         self._sketch_panel: Any = None
         self._tool_strip: Any = None
+        self._occlusion: Any = None
         self._pending_edit: tuple[str, str] | None = None
         self._edit_timer = self._deferral(self._enter_pending_edit)
         self._restyle_timer = self._deferral(self._restyle)
@@ -125,10 +126,12 @@ class Services(QtCore.QObject):
         self.quick_mass_changed()
         self._install_sketch_panel()
         self.tool_strip_changed()
+        self.ambient_occlusion_changed()
 
     def remove(self) -> None:
         self._remove_isolation()
         self._remove_tool_strip()
+        self._remove_occlusion()
         if self._sketch_panel is not None:
             try:
                 self._sketch_panel.remove()
@@ -266,6 +269,34 @@ class Services(QtCore.QObject):
         except Exception:
             log.error("could not remove the tool strip")
         self._tool_strip = None
+
+    # -- ambient occlusion -- #
+
+    def ambient_occlusion_changed(self) -> None:
+        """Bring the 3D views' ambient occlusion in line with its settings."""
+        from ..core import settings
+        if not settings.get("AmbientOcclusion"):
+            self._remove_occlusion()
+            return
+        if self._occlusion is not None:
+            self._occlusion.sync()
+            return
+        try:
+            from ..tools import ambient_occlusion
+            self._occlusion = ambient_occlusion.AmbientOcclusion(self)
+            self._occlusion.install()
+        except Exception:
+            log.error("could not set up the ambient occlusion")
+            self._remove_occlusion()
+
+    def _remove_occlusion(self) -> None:
+        if self._occlusion is None:
+            return
+        try:
+            self._occlusion.remove()
+        except Exception:
+            log.error("could not remove the ambient occlusion")
+        self._occlusion = None
 
     # -- sketch task panel -- #
 

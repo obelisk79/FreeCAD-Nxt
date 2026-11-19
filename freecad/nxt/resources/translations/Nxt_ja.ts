@@ -449,7 +449,7 @@ Restart FreeCAD now to use the new versions?</source>
     </message>
     <message>
         <source>Isolated: %1</source>
-        <extracomment>Passes over the saved visibility; each settles what the last upset.</extracomment>
+        <extracomment>Passes over the saved visibility; each settles what the last upset. What the targets hold, and each Body&apos;s Tip, going in.</extracomment>
         <translation>分離中: %1</translation>
     </message>
     <message>
@@ -608,7 +608,7 @@ The panel needs PySide6.QtQuickWidgets.</source>
     </message>
     <message>
         <source>Expression rows</source>
-        <extracomment>The page&apos;s group in FreeCAD&apos;s Preferences dialog. What the quick panel offers. The page offers these and more. Settings the theme reads: changing one restyles the panel. Settings the snapshot reads: changing one rebuilds it. Every value a choice setting may take, in the order it is offered.</extracomment>
+        <extracomment>The page&apos;s group in FreeCAD&apos;s Preferences dialog. What the quick panel offers. The page offers these and more. Settings the theme reads: changing one restyles the panel. Settings the snapshot reads: changing one rebuilds it. The 3D views&apos; ambient occlusion (tools/ambient_occlusion.py). Every value a choice setting may take, in the order it is offered.</extracomment>
         <translation>式の行</translation>
     </message>
     <message>
@@ -821,6 +821,101 @@ Hold Alt while dragging to pass through.</source>
     <message>
         <source>Reset to defaults</source>
         <translation>既定に戻す</translation>
+    </message>
+    <message>
+        <source>Low</source>
+        <extracomment>The ambient occlusion&apos;s ranges on the page.</extracomment>
+        <translation>低</translation>
+    </message>
+    <message>
+        <source>Medium</source>
+        <translation>中</translation>
+    </message>
+    <message>
+        <source>High</source>
+        <translation>高</translation>
+    </message>
+    <message>
+        <source>Keep the effect</source>
+        <translation>効果を維持</translation>
+    </message>
+    <message>
+        <source>Lower its quality</source>
+        <translation>品質を下げる</translation>
+    </message>
+    <message>
+        <source>Pause the effect</source>
+        <translation>効果を一時停止</translation>
+    </message>
+    <message>
+        <source>Visualization</source>
+        <translation>表示効果</translation>
+    </message>
+    <message>
+        <source>Ambient occlusion</source>
+        <translation>アンビエントオクルージョン</translation>
+    </message>
+    <message>
+        <source>Shade creases and corners in the 3D view</source>
+        <translation>3Dビューの溝や角に陰影を付ける</translation>
+    </message>
+    <message>
+        <source>Darkens where surfaces meet, as ambient light does, so shapes read at a glance.</source>
+        <translation>面が接する所を環境光のように暗くし、形状をひと目で把握できるようにします。</translation>
+    </message>
+    <message>
+        <source>Quality</source>
+        <translation>品質</translation>
+    </message>
+    <message>
+        <source>While navigating</source>
+        <translation>ナビゲーション中</translation>
+    </message>
+    <message>
+        <source>Intensity</source>
+        <translation>強さ</translation>
+    </message>
+    <message>
+        <source>Automatic</source>
+        <translation>自動</translation>
+    </message>
+    <message>
+        <source>How far apart surfaces still shade each other.
+Automatic follows the size of the model.</source>
+        <translation>面同士が陰影を落とし合う距離。
+自動ではモデルの大きさに合わせます。</translation>
+    </message>
+    <message>
+        <source>Radius</source>
+        <translation>半径</translation>
+    </message>
+    <message>
+        <source>How long the view stays still before the full effect returns.</source>
+        <translation>完全な効果に戻るまでビューが静止している時間。</translation>
+    </message>
+    <message>
+        <source>Back after</source>
+        <translation>復帰まで</translation>
+    </message>
+    <message>
+        <source>Refine over several frames</source>
+        <translation>複数フレームで精細化</translation>
+    </message>
+    <message>
+        <source>Smoother shading, which keeps improving while the view is still.</source>
+        <translation>より滑らかな陰影。ビューが静止している間、改善し続けます。</translation>
+    </message>
+    <message>
+        <source>Reuse the view&apos;s depth</source>
+        <translation>ビューの深度を再利用</translation>
+    </message>
+    <message>
+        <source>Faster on large models: the model is not drawn a second time.</source>
+        <translation>大きなモデルで高速：モデルを二度描画しません。</translation>
+    </message>
+    <message>
+        <source>These two need the Python package PyOpenGL, which the Addon Manager offers with Nxt.</source>
+        <translation>この2つにはPythonパッケージPyOpenGLが必要です。アドオンマネージャーがNxtと一緒に提供します。</translation>
     </message>
     <message>
         <source>Undo</source>
@@ -1160,7 +1255,7 @@ The sketch&apos;s axes, by their geometry index.</extracomment>
     </message>
     <message>
         <source>Tool strip</source>
-        <extracomment>Each strip&apos;s toolbar name and where it docks. Toolbars that are the strips&apos; own and never covered. The most of the window&apos;s height the top strip may take: a first layout at a sliver of its width (FreeCAD 1.1 lays toolbars out before the window has its size) wraps every item onto its own row, and a strip fixed at that height was never widened again.</extracomment>
+        <extracomment>Each strip&apos;s toolbar name and where it docks. Toolbars that are the strips&apos; own and never covered. The most of the window&apos;s height the top strip may take: a first layout at a sliver of its width (FreeCAD 1.1 lays toolbars out before the window has its size) wraps every item onto its own row, and a strip fixed at that height was never widened again. The least share of the window&apos;s width the top strip takes when docked as it should be; narrower, FreeCAD&apos;s restored layout squeezed it. How long after FreeCAD rearranges its toolbars (a restored layout, a workbench change) the strips&apos; docking is checked.</extracomment>
         <translation>ツールストリップ</translation>
     </message>
     <message>
@@ -2843,6 +2938,10 @@ The sketch&apos;s axes, by their geometry index.</extracomment>
     <message>
         <source>Rename new objects</source>
         <translation>新規オブジェクトの名前変更</translation>
+    </message>
+    <message>
+        <source>Ambient occlusion</source>
+        <translation>アンビエントオクルージョン</translation>
     </message>
     <message>
         <source>More preferences…</source>

@@ -22,6 +22,10 @@
   <tag>UI</tag>
   <tag>UX</tag>
   <tag>interface</tag>
+  <!-- the 3D views' ambient occlusion: temporal accumulation and depth
+       reuse; without them the effect falls back to its plain passes -->
+  <depend optional="true" type="python">PyOpenGL</depend>
+  <depend optional="true" type="python">numpy</depend>
   <content>
     <other>
       <name>Nxt</name>

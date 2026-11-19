@@ -74,6 +74,7 @@ if _app is not None:
 try:
     from .ui import prefs as _prefs
     Gui.addPreferencePage(_prefs.NxtPreferencesPage, _prefs.GROUP)
+    Gui.addPreferencePage(_prefs.NxtVisualizationPage, _prefs.GROUP)
 except Exception:
     App.Console.PrintError("Nxt: could not add the Preferences page\n")
     App.Console.PrintError(traceback.format_exc())

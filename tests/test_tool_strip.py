@@ -930,6 +930,24 @@ class Arranging(Acting):
         self.assertEqual(self.value(row, "style"), models.TABS)
         self.assertFalse(self.value(row, "more"))
 
+    def drawer_keys(self) -> dict[str, str]:
+        drawer = self.bridge._catalog
+        names = {v.data().decode(): k for k, v in drawer.roleNames().items()}
+        return {drawer.data(drawer.index(r), names["key"]):
+                drawer.data(drawer.index(r), names["text"])
+                for r in range(drawer.rowCount())}
+
+    def test_removed_selector_offered_in_the_drawer(self) -> None:
+        row = self.model.rowCount() - 1
+        key = self.model.entry(row).key
+        self.bridge._load_catalog()
+        self.assertEqual(self.drawer_keys().get(key), "Workbench")
+        self.bridge.removeItem(row)
+        self.assertIn(key, self.drawer_keys())
+        self.assertGreaterEqual(self.bridge.insertCommand(key, 0), 0)
+        self.assertEqual(self.value(0, "kind"), "choice")
+        self.assertEqual(self.value(0, "style"), models.TABS)
+
     def test_combo_selector_lists_choices_as_a_menu(self) -> None:
         combo = QtWidgets.QComboBox()
         combo.addItems(["Part Design", "Sketcher"])

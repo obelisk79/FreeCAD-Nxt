@@ -44,6 +44,20 @@ GROUP_KEY = "+group"
 NOT_NEW_ROW = -2
 
 
+def widget_name(entry: source.Entry) -> str:
+    """What the drawer calls a toolbar widget.
+
+    Its text or tip, else the toolbar it is on ("Workbench" for the
+    workbench selector).
+    """
+    widget = entry.widget
+    for text in (entry.action.text() if entry.action else "",
+                 widget.toolTip() if widget is not None else ""):
+        if text.strip():
+            return models.plain(text)
+    return entry.key.split("#")[0]
+
+
 class _MenuPlacer(QtCore.QObject):
     """Moves a menu to `at` as it is shown."""
 
@@ -187,6 +201,8 @@ class ToolStripBridge(QtCore.QObject):
             return
         self._report(unsupported)
         self._live = live
+        if self._commands is not None:
+            self._show_catalog()
         arranged, self._missing = layouts.arrange(
             live, layouts.load_for(self._workbench(), self._locked),
             self._resolve, self._locked)
@@ -214,6 +230,9 @@ class ToolStripBridge(QtCore.QObject):
         self._reported.update(unsupported)
 
     def _resolve(self, key: str) -> source.Entry | None:
+        widget = self._live_widget(key)
+        if widget is not None:
+            return widget
         group = groups.freecad_group(key)
         if group is not None:
             return group
@@ -232,9 +251,28 @@ class ToolStripBridge(QtCore.QObject):
         self.drawerChanged.emit()
 
     def _show_catalog(self) -> None:
+        offered = [*(self._commands or []), *self._widget_commands()]
         self._catalog.set_commands(catalog.search(
-            self._commands or [], self._query, self._filter))
+            offered, self._query, self._filter))
         self._mark_placed()
+
+    def _live_widgets(self) -> list[source.Entry]:
+        """FreeCAD's toolbar widgets (a workbench selector, a tray)."""
+        return [e for entries in self._live.values() for e in entries
+                if e.kind in (Kind.CHOICE, Kind.BUTTON)]
+
+    def _live_widget(self, key: str) -> source.Entry | None:
+        return next((e for e in self._live_widgets() if e.key == key), None)
+
+    def _widget_commands(self) -> list[catalog.Command]:
+        """The drawer's tiles for FreeCAD's toolbar widgets.
+
+        Not commands: once removed from a strip, only these bring them
+        back.
+        """
+        return [catalog.Command(
+            e.key, widget_name(e), "", "", frozenset({catalog.GLOBAL}))
+            for e in self._live_widgets()]
 
     def _keys(self) -> set[str]:
         return set().union(*(m.keys() for m in self._models.values()))

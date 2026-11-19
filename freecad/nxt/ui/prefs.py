@@ -21,7 +21,7 @@ GROUP = "FreeCAD-Nxt"
 QUICK = ("PartLayout", "RowDensity", "ReferenceChips",
          "EditOnDoubleClick", "DependencyArrows", "HighlightRelated",
          "DetailAutoShow", "TreeLines", "RepairProfiles", "OverlayMode",
-         "QuickMass", "AutoRename", "ToolStrip")
+         "QuickMass", "AutoRename", "ToolStrip", "AmbientOcclusion")
 
 #: Settings the theme reads: changing one restyles the panel.
 _VIEW = frozenset({"RowDensity", "ReferenceChips", "UnderConstrainedMarks",
@@ -29,6 +29,10 @@ _VIEW = frozenset({"RowDensity", "ReferenceChips", "UnderConstrainedMarks",
                    "HeaderMaxPercent", "HeaderMinWidth"})
 #: Settings the snapshot reads: changing one rebuilds it.
 _SNAPSHOT = frozenset({"PartLayout", "DependencyArrows"})
+#: The 3D views' ambient occlusion (tools/ambient_occlusion.py).
+OCCLUSION = ("AmbientOcclusion", "AOQuality", "AOIntensity", "AORadius",
+             "AOTemporal", "AODepthReuse", "AOWhileNavigating",
+             "AOResumeDelay")
 
 #: Every value a choice setting may take, in the order it is offered.
 CHOICES: dict[str, tuple[str, ...]] = {
@@ -36,6 +40,8 @@ CHOICES: dict[str, tuple[str, ...]] = {
     "RowDensity": ("compact", "normal", "roomy"),
     "ReferenceChips": ("problems", "all", "none"),
     "OverlayMode": ("freecad", "nxt"),
+    "AOQuality": ("low", "medium", "high"),
+    "AOWhileNavigating": ("keep", "reduce", "pause"),
 }
 
 _live: weakref.WeakSet[Preferences] = weakref.WeakSet()
@@ -74,6 +80,11 @@ def apply(keys: set[str] | frozenset[str]) -> None:
         live = services.instance()
         if live is not None:
             live.tool_strip_changed()
+    if keys & set(OCCLUSION):
+        from ..app import services
+        live = services.instance()
+        if live is not None:
+            live.ambient_occlusion_changed()
     for prefs in list(_live):
         prefs.changed.emit()
 
@@ -437,3 +448,153 @@ class NxtPreferencesPage:
     def _update_note(self) -> None:
         size = self._step.value() * self._linear.value()
         self._linear_note.setText("= %s mm" % ("%g" % round(size, 3)))
+
+
+# -- the Visualization page --
+
+#: The ambient occlusion's ranges on the page.
+INTENSITY_RANGE = (0.1, 3.0)
+INTENSITY_STEP = 0.1
+RADIUS_MAX = 100000.0
+RESUME_RANGE = (0, 5000)
+RESUME_STEP = 50
+
+
+def _occlusion_labels() -> dict[str, dict[str, str]]:
+    return {
+        "AOQuality": {
+            "low": translate("Nxt", "Low"),
+            "medium": translate("Nxt", "Medium"),
+            "high": translate("Nxt", "High"),
+        },
+        "AOWhileNavigating": {
+            "keep": translate("Nxt", "Keep the effect"),
+            "reduce": translate("Nxt", "Lower its quality"),
+            "pause": translate("Nxt", "Pause the effect"),
+        },
+    }
+
+
+class NxtVisualizationPage:
+    """Edit > Preferences > FreeCAD-Nxt > Visualization."""
+
+    def __init__(self) -> None:
+        self.form = QtWidgets.QWidget()
+        self.form.setWindowTitle(translate("Nxt", "Visualization"))
+        self.form.setWindowIcon(QtGui.QIcon(str(resources.LOGO)))
+        follow(self.form)
+        outer = QtWidgets.QVBoxLayout(self.form)
+
+        box = QtWidgets.QGroupBox(
+            translate("Nxt", "Ambient occlusion"), self.form)
+        layout = QtWidgets.QFormLayout(box)
+        self._on = QtWidgets.QCheckBox(translate(
+            "Nxt", "Shade creases and corners in the 3D view"), box)
+        self._on.setToolTip(translate(
+            "Nxt", "Darkens where surfaces meet, as ambient light does, "
+                   "so shapes read at a glance."))
+        layout.addRow(self._on)
+        labels = _occlusion_labels()
+        self._choices: dict[str, QtWidgets.QComboBox] = {}
+        for key, text in (
+                ("AOQuality", translate("Nxt", "Quality")),
+                ("AOWhileNavigating", translate("Nxt", "While navigating"))):
+            combo = QtWidgets.QComboBox(box)
+            for value in CHOICES[key]:
+                combo.addItem(labels[key][value], value)
+            layout.addRow(text, combo)
+            self._choices[key] = combo
+        self._intensity = QtWidgets.QDoubleSpinBox(box)
+        self._intensity.setRange(*INTENSITY_RANGE)
+        self._intensity.setSingleStep(INTENSITY_STEP)
+        self._intensity.setDecimals(1)
+        layout.addRow(translate("Nxt", "Intensity"), self._intensity)
+        self._radius = QtWidgets.QDoubleSpinBox(box)
+        self._radius.setRange(0.0, RADIUS_MAX)
+        self._radius.setSuffix(" mm")
+        self._radius.setSpecialValueText(translate("Nxt", "Automatic"))
+        self._radius.setToolTip(translate(
+            "Nxt", "How far apart surfaces still shade each other.\n"
+                   "Automatic follows the size of the model."))
+        layout.addRow(translate("Nxt", "Radius"), self._radius)
+        self._resume = QtWidgets.QSpinBox(box)
+        self._resume.setRange(*RESUME_RANGE)
+        self._resume.setSingleStep(RESUME_STEP)
+        self._resume.setSuffix(" ms")
+        self._resume.setToolTip(translate(
+            "Nxt", "How long the view stays still before the full "
+                   "effect returns."))
+        layout.addRow(translate("Nxt", "Back after"), self._resume)
+        self._temporal = QtWidgets.QCheckBox(translate(
+            "Nxt", "Refine over several frames"), box)
+        self._temporal.setToolTip(translate(
+            "Nxt", "Smoother shading, which keeps improving while the "
+                   "view is still."))
+        layout.addRow(self._temporal)
+        self._reuse = QtWidgets.QCheckBox(translate(
+            "Nxt", "Reuse the view's depth"), box)
+        self._reuse.setToolTip(translate(
+            "Nxt", "Faster on large models: the model is not drawn a "
+                   "second time."))
+        layout.addRow(self._reuse)
+        from ..core import pyopengl
+        self._needs = QtWidgets.QLabel(translate(
+            "Nxt", "These two need the Python package PyOpenGL, which "
+                   "the Addon Manager offers with Nxt."), box)
+        self._needs.setWordWrap(True)
+        missing = pyopengl.missing() is not None
+        self._needs.setVisible(missing)
+        self._temporal.setEnabled(not missing)
+        self._reuse.setEnabled(not missing)
+        layout.addRow(self._needs)
+        self._on.toggled.connect(self._follow_switch)
+        outer.addWidget(box)
+
+        reset = QtWidgets.QPushButton(
+            translate("Nxt", "Reset to defaults"), self.form)
+        reset.clicked.connect(self._reset)
+        row = QtWidgets.QHBoxLayout()
+        row.addStretch(1)
+        row.addWidget(reset)
+        outer.addLayout(row)
+        outer.addStretch(1)
+
+    def _follow_switch(self, on: bool) -> None:
+        for field in (*self._choices.values(), self._intensity,
+                      self._radius, self._resume):
+            field.setEnabled(on)
+
+    def _show(self, value: Any) -> None:
+        """Fill the fields from `value(key)`: the store or the defaults."""
+        for key, combo in self._choices.items():
+            combo.setCurrentIndex(max(0, combo.findData(value(key))))
+        self._on.setChecked(bool(value("AmbientOcclusion")))
+        self._intensity.setValue(float(value("AOIntensity")))
+        self._radius.setValue(float(value("AORadius")))
+        self._resume.setValue(int(value("AOResumeDelay")))
+        self._temporal.setChecked(bool(value("AOTemporal")))
+        self._reuse.setChecked(bool(value("AODepthReuse")))
+        self._follow_switch(self._on.isChecked())
+
+    # FreeCAD calls these two by name.
+    def loadSettings(self) -> None:  # noqa: N802
+        self._show(settings.get)
+
+    def saveSettings(self) -> None:  # noqa: N802
+        for key, combo in self._choices.items():
+            settings.put(key, str(combo.currentData()))
+        settings.put("AmbientOcclusion", self._on.isChecked())
+        settings.put("AOIntensity", self._intensity.value())
+        settings.put("AORadius", self._radius.value())
+        settings.put("AOResumeDelay", self._resume.value())
+        settings.put("AOTemporal", self._temporal.isChecked())
+        settings.put("AODepthReuse", self._reuse.isChecked())
+        try:
+            apply(set(OCCLUSION))
+        except Exception:  # noqa: BLE001 - called by FreeCAD's dialog
+            App.Console.PrintError(
+                "Nxt: could not apply the visualization preferences\n")
+
+    def _reset(self) -> None:
+        """Put the fields back to Nxt's defaults; Apply or OK saves."""
+        self._show(settings.DEFAULTS.__getitem__)

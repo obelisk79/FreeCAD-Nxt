@@ -449,7 +449,7 @@ Restart FreeCAD now to use the new versions?</source>
     </message>
     <message>
         <source>Isolated: %1</source>
-        <extracomment>Passes over the saved visibility; each settles what the last upset.</extracomment>
+        <extracomment>Passes over the saved visibility; each settles what the last upset. What the targets hold, and each Body&apos;s Tip, going in.</extracomment>
         <translation>Aislado: %1</translation>
     </message>
     <message>
@@ -608,7 +608,7 @@ El panel necesita PySide6.QtQuickWidgets.</translation>
     </message>
     <message>
         <source>Expression rows</source>
-        <extracomment>The page&apos;s group in FreeCAD&apos;s Preferences dialog. What the quick panel offers. The page offers these and more. Settings the theme reads: changing one restyles the panel. Settings the snapshot reads: changing one rebuilds it. Every value a choice setting may take, in the order it is offered.</extracomment>
+        <extracomment>The page&apos;s group in FreeCAD&apos;s Preferences dialog. What the quick panel offers. The page offers these and more. Settings the theme reads: changing one restyles the panel. Settings the snapshot reads: changing one rebuilds it. The 3D views&apos; ambient occlusion (tools/ambient_occlusion.py). Every value a choice setting may take, in the order it is offered.</extracomment>
         <translation>Filas de expresión</translation>
     </message>
     <message>
@@ -821,6 +821,101 @@ Mantenga Alt al arrastrar para atravesarlas.</translation>
     <message>
         <source>Reset to defaults</source>
         <translation>Restablecer</translation>
+    </message>
+    <message>
+        <source>Low</source>
+        <extracomment>The ambient occlusion&apos;s ranges on the page.</extracomment>
+        <translation>Baja</translation>
+    </message>
+    <message>
+        <source>Medium</source>
+        <translation>Media</translation>
+    </message>
+    <message>
+        <source>High</source>
+        <translation>Alta</translation>
+    </message>
+    <message>
+        <source>Keep the effect</source>
+        <translation>Mantener el efecto</translation>
+    </message>
+    <message>
+        <source>Lower its quality</source>
+        <translation>Bajar la calidad</translation>
+    </message>
+    <message>
+        <source>Pause the effect</source>
+        <translation>Pausar el efecto</translation>
+    </message>
+    <message>
+        <source>Visualization</source>
+        <translation>Visualización</translation>
+    </message>
+    <message>
+        <source>Ambient occlusion</source>
+        <translation>Oclusión ambiental</translation>
+    </message>
+    <message>
+        <source>Shade creases and corners in the 3D view</source>
+        <translation>Sombrear pliegues y esquinas en la vista 3D</translation>
+    </message>
+    <message>
+        <source>Darkens where surfaces meet, as ambient light does, so shapes read at a glance.</source>
+        <translation>Oscurece donde se juntan las superficies, como la luz ambiental, para leer las formas de un vistazo.</translation>
+    </message>
+    <message>
+        <source>Quality</source>
+        <translation>Calidad</translation>
+    </message>
+    <message>
+        <source>While navigating</source>
+        <translation>Al navegar</translation>
+    </message>
+    <message>
+        <source>Intensity</source>
+        <translation>Intensidad</translation>
+    </message>
+    <message>
+        <source>Automatic</source>
+        <translation>Automático</translation>
+    </message>
+    <message>
+        <source>How far apart surfaces still shade each other.
+Automatic follows the size of the model.</source>
+        <translation>Hasta qué distancia las superficies se sombrean entre sí.
+Automático sigue el tamaño del modelo.</translation>
+    </message>
+    <message>
+        <source>Radius</source>
+        <translation>Radio</translation>
+    </message>
+    <message>
+        <source>How long the view stays still before the full effect returns.</source>
+        <translation>Cuánto debe quedarse quieta la vista antes de que vuelva el efecto completo.</translation>
+    </message>
+    <message>
+        <source>Back after</source>
+        <translation>Vuelve tras</translation>
+    </message>
+    <message>
+        <source>Refine over several frames</source>
+        <translation>Refinar en varios fotogramas</translation>
+    </message>
+    <message>
+        <source>Smoother shading, which keeps improving while the view is still.</source>
+        <translation>Sombreado más suave, que mejora mientras la vista está quieta.</translation>
+    </message>
+    <message>
+        <source>Reuse the view&apos;s depth</source>
+        <translation>Reutilizar la profundidad de la vista</translation>
+    </message>
+    <message>
+        <source>Faster on large models: the model is not drawn a second time.</source>
+        <translation>Más rápido en modelos grandes: el modelo no se dibuja una segunda vez.</translation>
+    </message>
+    <message>
+        <source>These two need the Python package PyOpenGL, which the Addon Manager offers with Nxt.</source>
+        <translation>Estas dos necesitan el paquete de Python PyOpenGL, que el gestor de complementos ofrece con Nxt.</translation>
     </message>
     <message>
         <source>Undo</source>
@@ -1160,7 +1255,7 @@ The sketch&apos;s axes, by their geometry index.</extracomment>
     </message>
     <message>
         <source>Tool strip</source>
-        <extracomment>Each strip&apos;s toolbar name and where it docks. Toolbars that are the strips&apos; own and never covered. The most of the window&apos;s height the top strip may take: a first layout at a sliver of its width (FreeCAD 1.1 lays toolbars out before the window has its size) wraps every item onto its own row, and a strip fixed at that height was never widened again.</extracomment>
+        <extracomment>Each strip&apos;s toolbar name and where it docks. Toolbars that are the strips&apos; own and never covered. The most of the window&apos;s height the top strip may take: a first layout at a sliver of its width (FreeCAD 1.1 lays toolbars out before the window has its size) wraps every item onto its own row, and a strip fixed at that height was never widened again. The least share of the window&apos;s width the top strip takes when docked as it should be; narrower, FreeCAD&apos;s restored layout squeezed it. How long after FreeCAD rearranges its toolbars (a restored layout, a workbench change) the strips&apos; docking is checked.</extracomment>
         <translation>Tira de herramientas</translation>
     </message>
     <message>
@@ -2843,6 +2938,10 @@ The sketch&apos;s axes, by their geometry index.</extracomment>
     <message>
         <source>Rename new objects</source>
         <translation>Renombrar objetos nuevos</translation>
+    </message>
+    <message>
+        <source>Ambient occlusion</source>
+        <translation>Oclusión ambiental</translation>
     </message>
     <message>
         <source>More preferences…</source>

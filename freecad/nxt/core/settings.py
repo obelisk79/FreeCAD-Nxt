@@ -85,6 +85,18 @@ DEFAULTS: dict[str, bool | int | float | str] = {
     # Strip width: percent of screen, floored at HeaderMinWidth pixels.
     "HeaderMaxPercent": 18,
     "HeaderMinWidth": 220,
+    # Real-time ambient occlusion in the 3D views
+    # (tools/ambient_occlusion.py); the choices are listed there.
+    "AmbientOcclusion": False,
+    "AOQuality": "medium",
+    "AOIntensity": 0.8,
+    # Model units; 0 is automatic, from the size of the model.
+    "AORadius": 0.0,
+    "AOTemporal": True,
+    "AODepthReuse": True,
+    "AOWhileNavigating": "keep",
+    # Milliseconds the camera stays still before a paused effect returns.
+    "AOResumeDelay": 250,
     # Inspector geometry; a size of 0 means never placed.
     "InspectorPinned": False,
     "InspectorTable": False,
