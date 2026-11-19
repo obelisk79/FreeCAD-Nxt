@@ -381,6 +381,9 @@ class AmbientOcclusion(QtCore.QObject):
 
     def sync(self) -> None:
         """Bring every 3D view's effect in line with the settings."""
+        # FreeCAD hands out Coin nodes only once pivy is loaded ("No SWIG
+        # wrapped library loaded"); FreeCAD 1.1 may not have loaded it yet.
+        from pivy import coin  # noqa: F401
         seen = set()
         for doc, view in _views():
             key = 0
