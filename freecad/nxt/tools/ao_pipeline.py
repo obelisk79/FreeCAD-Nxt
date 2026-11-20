@@ -10,8 +10,9 @@ ground truth AO (Jimenez et al. 2016):
 3. blur: depth-aware 4x4 at AO resolution, averaging away the 4x4
    interleaved noise of the occlusion pass;
 4. composite: depth-aware upsample, blended black over the picture,
-   after the temporal filter (ao_temporal.py) where it runs; the model's
-   lines and points are then drawn again over it (ao_lines.py).
+   after the temporal filter (ao_temporal.py) where it runs; picked
+   edges and vertices (ao_highlight.py), drawn into a mask of their
+   own, are left undarkened.
 
 Each pass re-renders only when its scene notifies a change, so a still
 view costs only the composite. A switch holds a cheap Interactive level
@@ -74,6 +75,10 @@ MIN_TEXTURE = 8
 QUAD_REACH = 1e9
 #: Half the material's opacity: there only to make Coin enable blending.
 BLEND_TRANSPARENCY = 0.5
+#: How much nearer than the face under it a picked edge or vertex may be
+#: and still count as seen, as a fraction of the radius: an edge lies on
+#: its faces, a hidden one far behind the face in front.
+MASK_TOLERANCE_OF_RADIUS = 0.05
 
 
 @dataclass(frozen=True)
@@ -84,6 +89,9 @@ class Look:
     intensity: float
     radius: float
     temporal: bool
+    #: FreeCAD's line width and point size, plus a margin, in pixels.
+    line_px: float = 3.0
+    point_px: float = 3.0
 
 
 DEPTH_VERTEX = """#version 120
@@ -98,6 +106,13 @@ void main() {
 
 # The facet normal, not the smooth vertex normal: only it agrees with the
 # depth samples, and the mismatch shows as stripes along the facets.
+MASK_FRAGMENT = """#version 120
+varying vec3 dt_eye;
+void main() {
+    gl_FragColor = vec4(-dt_eye.z, 0.0, 0.0, 1.0);
+}
+"""
+
 DEPTH_FRAGMENT = """#version 120
 varying vec3 dt_eye;
 void main() {
@@ -264,9 +279,12 @@ void main() {
 COMPOSITE_FRAGMENT = """#version 120
 uniform sampler2D dt_aoTex;
 uniform sampler2D dt_depthTex;
+uniform sampler2D dt_maskTex;  // picked edges, vertices: a = 1, r = depth
 uniform vec2 dt_aoSize;
 uniform vec2 dt_depthSize;
+uniform vec2 dt_maskSize;
 uniform float dt_radius;
+uniform float dt_maskTolerance;
 varying vec2 dt_uv;
 
 void main() {
@@ -274,6 +292,9 @@ void main() {
     vec4 d = texture2D(dt_depthTex, duv);
     if (dot(d.gba, d.gba) < 0.5) discard;
     float z = d.r;
+    vec2 muv = (floor(dt_uv * dt_maskSize) + 0.5) / dt_maskSize;
+    vec4 m = texture2D(dt_maskTex, muv);
+    if (m.a > 0.5 && m.r <= z + dt_maskTolerance) discard;
     vec2 p = dt_uv * dt_aoSize - 0.5;
     vec2 base = floor(p);
     vec2 f = p - base;
@@ -314,9 +335,10 @@ def texture_size(width: int, height: int, scale: float) -> tuple[int, int]:
 
 
 def signature(width: int, height: int, camera: int, scene: int,
-              look: Look) -> str:
+              mask: int, look: Look) -> str:
     """Everything the node tree depends on: a new one, a rebuild."""
-    return "%dx%d|%x|%x|%s" % (width, height, camera, scene, look)
+    return "%dx%d|%x|%x|%x|%s" % (width, height, camera, scene, mask,
+                                  look)
 
 
 def current_signature(root: Any) -> str | None:
@@ -479,6 +501,22 @@ class Builder:
         return self.texture(*size, coin.SoSceneTexture2.RGBA32F,
                             depth_scene)
 
+    def mask_pass(self, size: tuple[int, int], camera: Any, mask: Any,
+                  look: Look) -> Any:
+        """The picked edges and vertices, as eye depths, at full size."""
+        coin = self.coin
+        widths = coin.SoDrawStyle()
+        widths.lineWidth = look.line_px
+        widths.pointSize = look.point_px
+        flat = coin.SoLightModel()
+        flat.model = coin.SoLightModel.BASE_COLOR
+        mask_scene = self.group(
+            self.separator(), self.depth_test(False),
+            self.depth_test(True), camera, widths, flat,
+            self.program(DEPTH_VERTEX, MASK_FRAGMENT, []), mask)
+        return self.texture(*size, coin.SoSceneTexture2.RGBA32F,
+                            mask_scene)
+
     def composite_body(self) -> Any:
         coin = self.coin
         pick = coin.SoPickStyle()
@@ -498,7 +536,8 @@ class Builder:
 
 
 def _pipeline(make: Builder, width: int, height: int, camera: Any,
-              scene: Any, look: Look, level: str, resources: Any) -> Any:
+              scene: Any, mask: Any, look: Look, level: str,
+              resources: Any) -> Any:
     """Depth, occlusion, blur and composite for one quality level."""
     # Full floats throughout: (visibility, eye depth) in half floats kept
     # depth to about three digits, and the depth-aware blur, upsample and
@@ -541,32 +580,35 @@ def _pipeline(make: Builder, width: int, height: int, camera: Any,
         make.quad())
     blur_tex = make.texture(aw, ah, float_rgba, blur_scene)
 
+    mask_size = texture_size(width, height, 1.0)
+    mask_tex = make.mask_pass(mask_size, camera, mask, look)
+
     body = make.composite_body()
-    make.group(body, make.unit(1), depth_tex, make.unit(0),
-               blur_tex)
+    make.group(body, make.unit(2), mask_tex, make.unit(1), depth_tex,
+               make.unit(0), blur_tex)
     accumulator = resources.accumulator(level) if look.temporal else None
     if accumulator is not None:
         body.addChild(accumulator.attach(aw, ah, frame, look.radius))
-    make.group(
+    return make.group(
         body, make.depth_test(False),
         make.program(QUAD_VERTEX, COMPOSITE_FRAGMENT,
                      [make.sampler("dt_aoTex", 0),
                       make.sampler("dt_depthTex", 1),
+                      make.sampler("dt_maskTex", 2),
                       make.vec2("dt_aoSize", aw, ah),
                       make.vec2("dt_depthSize", dw, dh),
-                      make.scalar("dt_radius", look.radius)]),
+                      make.vec2("dt_maskSize", *mask_size),
+                      make.scalar("dt_radius", look.radius),
+                      make.scalar("dt_maskTolerance",
+                                  MASK_TOLERANCE_OF_RADIUS * look.radius)]),
         make.framed_quad())
-    # the separator's end unbinds the composite's shader and textures
-    # before the model's lines are drawn again over the result
-    return make.group(make.coin.SoGroup(),
-                      make.group(make.separator(), body),
-                      resources.lines.node)
 
 
-def build(width: int, height: int, camera: Any, scene: Any, look: Look,
-          resources: Any, signed: str) -> Any:
+def build(width: int, height: int, camera: Any, scene: Any, mask: Any,
+          look: Look, resources: Any, signed: str) -> Any:
     """The effect's node tree, to add right after the view's scene.
 
+    `mask` holds the picked edges and vertices to keep clear;
     `resources` lends each level its GL helpers (ViewResources).
     """
     make = Builder()
@@ -585,9 +627,10 @@ def build(width: int, height: int, camera: Any, scene: Any, look: Look,
     levels.setName(LEVEL_NAME)
     levels.whichChild = 0
     make.group(root, info, make.group(switch, levels))
-    chosen = _pipeline(make, width, height, camera, scene, look,
+    chosen = _pipeline(make, width, height, camera, scene, mask, look,
                        look.quality, resources)
     levels.addChild(chosen)
     levels.addChild(chosen if look.quality == INTERACTIVE else _pipeline(
-        make, width, height, camera, scene, look, INTERACTIVE, resources))
+        make, width, height, camera, scene, mask, look, INTERACTIVE,
+        resources))
     return root

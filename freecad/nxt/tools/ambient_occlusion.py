@@ -22,7 +22,7 @@ import FreeCADGui as Gui
 
 from ..core import log, settings
 from ..core.qt import QtCore
-from . import ao_lines, ao_pipeline, ao_temporal
+from . import ao_highlight, ao_pipeline, ao_temporal
 
 VIEW_TYPE = "Gui::View3DInventor"
 SELECTION_ROOT = "SoFCUnifiedSelection"
@@ -80,11 +80,13 @@ def auto_radius(length: float, spread: float) -> float:
 def look(get: Callable[[str], Any], radius: float) -> ao_pipeline.Look:
     """The effect as the settings ask for it and this system can show."""
     quality = str(get("AOQuality"))
+    line_px, point_px = ao_highlight.widths()
     return ao_pipeline.Look(
         quality=quality if quality in QUALITIES else "medium",
         intensity=float(get("AOIntensity")),
         radius=radius,
-        temporal=bool(get("AOTemporal")) and ao_temporal.available())
+        temporal=bool(get("AOTemporal")) and ao_temporal.available(),
+        line_px=line_px, point_px=point_px)
 
 
 def address(node: Any) -> int:
@@ -168,8 +170,6 @@ class Mirror:
         self.group = coin.SoGroup()
         self.group.ref()
         self.stale = True
-        #: Counts refreshes: what was found in the model may have changed.
-        self.version = 0
         #: The model's diagonal, measured once until the model changes.
         self.diagonal: float | None = None
 
@@ -181,7 +181,6 @@ class Mirror:
             self.group.removeAllChildren()
             for node in roots:
                 self.group.addChild(node)
-        self.version += 1
         self.stale = False
 
     def measured_diagonal(self, view: Any) -> float:
@@ -207,7 +206,6 @@ class ViewResources:
 
     def __init__(self) -> None:
         self.accumulators: dict[str, ao_temporal.Accumulator] = {}
-        self.lines = ao_lines.LinesOnTop()
 
     def accumulator(self, level: str) -> ao_temporal.Accumulator:
         return self.accumulators.setdefault(level,
@@ -216,7 +214,6 @@ class ViewResources:
     def release(self) -> None:
         for accumulator in self.accumulators.values():
             accumulator.release()
-        self.lines.release()
 
 
 class ViewState:
@@ -341,6 +338,7 @@ class AmbientOcclusion(QtCore.QObject):
     def __init__(self, parent: QtCore.QObject | None = None) -> None:
         super().__init__(parent)
         self.mirrors: dict[str, Mirror] = {}
+        self.highlights = ao_highlight.Highlights()
         self.views: dict[int, ViewState] = {}
         self.observer: _Observer | None = None
         #: Views whose update failed once: reported, not every poll.
@@ -352,11 +350,13 @@ class AmbientOcclusion(QtCore.QObject):
     def install(self) -> None:
         self.observer = _Observer(self)
         App.addDocumentObserver(self.observer)
+        self.highlights.install()
         self.poll.start()
         self.sync()
 
     def remove(self) -> None:
         self.poll.stop()
+        self.highlights.remove()
         if self.observer is not None:
             with contextlib.suppress(Exception):
                 App.removeDocumentObserver(self.observer)
@@ -380,6 +380,7 @@ class AmbientOcclusion(QtCore.QObject):
             mirror.diagonal = None
 
     def forget(self, doc_name: str) -> None:
+        self.highlights.forget(doc_name)
         mirror = self.mirrors.pop(doc_name, None)
         if mirror is not None:
             mirror.release()
@@ -429,14 +430,14 @@ class AmbientOcclusion(QtCore.QObject):
         if radius <= 0 or width < ao_pipeline.MIN_TEXTURE:
             state.take_down()
             return
-        state.resources.lines.follow(camera, mirror.group, mirror.version,
-                                     address)
         wanted = look(settings.get, radius)
+        mask = self.highlights.group(doc.Name)
         signed = ao_pipeline.signature(width, height, address(camera),
-                                       address(mirror.group), wanted)
+                                       address(mirror.group), address(mask),
+                                       wanted)
         if (state.root is not None
                 and ao_pipeline.current_signature(state.root) == signed):
             return
         state.place(ao_pipeline.build(width, height, camera, mirror.group,
-                                      wanted, state.resources, signed),
+                                      mask, wanted, state.resources, signed),
                     parent)

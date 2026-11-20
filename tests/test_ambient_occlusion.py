@@ -32,7 +32,7 @@ App, Gui = fakes.install(ParamGet=fakes.params(STORE))
 from freecad.nxt.core import pyopengl, settings  # noqa: E402
 from freecad.nxt.tools import ambient_occlusion as ao  # noqa: E402
 from freecad.nxt.tools import (  # noqa: E402
-    ao_lines,
+    ao_highlight,
     ao_pipeline,
     ao_temporal,
 )
@@ -99,8 +99,8 @@ class LookTests(unittest.TestCase):
         a = ao.look(settings.get, 1.0)
         STORE["AOIntensity"] = 2.0
         b = ao.look(settings.get, 1.0)
-        self.assertNotEqual(ao_pipeline.signature(10, 10, 1, 2, a),
-                            ao_pipeline.signature(10, 10, 1, 2, b))
+        self.assertNotEqual(ao_pipeline.signature(10, 10, 1, 2, 3, a),
+                            ao_pipeline.signature(10, 10, 1, 2, 3, b))
 
 
 class SizeTests(unittest.TestCase):
@@ -214,10 +214,6 @@ class Node:
         self._alive()
         del self.children[index]
 
-    def removeAllChildren(self) -> None:  # noqa: N802 - Coin's API
-        self._alive()
-        self.children = []
-
     def _alive(self) -> None:
         if self.freed:
             raise AssertionError("touched a freed scene graph")
@@ -231,65 +227,11 @@ class Sensor:
         self.attached = False
 
 
-class Paths(list):  # type: ignore[type-arg]
-    """SoPathList: what the searches found, in order."""
-
-    def getLength(self) -> int:  # noqa: N802 - Coin's API
-        return len(self)
-
-    def truncate(self, start: int) -> None:
-        del self[start:]
-
-    def sort(self) -> None:  # type: ignore[override]
-        pass
-
-    def uniquify(self) -> None:
-        pass
-
-
-class Search:
-    """SoSearchAction: one path per line type, and where it looked."""
-
-    ALL = "all"
-    searched: list[Any] = []
-
-    def setType(self, kind: str, derived: bool) -> None:  # noqa: N802
-        self.kind = kind
-
-    def setInterest(self, _interest: Any) -> None:  # noqa: N802
-        pass
-
-    def apply(self, root: Any) -> None:
-        Search.searched.append(root)
-
-    def getPaths(self) -> Paths:  # noqa: N802 - Coin's API
-        return Paths([self.kind])
-
-
-class Callback:
-    def setCallback(self, *_args: Any) -> None:  # noqa: N802
-        pass
-
-
-class DepthBuffer:
-    LEQUAL = "lequal"
-    function: Any = None
-
-
-def stub_coin() -> Any:
-    """Enough of pivy.coin for the view state and the line redraw."""
-    return types.SimpleNamespace(
-        SoNodeSensor=Sensor, SoSeparator=Node, SoPathList=Paths,
-        SoSearchAction=Search, SoCallback=Callback,
-        SoDepthBuffer=DepthBuffer,
-        SoType=types.SimpleNamespace(fromName=str))
-
-
 class ClosedViewTests(unittest.TestCase):
     """Closing a document freed its view's scene graph under the effect."""
 
     def setUp(self) -> None:
-        coin = stub_coin()
+        coin = types.SimpleNamespace(SoNodeSensor=Sensor)
         self.saved = sys.modules.get("pivy")
         sys.modules["pivy"] = types.SimpleNamespace(  # type: ignore
             coin=coin)
@@ -318,26 +260,6 @@ class ClosedViewTests(unittest.TestCase):
         self.assertEqual(self.effect.views, {})
         self.assertEqual(self.root.refs, 0)
         self.assertFalse(self.state.sensor.attached)
-        self.assertEqual(self.state.resources.lines.root.refs, 0)
-
-    def test_lines_are_found_in_the_model_only(self) -> None:
-        lines = self.state.resources.lines
-        camera, model = Node(), Node()
-        Search.searched = []
-        lines.follow(camera, model, 1, id)
-        self.assertEqual(Search.searched, [lines.root] * 3)
-        self.assertEqual(lines.root.children[1:], [camera, model])
-        self.assertEqual(list(lines.paths), list(ao_lines.LINE_TYPES))
-
-    def test_lines_are_found_again_only_after_a_change(self) -> None:
-        lines = self.state.resources.lines
-        camera, model = Node(), Node()
-        lines.follow(camera, model, 1, id)
-        Search.searched = []
-        lines.follow(camera, model, 1, id)
-        self.assertEqual(Search.searched, [])
-        lines.follow(camera, model, 2, id)
-        self.assertEqual(len(Search.searched), 3)
 
 
 class CullingTests(unittest.TestCase):
@@ -403,6 +325,94 @@ class PyOpenGLTests(unittest.TestCase):
             pyopengl._configure()
         self.assertFalse(fake.ERROR_CHECKING)  # type: ignore[attr-defined]
         self.assertFalse(fake.ERROR_LOGGING)  # type: ignore[attr-defined]
+
+
+class Point:
+    def __init__(self, x: float) -> None:
+        self.x, self.y, self.z = x, 0.0, 0.0
+
+
+class Edge:
+    Length = 10.0
+
+    def discretize(self, Deflection: float) -> list[Point]:  # noqa: N803
+        return [Point(0.0), Point(10.0)]
+
+
+class Shape:
+    def __init__(self, kind: str) -> None:
+        self.Edges = [Edge()] if kind != "Vertex" else []
+        self.Vertexes = [types.SimpleNamespace(Point=Point(5.0))]
+
+
+def fake_part() -> Any:
+    """Part.getShape giving one edge, or one vertex, by sub-element."""
+    def get_shape(_obj: Any, subname: str,
+                  needSubElement: bool) -> Shape:  # noqa: N803 - Part's
+        kind = ao_highlight.element_kind(subname)
+        if kind is None:
+            raise AssertionError("asked for a face: %s" % subname)
+        return Shape(kind)
+
+    return types.SimpleNamespace(getShape=get_shape)
+
+
+class HighlightTests(unittest.TestCase):
+    """Picked edges and vertices are kept clear of the AO; faces not."""
+
+    def test_only_edges_and_vertices_count(self) -> None:
+        self.assertEqual(ao_highlight.element_kind("Body.Pad.Edge12"),
+                         ao_highlight.EDGE)
+        self.assertEqual(ao_highlight.element_kind("Vertex3"),
+                         ao_highlight.VERTEX)
+        for sub in ("Face2", "Body.Pad.Face1", "", "Body.", "EdgeX",
+                    "Edges"):
+            self.assertIsNone(ao_highlight.element_kind(sub), sub)
+
+    def test_faces_and_objects_are_left_out(self) -> None:
+        picks = [("Pad", "Body.Pad.Face1"), ("Pad", "Body."),
+                 ("Pad", "Body.Pad.Edge4"), ("Pad", "Body.Pad.Vertex2")]
+        with mock.patch.dict(sys.modules, {"Part": fake_part()}):
+            lines, points = ao_highlight.polylines(picks)
+        self.assertEqual(lines, [[(0.0, 0.0, 0.0), (10.0, 0.0, 0.0)]])
+        self.assertEqual(points, [(5.0, 0.0, 0.0)])
+
+    def test_widths_follow_freecad(self) -> None:
+        STORE.update(DefaultShapeLineWidth=4, DefaultShapePointSize=6)
+        try:
+            line, point = ao_highlight.widths()
+        finally:
+            STORE.clear()
+        self.assertEqual((line, point),
+                         (4.0 + ao_highlight.MARGIN_PX,
+                          6.0 + ao_highlight.MARGIN_PX))
+
+    def test_picks_include_the_preselection(self) -> None:
+        pad = object()
+        doc = types.SimpleNamespace(getObject=lambda name: pad)
+        chosen = types.SimpleNamespace(Object=pad,
+                                       SubElementNames=["Edge1"])
+        selection = types.SimpleNamespace(
+            getSelectionEx=lambda _doc, _resolve: [chosen])
+        highlights = ao_highlight.Highlights()
+        highlights.preselected = ("Doc", "Pad", "Vertex2")
+        with mock.patch.object(ao_highlight.App, "getDocument",
+                               lambda _name: doc, create=True), \
+                mock.patch.object(ao_highlight.Gui, "Selection",
+                                  selection, create=True):
+            picks = highlights._picks("Doc")
+        self.assertEqual(picks, [(pad, "Edge1"), (pad, "Vertex2")])
+
+    def test_another_documents_preselection_is_ignored(self) -> None:
+        selection = types.SimpleNamespace(
+            getSelectionEx=lambda _doc, _resolve: [])
+        highlights = ao_highlight.Highlights()
+        highlights.preselected = ("Other", "Pad", "Edge1")
+        with mock.patch.object(ao_highlight.App, "getDocument",
+                               lambda _name: None, create=True), \
+                mock.patch.object(ao_highlight.Gui, "Selection",
+                                  selection, create=True):
+            self.assertEqual(highlights._picks("Doc"), [])
 
 
 if __name__ == "__main__":
