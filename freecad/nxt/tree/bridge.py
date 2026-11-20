@@ -22,6 +22,7 @@ from . import (
     auto_rename,
     cycle_time,
     drag_drop,
+    hints,
     icons,
     links,
     models,
@@ -104,6 +105,11 @@ class TreeBridge(QtCore.QObject):
         # Dependency arrows now drawn (links.py).
         self._arrows: dict[str, Any] = {"source": -1, "links": []}
         self._arrows_timer = self._deferral(self._update_arrows)
+        # A selection lingered on teaches its links' kinds (hints.py).
+        self._dwell_timer = QtCore.QTimer(self)
+        self._dwell_timer.setSingleShot(True)
+        self._dwell_timer.setInterval(hints.DWELL_MS)
+        self._dwell_timer.timeout.connect(self._count_hints)
         self._reveal_timer = self._deferral(self._reveal_picked)
 
         # Polled: activating a Body emits no document signal.
@@ -372,9 +378,27 @@ class TreeBridge(QtCore.QObject):
                                       self._tree.row_of)
             except Exception:
                 log.error("could not work out the links of %s" % name)
+            arrows["learned"] = hints.learned()
         if arrows != self._arrows:
             self._arrows = arrows
             self.linkArrowsChanged.emit()
+            if arrows["links"]:
+                self._dwell_timer.start()
+            else:
+                self._dwell_timer.stop()
+
+    def _count_hints(self) -> None:
+        """The selection was lingered on: its links' kinds were seen."""
+        kinds = {link["kind"] for link in self._arrows.get("links", ())}
+        if kinds and hints.seen(kinds):
+            self._update_arrows()
+
+    @QtCore.Slot()
+    def resetRelationHints(self) -> None:  # noqa: N802 - QML API
+        """Show the relationship words again for every kind."""
+        hints.reset()
+        self._arrows = {"source": -1, "links": []}
+        self._update_arrows()
 
     def _reveal_picked(self) -> None:
         """Mark picked origins; if FollowSelection, scroll and flash.

@@ -6,6 +6,8 @@ Item {
     id: header
 
     property Item ghost
+    //: Covers the whole panel: the search hits hang on it, over the rows.
+    property Item hitsLayer: null
     property bool settingsOpen: false
     property bool documentsOpen: false
     readonly property alias gear: gear
@@ -135,6 +137,11 @@ Item {
         TapHandler { onTapped: nxt.revealFirstProblem() }
     }
 
+    // Overlay hit test: the search hits hang below the header.
+    function listHit(item, x, y) {
+        return search.listHit(item, x, y);
+    }
+
     SearchBox {
         id: search
         objectName: "treeSearch"
@@ -147,6 +154,7 @@ Item {
         // The hits use the header's whole width, from its left edge.
         listWidth: header.width - 8
         listX: 4 - search.x
+        hitsLayer: header.hitsLayer
         results: nxt.searchResults
         onQueryChanged: function (value) { nxt.setSearch(value); }
         onChosen: function (name) { nxt.revealObject(name); }

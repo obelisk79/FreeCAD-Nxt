@@ -39,9 +39,10 @@ Canvas {
         return item ? Math.min(item.pillRight + 4, gutterX - 2) : -1;
     }
 
-    // Docked: the list's right edge. Overlay: past the widest pill spanned.
+    // Docked: the list's right edge. Overlay: past the widest pill spanned,
+    // and the room the hints need before it.
     property real gutterX: width - gutter + 2
-    function placeGutter() {
+    function placeGutter(hintRoom) {
         if (!theme.overlay) {
             gutterX = width - gutter + 2;
             return;
@@ -64,12 +65,42 @@ Canvas {
             if (item)
                 widest = Math.max(widest, item.pillRight);
         }
-        gutterX = Math.min(width - gutter + 2, widest + 10);
+        gutterX = Math.min(width - gutter + 2, widest + 10 + hintRoom);
     }
 
     //: Arrowhead length and half-width.
     readonly property real headLength: 8
     readonly property real headHalfWidth: 3
+
+    //: Gap between a hint and the arrow it ends at.
+    readonly property real hintGap: 4
+
+    // The link from the row's side, of the selection; two words at most.
+    function phrase(link) {
+        var uses = link.dir === "in";
+        switch (link.kind) {
+        case "attachment":
+            return uses ? qsTr("attached from") : qsTr("attached to");
+        case "expression":
+            return uses ? qsTr("referenced by") : qsTr("references");
+        case "link":
+            return uses ? qsTr("linked by") : qsTr("links to");
+        default:
+            return uses ? qsTr("shape for") : qsTr("built on");
+        }
+    }
+
+    // Words for a link whose kind the user has not learned yet
+    // (tree/hints.py); one per row, the first link drawn to it.
+    function hintFor(link, index) {
+        var d = arrows.arrowData;
+        if (d.learned && d.learned.indexOf(link.kind) >= 0)
+            return "";
+        for (var j = 0; j < index; ++j)
+            if (d.links[j].row === link.row)
+                return "";
+        return phrase(link);
+    }
 
     function dash(kind) {
         if (kind === "attachment") return [1.5, 3];
@@ -84,7 +115,14 @@ Canvas {
         var d = arrows.arrowData;
         if (!d || d.source < 0 || !d.links || d.links.length === 0)
             return;
-        placeGutter();
+        ctx.font = theme.fontAside + "px sans-serif";
+        var room = 0;
+        for (var h = 0; h < d.links.length; ++h) {
+            var said = hintFor(d.links[h], h);
+            if (said)
+                room = Math.max(room, ctx.measureText(said).width + hintGap * 2);
+        }
+        placeGutter(room);
         var x0 = gutterX;
         var src = rowY(d.source);
         if (src < 0 || src > height)
@@ -159,6 +197,31 @@ Canvas {
             }
         }
 
+        // Hints end where their arrow starts: the pattern is the arrow's.
+        // One that does not fit between the name and the chips is left out.
+        var hinted = {};
+        ctx.textAlign = "right";
+        ctx.textBaseline = "middle";
+        for (var t = 0; t < d.links.length; ++t) {
+            var hl = d.links[t];
+            var words = hintFor(hl, t);
+            var hy = rowY(hl.row);
+            var item = list.itemAtIndex(hl.row);
+            if (!words || !item || hy < 0 || hy > height)
+                continue;
+            // Overlay: past the pill, over the 3D view. Docked: within
+            // the row, between the name and the chips.
+            var right = (theme.overlay ? x0 : Math.min(x0, item.chipsStart))
+                        - hintGap;
+            var floor = theme.overlay ? item.pillRight : item.labelEnd;
+            var wordsWidth = ctx.measureText(words).width;
+            if (right - wordsWidth < floor + hintGap * 2)
+                continue;
+            ctx.fillStyle = hl.dir === "in" ? theme.arrowIn : theme.arrowOut;
+            ctx.fillText(words, right, hy);
+            hinted[hl.row] = right - wordsWidth - hintGap;
+        }
+
         ctx.strokeStyle = theme.textDim;
         ctx.globalAlpha = 0.6;
         ctx.lineWidth = 1;
@@ -166,11 +229,12 @@ Canvas {
         for (var r = 0; r < rows.length; ++r) {
             var ly = rowY(rows[r]);
             var lx = rowRight(rows[r]);
-            if (lx < 0 || lx >= x0)
+            var lend = hinted[rows[r]] !== undefined ? hinted[rows[r]] : x0;
+            if (lx < 0 || lx >= lend)
                 continue;
             ctx.beginPath();
             ctx.moveTo(lx, ly);
-            ctx.lineTo(x0, ly);
+            ctx.lineTo(lend, ly);
             ctx.stroke();
         }
         ctx.setLineDash([]);

@@ -172,6 +172,12 @@ Item {
     readonly property bool hasDetail: !row.isTotal
     readonly property bool showDetail: row.detailOpen && row.hasDetail
 
+    // Docked, a relationship hint (DependencyArrows.qml) fits between
+    // the name's end and the chips.
+    readonly property real labelEnd:
+        title.x + Math.min(labelMetrics.advanceWidth, title.width)
+    readonly property real chipsStart: tail.x
+
     // A failure owned by a profile reddens the chip, not the label.
     readonly property bool blamedOnProfile: {
         if (!row.inError || !row.refs)

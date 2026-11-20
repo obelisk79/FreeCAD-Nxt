@@ -12,6 +12,10 @@ Item {
     //: The hits list's width, and where it starts, from the field's left.
     property real listWidth: width
     property real listX: 0
+    //: An item covering the view, to hang the hits on (else the box).
+    //: Out of its parent's bounds a list gets no clicks: what lies
+    //: under it there takes them.
+    property Item hitsLayer: null
 
     signal queryChanged(string text)
     signal chosen(string name)
@@ -29,6 +33,11 @@ Item {
             field.text = "";
             box.chosen(target);
         });
+    }
+
+    // Whether (x, y) in `item` falls on the open list of hits.
+    function listHit(item, x, y) {
+        return popup.visible && popup.contains(popup.mapFromItem(item, x, y));
     }
 
     function step(delta) {
@@ -84,11 +93,18 @@ Item {
 
     Rectangle {
         id: popup
+        parent: box.hitsLayer ? box.hitsLayer : box
         visible: box.open && box.results.length > 0
-        z: 10
-        y: field.y + field.height + 4
+        z: box.hitsLayer ? 900 : 10
+        // Where it hangs under the field, in its parent's coordinates
+        // (taken as it opens: the field does not move while it is open).
+        readonly property point at: box.open
+            ? box.mapToItem(popup.parent, box.listX,
+                            field.y + field.height + 4)
+            : Qt.point(0, 0)
+        x: at.x
+        y: at.y
         width: Math.max(box.width, box.listWidth)
-        x: box.listX
         height: Math.min(6, box.results.length) * rowHeight + 8
         color: theme.background
         border.width: 1
@@ -96,6 +112,13 @@ Item {
         radius: 4
 
         readonly property int rowHeight: Math.round(theme.rowHeight * 1.5)
+
+        // Takes every press on the list, gaps and border too, so none
+        // reaches the tree rows lying under it.
+        MouseArea {
+            anchors.fill: parent
+            acceptedButtons: Qt.AllButtons
+        }
 
         ListView {
             id: list
@@ -163,8 +186,11 @@ Item {
                 }
 
                 HoverHandler { id: rowHover }
-                TapHandler {
-                    onTapped: {
+                // A MouseArea, not a TapHandler: it grabs the press, so a
+                // tree row beneath cannot take the click first.
+                MouseArea {
+                    anchors.fill: parent
+                    onClicked: {
                         box.current = index;
                         box.choose(index);
                     }

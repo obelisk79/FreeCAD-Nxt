@@ -103,6 +103,22 @@ Popup {
             key: "DependencyArrows"
             text: qsTr("Show dependency arrows")
         }
+        Text {
+            visible: settingsPopup.values["DependencyArrows"] === true
+            leftPadding: 4
+            text: qsTr("Explain the arrows again")
+            font.pixelSize: theme.fontAside
+            font.underline: againHover.hovered
+            color: theme.link
+            Accessible.role: Accessible.Link
+            Accessible.name: text
+
+            HoverHandler {
+                id: againHover
+                cursorShape: Qt.PointingHandCursor
+            }
+            TapHandler { onTapped: nxt.resetRelationHints() }
+        }
         Setting {
             key: "HighlightRelated"
             text: qsTr("Highlight related objects")

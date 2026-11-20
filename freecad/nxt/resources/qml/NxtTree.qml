@@ -22,7 +22,8 @@ Rectangle {
 
     // Overlay hit test (view_overlay.py): is (x, y) the panel's or the 3D view's?
     function wantsPoint(x, y) {
-        if (header.contains(header.mapFromItem(root, x, y)))
+        if (header.contains(header.mapFromItem(root, x, y))
+                || header.listHit(root, x, y))
             return true;
         if (breadcrumb.visible
                 && breadcrumb.contains(breadcrumb.mapFromItem(root, x, y)))
@@ -83,6 +84,7 @@ Rectangle {
         // Above the list, so search results can hang over it.
         z: 100
         ghost: ghost
+        hitsLayer: root
         settingsOpen: root.settingsOpen
         onSettingsClicked: root.toggleSettings()
         onMenuRequested: function (x, y) {

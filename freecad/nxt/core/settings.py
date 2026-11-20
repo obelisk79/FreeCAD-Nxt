@@ -76,6 +76,8 @@ DEFAULTS: dict[str, bool | int | float | str] = {
     "DetailAutoShow": False,
     "HighlightRelated": False,
     "DependencyArrows": False,
+    # Which relationship hints the user has learned (tree/hints.py).
+    "RelationHints": "",
     # Quick Mass at the bottom of the 3D view (ui/quick_mass.py).
     "QuickMass": False,
     "QuickMassMaterial": "Steel-Generic",

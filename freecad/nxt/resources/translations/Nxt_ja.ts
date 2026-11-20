@@ -1,5 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!DOCTYPE TS>
+<?xml version='1.0' encoding='utf-8'?>
 <TS version="2.1" language="ja_JP">
 <context>
     <name>AttachTask</name>
@@ -139,6 +138,41 @@
     </message>
 </context>
 <context>
+    <name>DependencyArrows</name>
+    <message>
+        <source>attached from</source>
+        <translation>アタッチ元</translation>
+    </message>
+    <message>
+        <source>attached to</source>
+        <translation>アタッチ先</translation>
+    </message>
+    <message>
+        <source>referenced by</source>
+        <translation>参照元</translation>
+    </message>
+    <message>
+        <source>references</source>
+        <translation>参照先</translation>
+    </message>
+    <message>
+        <source>linked by</source>
+        <translation>リンク元</translation>
+    </message>
+    <message>
+        <source>links to</source>
+        <translation>リンク先</translation>
+    </message>
+    <message>
+        <source>shape for</source>
+        <translation>形状元</translation>
+    </message>
+    <message>
+        <source>built on</source>
+        <translation>形状先</translation>
+    </message>
+</context>
+<context>
     <name>DetailStrip</name>
     <message>
         <source>All properties · %1…</source>
@@ -200,7 +234,7 @@
         <translation>%1 の中へ</translation>
     </message>
     <message>
-        <source>Can&apos;t move here</source>
+        <source>Can't move here</source>
         <translation>ここには移動できません</translation>
     </message>
     <message>
@@ -258,11 +292,11 @@
         <translation>再選択で除外。チップにカーソルを合わせるとエッジを表示します。</translation>
     </message>
     <message>
-        <source>%1 of %2 edges won&apos;t chamfer at %3.</source>
+        <source>%1 of %2 edges won't chamfer at %3.</source>
         <translation>%2 本中 %1 本のエッジは %3 で面取りできません。</translation>
     </message>
     <message>
-        <source>%1 of %2 edges won&apos;t fillet at %3.</source>
+        <source>%1 of %2 edges won't fillet at %3.</source>
         <translation>%2 本中 %1 本のエッジは %3 でフィレットできません。</translation>
     </message>
     <message>
@@ -382,7 +416,7 @@
     <name>Nxt</name>
     <message>
         <source>Addons updated</source>
-        <extracomment>The running check; held so Qt doesn&apos;t lose the workers, and so the check runs once a session. FreeCAD&apos;s settings for bringing up a hidden Report view when a message arrives. The Addon Manager&apos;s workers report fetch problems as warnings and errors; during the check they are only logged. Longest the Report view is kept down, in case a worker never finishes.</extracomment>
+        <extracomment>The running check; held so Qt doesn't lose the workers, and so the check runs once a session. FreeCAD's settings for bringing up a hidden Report view when a message arrives. The Addon Manager's workers report fetch problems as warnings and errors; during the check they are only logged. Longest the Report view is kept down, in case a worker never finishes.</extracomment>
         <translation>アドオンを更新しました</translation>
     </message>
     <message>
@@ -407,7 +441,7 @@ Restart FreeCAD now to use the new versions?</source>
         <translation>閉じる</translation>
     </message>
     <message>
-        <source>Show FreeCAD&apos;s property table</source>
+        <source>Show FreeCAD's property table</source>
         <translation>FreeCAD のプロパティ表を表示</translation>
     </message>
     <message>
@@ -424,7 +458,7 @@ Restart FreeCAD now to use the new versions?</source>
     </message>
     <message>
         <source>Taper 2</source>
-        <extracomment>The property each task panel field sets, where it is known. The scene nodes that hold a handle: an arrow, and a rotation handle. Per feature type, each kind of handle and the task fields its handles drag, in the order FreeCAD creates them. The task panel field a feature&apos;s arrow drags, by feature type. Any other type with an arrow falls back to the first length field shown. The number a field&apos;s text starts with, and its decimals.</extracomment>
+        <extracomment>The property each task panel field sets, where it is known. The scene nodes that hold a handle: an arrow, and a rotation handle. Per feature type, each kind of handle and the task fields its handles drag, in the order FreeCAD creates them. The task panel field a feature's arrow drags, by feature type. Any other type with an arrow falls back to the first length field shown. The number a field's text starts with, and its decimals.</extracomment>
         <translation>テーパー 2</translation>
     </message>
     <message>
@@ -449,7 +483,7 @@ Restart FreeCAD now to use the new versions?</source>
     </message>
     <message>
         <source>Isolated: %1</source>
-        <extracomment>Passes over the saved visibility; each settles what the last upset. What the targets hold, and each Body&apos;s Tip, going in.</extracomment>
+        <extracomment>Passes over the saved visibility; each settles what the last upset. What the targets hold, and each Body's Tip, going in.</extracomment>
         <translation>分離中: %1</translation>
     </message>
     <message>
@@ -550,7 +584,7 @@ Restart FreeCAD now to use the new versions?</source>
     </message>
     <message>
         <source>conflicting constraints</source>
-        <extracomment>(attribute, severity, phrase), worst first. Properties on Sketcher::SketchObject holding the last solve&apos;s results.</extracomment>
+        <extracomment>(attribute, severity, phrase), worst first. Properties on Sketcher::SketchObject holding the last solve's results.</extracomment>
         <translation>競合する拘束</translation>
     </message>
     <message>
@@ -567,7 +601,7 @@ Restart FreeCAD now to use the new versions?</source>
     </message>
     <message>
         <source>solver findings unavailable in this build</source>
-        <extracomment>Names worth showing in a dump. Only these may be called: `autoRemoveRedundants` also matches &quot;redund&quot; and would edit the sketch.</extracomment>
+        <extracomment>Names worth showing in a dump. Only these may be called: `autoRemoveRedundants` also matches "redund" and would edit the sketch.</extracomment>
         <translation>このビルドではソルバーの結果を取得できません</translation>
     </message>
     <message>
@@ -576,7 +610,7 @@ Restart FreeCAD now to use the new versions?</source>
     </message>
     <message>
         <source>Activate overlay mode over the 3D view</source>
-        <extracomment>Events that mean &quot;you may have been moved into, or out of, an overlay&quot;. Events that mean &quot;the colours under you just changed&quot;. The stock tree (colour source) may not exist yet at startup. How far up the parent chain to look for FreeCAD&apos;s overlay container. Acts on the dock under the cursor, i.e. ours when our button is clicked.</extracomment>
+        <extracomment>Events that mean "you may have been moved into, or out of, an overlay". Events that mean "the colours under you just changed". The stock tree (colour source) may not exist yet at startup. How far up the parent chain to look for FreeCAD's overlay container. Acts on the dock under the cursor, i.e. ours when our button is clicked.</extracomment>
         <translation>3D ビュー上のオーバーレイ表示</translation>
     </message>
     <message>
@@ -588,7 +622,7 @@ Restart FreeCAD now to use the new versions?</source>
         <translation>パネルを閉じる</translation>
     </message>
     <message>
-        <source>QtQuick is not available in this FreeCAD&apos;s Qt packaging.
+        <source>QtQuick is not available in this FreeCAD's Qt packaging.
 The panel needs PySide6.QtQuickWidgets.</source>
         <translation>この FreeCAD の Qt には QtQuick がありません。
 パネルには PySide6.QtQuickWidgets が必要です。</translation>
@@ -599,7 +633,7 @@ The panel needs PySide6.QtQuickWidgets.</source>
     </message>
     <message>
         <source>Tip of %s moved to %s</source>
-        <extracomment>Where a Body&apos;s bar sets no tip: above its first feature. Objects made but not yet placed against the bar, at most. Objects just made: a Body&apos;s bar moves below each, as below a new feature, if it lands where the bar rests.</extracomment>
+        <extracomment>Where a Body's bar sets no tip: above its first feature. Objects made but not yet placed against the bar, at most. Objects just made: a Body's bar moves below each, as below a new feature, if it lands where the bar rests.</extracomment>
         <translation>%s のチップを %s へ移動</translation>
     </message>
     <message>
@@ -608,7 +642,7 @@ The panel needs PySide6.QtQuickWidgets.</source>
     </message>
     <message>
         <source>Expression rows</source>
-        <extracomment>The page&apos;s group in FreeCAD&apos;s Preferences dialog. What the quick panel offers. The page offers these and more. Settings the theme reads: changing one restyles the panel. Settings the snapshot reads: changing one rebuilds it. The 3D views&apos; ambient occlusion (tools/ambient_occlusion.py). Every value a choice setting may take, in the order it is offered.</extracomment>
+        <extracomment>The page's group in FreeCAD's Preferences dialog. What the quick panel offers. The page offers these and more. Settings the theme reads: changing one restyles the panel. Settings the snapshot reads: changing one rebuilds it. The 3D views' ambient occlusion (tools/ambient_occlusion.py). Every value a choice setting may take, in the order it is offered.</extracomment>
         <translation>式の行</translation>
     </message>
     <message>
@@ -665,7 +699,7 @@ The panel needs PySide6.QtQuickWidgets.</source>
         <translation>未拘束スケッチを表示</translation>
     </message>
     <message>
-        <source>Show tooltips on the tree&apos;s rows</source>
+        <source>Show tooltips on the tree's rows</source>
         <translation>ツリーにツールチップ</translation>
     </message>
     <message>
@@ -677,7 +711,7 @@ The panel needs PySide6.QtQuickWidgets.</source>
         <translation>面をダブルクリックで元のフィーチャーを編集</translation>
     </message>
     <message>
-        <source>Auto repair &apos;Wire not closed&apos; errors</source>
+        <source>Auto repair 'Wire not closed' errors</source>
         <translation>「Wire not closed」を自動修復</translation>
     </message>
     <message>
@@ -685,7 +719,7 @@ The panel needs PySide6.QtQuickWidgets.</source>
         <translation>新しいスケッチ、コンテナ、フィーチャーの名前を変更</translation>
     </message>
     <message>
-        <source>When a new object&apos;s edit closes (or a container is made), its name opens for editing in the tree.</source>
+        <source>When a new object's edit closes (or a container is made), its name opens for editing in the tree.</source>
         <translation>新しいオブジェクトの編集を閉じると (またはコンテナを作成すると)、ツリーで名前の編集が始まります。</translation>
     </message>
     <message>
@@ -693,7 +727,7 @@ The panel needs PySide6.QtQuickWidgets.</source>
         <translation>試験的: ダイナミックツールバー</translation>
     </message>
     <message>
-        <source>Nxt&apos;s toolbars in place of FreeCAD&apos;s: each command on its own, arranged per workbench in edit mode.</source>
+        <source>Nxt's toolbars in place of FreeCAD's: each command on its own, arranged per workbench in edit mode.</source>
         <translation>FreeCADのツールバーの代わりにNxtのツールバー: コマンドごとに独立し、編集モードでワークベンチごとに配置。</translation>
     </message>
     <message>
@@ -701,13 +735,13 @@ The panel needs PySide6.QtQuickWidgets.</source>
         <translation>3 点へのスケッチのアタッチを確認しない</translation>
     </message>
     <message>
-        <source>Three points, or a straight edge and a point, give the sketch&apos;s plane.
+        <source>Three points, or a straight edge and a point, give the sketch's plane.
 Hold Shift to get the attachment dialog anyway.</source>
         <translation>3 点、または直線エッジと 1 点でスケッチ平面が決まります。
 Shift を押すとアタッチメントダイアログを表示します。</translation>
     </message>
     <message>
-        <source>Show the selection&apos;s dependencies as arrows</source>
+        <source>Show the selection's dependencies as arrows</source>
         <translation>依存関係を矢印で表示</translation>
     </message>
     <message>
@@ -719,7 +753,7 @@ Shift を押すとアタッチメントダイアログを表示します。</tra
         <translation>ツリー線を表示</translation>
     </message>
     <message>
-        <source>Show a row&apos;s details when it is clicked</source>
+        <source>Show a row's details when it is clicked</source>
         <translation>クリックで詳細を表示</translation>
     </message>
     <message>
@@ -747,7 +781,7 @@ Shift を押すとアタッチメントダイアログを表示します。</tra
         <translation>起動時に更新を確認</translation>
     </message>
     <message>
-        <source>Uses the Addon Manager&apos;s check, once per session, and lists any updates to review and apply.</source>
+        <source>Uses the Addon Manager's check, once per session, and lists any updates to review and apply.</source>
         <translation>アドオンマネージャーの確認をセッションごとに 1 回使い、確認と適用が必要な更新を一覧表示します。</translation>
     </message>
     <message>
@@ -779,7 +813,7 @@ Shift を押すとアタッチメントダイアログを表示します。</tra
         <translation>押して切替</translation>
     </message>
     <message>
-        <source>Kept with FreeCAD&apos;s dialog history: another tool, such as Transform, may change it.</source>
+        <source>Kept with FreeCAD's dialog history: another tool, such as Transform, may change it.</source>
         <translation>FreeCAD のダイアログ履歴に保存されます。「変換」など他のツールが変更することがあります。</translation>
     </message>
     <message>
@@ -803,7 +837,7 @@ Shift を押すとアタッチメントダイアログを表示します。</tra
         <translation>ツリーから編集時はハンドルなし</translation>
     </message>
     <message>
-        <source>Double-clicking a feature&apos;s row opens it without the handles.
+        <source>Double-clicking a feature's row opens it without the handles.
 A new feature still gets them.</source>
         <translation>フィーチャーの行をダブルクリックするとハンドルなしで開きます。
 新しいフィーチャーには表示されます。</translation>
@@ -824,7 +858,7 @@ Hold Alt while dragging to pass through.</source>
     </message>
     <message>
         <source>Low</source>
-        <extracomment>The ambient occlusion&apos;s ranges on the page. The automatic radius, in percent of the model&apos;s diagonal.</extracomment>
+        <extracomment>The ambient occlusion's ranges on the page. The automatic radius, in percent of the model's diagonal.</extracomment>
         <translation>低</translation>
     </message>
     <message>
@@ -890,7 +924,7 @@ Automatic follows the size of the model.</source>
         <translation>半径</translation>
     </message>
     <message>
-        <source>With an automatic radius: how far the shading spreads, as a share of the model&apos;s size.
+        <source>With an automatic radius: how far the shading spreads, as a share of the model's size.
 The same look on a small part and on a building.</source>
         <translation>半径が自動のとき：陰影がどこまで広がるかを、モデルの大きさに対する割合で指定します。
 小さな部品でも建物でも同じ見た目になります。</translation>
@@ -926,7 +960,7 @@ The same look on a small part and on a building.</source>
     </message>
     <message>
         <source>Plane</source>
-        <extracomment>Most references an attachment takes. Mode -&gt; its variant&apos;s label, in the order offered. What the variants choose (&quot;Plane&quot;); empty with one mode. Its modes read MapPathParameter.</extracomment>
+        <extracomment>Most references an attachment takes. Mode -&gt; its variant's label, in the order offered. What the variants choose ("Plane"); empty with one mode. Its modes read MapPathParameter.</extracomment>
         <translation>平面</translation>
     </message>
     <message>
@@ -1008,7 +1042,7 @@ The same look on a small part and on a building.</source>
     </message>
     <message>
         <source>Point</source>
-        <extracomment>FreeCAD&apos;s reference types -&gt; the word a pick is shown with.</extracomment>
+        <extracomment>FreeCAD's reference types -&gt; the word a pick is shown with.</extracomment>
         <translation>点</translation>
     </message>
     <message>
@@ -1017,7 +1051,7 @@ The same look on a small part and on a building.</source>
     </message>
     <message>
         <source>Line</source>
-        <extracomment>Part&apos;s geometry classes, by the name a sketch&apos;s element goes by.</extracomment>
+        <extracomment>Part's geometry classes, by the name a sketch's element goes by.</extracomment>
         <translation>線</translation>
     </message>
     <message>
@@ -1034,7 +1068,7 @@ The same look on a small part and on a building.</source>
     </message>
     <message>
         <source>These points are in a line, so no plane fits.</source>
-        <extracomment>Reference types -&gt; the glyph a pick is drawn with. FreeCAD&apos;s message (a fragment, lower case) -&gt; what went wrong in plain words, and what to do about it.</extracomment>
+        <extracomment>Reference types -&gt; the glyph a pick is drawn with. FreeCAD's message (a fragment, lower case) -&gt; what went wrong in plain words, and what to do about it.</extracomment>
         <translation>点が一直線上にあるため、平面を決められません。</translation>
     </message>
     <message>
@@ -1059,12 +1093,12 @@ The same look on a small part and on a building.</source>
     </message>
     <message>
         <source>Deleted %s from %s</source>
-        <extracomment>Selection and undo counts are polled; both are cheap to read. In a task of Nxt&apos;s own: what it edits, rather than FreeCAD&apos;s object in edit. Inside a task dialog (task_layout.py): the object it edits, never the selection; the Data tab, a template&apos;s cards only. What is wrong with the object, shown above its cards. Per panel list picking its reference: the item chosen before, its &quot;Select reference...&quot; item, and what has been picked. While picking for a link: its property and whose it is. The property whose field has the keyboard: a rebuild of the cards (Two sides adds one) gives it back, so arrows keep working.</extracomment>
+        <extracomment>Selection and undo counts are polled; both are cheap to read. In a task of Nxt's own: what it edits, rather than FreeCAD's object in edit. Inside a task dialog (task_layout.py): the object it edits, never the selection; the Data tab, a template's cards only. What is wrong with the object, shown above its cards. Per panel list picking its reference: the item chosen before, its "Select reference..." item, and what has been picked. While picking for a link: its property and whose it is. The property whose field has the keyboard: a rebuild of the cards (Two sides adds one) gives it back, so arrows keep working.</extracomment>
         <translation>%s を %s から削除しました</translation>
     </message>
     <message>
         <source>%s is also a unit, which FreeCAD reads first: rename the variable</source>
-        <extracomment>Kinds that fit half a row. Everything else takes a whole one. Groups collapsed unless something in them has an expression. An enumeration this short is joined buttons, not a drop-down. How close two unit axes&apos; dot product must come to 1 to point the same way. The rotation axis as last typed, per object and property. FreeCAD keeps a rotation as a quaternion and reads its axis back scaled to length 1, or as Z when the angle is 0; the typed numbers stay shown while the rotation still turns about them.</extracomment>
+        <extracomment>Kinds that fit half a row. Everything else takes a whole one. Groups collapsed unless something in them has an expression. An enumeration this short is joined buttons, not a drop-down. How close two unit axes' dot product must come to 1 to point the same way. The rotation axis as last typed, per object and property. FreeCAD keeps a rotation as a quaternion and reads its axis back scaled to length 1, or as Z when the angle is 0; the typed numbers stay shown while the rotation still turns about them.</extracomment>
         <translation>%s は単位でもあり、FreeCAD はそちらを優先します。変数名を変更してください</translation>
     </message>
     <message>
@@ -1073,7 +1107,7 @@ The same look on a small part and on a building.</source>
     </message>
     <message>
         <source>Accessible light and dark themes.</source>
-        <extracomment>Install states, as QML shows them. From FreeCAD&apos;s addon index (github.com/FreeCAD/Addons, Data/Index.json).</extracomment>
+        <extracomment>Install states, as QML shows them. From FreeCAD's addon index (github.com/FreeCAD/Addons, Data/Index.json).</extracomment>
         <translation>見やすいライト・ダークテーマ。</translation>
     </message>
     <message>
@@ -1099,12 +1133,12 @@ The same look on a small part and on a building.</source>
     </message>
     <message>
         <source>Menu</source>
-        <extracomment>The setting&apos;s name while it was on by default; dropped at startup. After the window first shows, the button is checked this often for this long: FreeCAD may still be restoring its toolbar layout. What FreeCAD&apos;s toolbar layout does to the button&apos;s toolbar.</extracomment>
+        <extracomment>The setting's name while it was on by default; dropped at startup. After the window first shows, the button is checked this often for this long: FreeCAD may still be restoring its toolbar layout. What FreeCAD's toolbar layout does to the button's toolbar.</extracomment>
         <translation>メニュー</translation>
     </message>
     <message>
         <source>Attachment</source>
-        <extracomment>Offset fields in panel order: move X Y Z, then turn about X Y Z. FreeCAD&apos;s attachment box, in its dialog for a datum or a new sketch. How long after an object is made its dialog may still be opening, s. Binders take an attachment only when asked: FreeCAD&apos;s editor adds it. A way chosen before the picks it needs: its mode.</extracomment>
+        <extracomment>Offset fields in panel order: move X Y Z, then turn about X Y Z. FreeCAD's attachment box, in its dialog for a datum or a new sketch. How long after an object is made its dialog may still be opening, s. Binders take an attachment only when asked: FreeCAD's editor adds it. A way chosen before the picks it needs: its mode.</extracomment>
         <translation>アタッチメント</translation>
     </message>
     <message>
@@ -1129,9 +1163,9 @@ The same look on a small part and on a building.</source>
     </message>
     <message>
         <source>External</source>
-        <extracomment>Element filters, then constraint filters. A geometric group longer than this starts folded. Constraint chips shown on an element&apos;s strip before &quot;+n&quot;. A constraint&apos;s geometry index where it names none (GeoEnum::GeoUndef). External geometry&apos;s indices count down from this one (GeoEnum::RefExt). ExternalGeo holds the two axes first, then the external geometry. The status marks, as SeverityMark.qml draws them.
+        <extracomment>Element filters, then constraint filters. A geometric group longer than this starts folded. Constraint chips shown on an element's strip before "+n". A constraint's geometry index where it names none (GeoEnum::GeoUndef). External geometry's indices count down from this one (GeoEnum::RefExt). ExternalGeo holds the two axes first, then the external geometry. The status marks, as SeverityMark.qml draws them.
 ----------
-External geometry&apos;s indices count down from this one (GeoEnum::RefExt).</extracomment>
+External geometry's indices count down from this one (GeoEnum::RefExt).</extracomment>
         <translation>外部</translation>
     </message>
     <message>
@@ -1144,7 +1178,7 @@ External geometry&apos;s indices count down from this one (GeoEnum::RefExt).</ex
     </message>
     <message>
         <source>edge</source>
-        <extracomment>What part of an element is still free, by Sketcher&apos;s PointPos.</extracomment>
+        <extracomment>What part of an element is still free, by Sketcher's PointPos.</extracomment>
         <translation>エッジ</translation>
     </message>
     <message>
@@ -1161,9 +1195,9 @@ External geometry&apos;s indices count down from this one (GeoEnum::RefExt).</ex
     </message>
     <message>
         <source>Horizontal axis</source>
-        <extracomment>Axes, by geometry index, as a constraint&apos;s chips name them.
+        <extracomment>Axes, by geometry index, as a constraint's chips name them.
 ----------
-The sketch&apos;s axes, by their geometry index.</extracomment>
+The sketch's axes, by their geometry index.</extracomment>
         <translation>水平軸</translation>
     </message>
     <message>
@@ -1172,7 +1206,7 @@ The sketch&apos;s axes, by their geometry index.</extracomment>
     </message>
     <message>
         <source>Point on object</source>
-        <extracomment>Constraint types that hold a value, and so can drive or be driven. Sketcher&apos;s constraint types whose name is not already a plain word.</extracomment>
+        <extracomment>Constraint types that hold a value, and so can drive or be driven. Sketcher's constraint types whose name is not already a plain word.</extracomment>
         <translation>オブジェクト上の点</translation>
     </message>
     <message>
@@ -1222,7 +1256,7 @@ The sketch&apos;s axes, by their geometry index.</extracomment>
     </message>
     <message>
         <source>Over-constrained</source>
-        <extracomment>A solver finding&apos;s heading, by the sketch attribute that lists it.</extracomment>
+        <extracomment>A solver finding's heading, by the sketch attribute that lists it.</extracomment>
         <translation>過剰拘束</translation>
     </message>
     <message>
@@ -1239,7 +1273,7 @@ The sketch&apos;s axes, by their geometry index.</extracomment>
     </message>
     <message>
         <source>Empty sketch</source>
-        <extracomment>The status mark&apos;s shapes (SeverityMark.qml): none, ring, triangle, disc. A finding&apos;s mark is its health severity, past the ring. A constraint&apos;s geometry index where it names none (GeoEnum::GeoUndef). The status link that selects what is still free to move. Selection names inside a sketch, and what each picks.</extracomment>
+        <extracomment>The status mark's shapes (SeverityMark.qml): none, ring, triangle, disc. A finding's mark is its health severity, past the ring. A constraint's geometry index where it names none (GeoEnum::GeoUndef). The status link that selects what is still free to move. Selection names inside a sketch, and what each picks.</extracomment>
         <translation>空のスケッチ</translation>
     </message>
     <message>
@@ -1252,17 +1286,17 @@ The sketch&apos;s axes, by their geometry index.</extracomment>
     </message>
     <message>
         <source>Group</source>
-        <extracomment>Wait after the last toolbar change before reading them all again. Proxied buttons emit nothing when their text or state changes (Draft Tray shows the current layer): read again this often. FreeCAD&apos;s toolbar icon sizes, offered in edit mode. Where on screen a strip&apos;s view is: its area and the point in it. The drawer&apos;s separator and New group tiles, as their drags carry them. dropCarried&apos;s &quot;not on a new-row zone&quot;. The areas holding something changed (a side strip shows or goes). The carried item is over `area`&apos;s strip at x, y; &quot;&quot; over none. The carried item was let go over `area`&apos;s strip at x, y. The group open in the editor row, by identity: rows move. Group key -&gt; the member key last used, kept across rebuilds. The item dragged out of its view: (area, row) or a drawer key.</extracomment>
+        <extracomment>Wait after the last toolbar change before reading them all again. Proxied buttons emit nothing when their text or state changes (Draft Tray shows the current layer): read again this often. FreeCAD's toolbar icon sizes, offered in edit mode. Where on screen a strip's view is: its area and the point in it. The drawer's separator and New group tiles, as their drags carry them. dropCarried's "not on a new-row zone". The areas holding something changed (a side strip shows or goes). The carried item is over `area`'s strip at x, y; "" over none. The carried item was let go over `area`'s strip at x, y. The group open in the editor row, by identity: rows move. Group key -&gt; the member key last used, kept across rebuilds. The item dragged out of its view: (area, row) or a drawer key.</extracomment>
         <translation>グループ</translation>
     </message>
     <message>
         <source>Tool strip</source>
-        <extracomment>Each strip&apos;s toolbar name and where it docks. Toolbars that are the strips&apos; own and never covered. The most of the window&apos;s height the top strip may take: a first layout at a sliver of its width (FreeCAD 1.1 lays toolbars out before the window has its size) wraps every item onto its own row, and a strip fixed at that height was never widened again. The least share of the window&apos;s width the top strip takes when docked as it should be; narrower, FreeCAD&apos;s restored layout squeezed it. How long after FreeCAD rearranges its toolbars (a restored layout, a workbench change) the strips&apos; docking is checked.</extracomment>
+        <extracomment>Each strip's toolbar name and where it docks. Toolbars that are the strips' own and never covered. The most of the window's height the top strip may take: a first layout at a sliver of its width (FreeCAD 1.1 lays toolbars out before the window has its size) wraps every item onto its own row, and a strip fixed at that height was never widened again. The least share of the window's width the top strip takes when docked as it should be; narrower, FreeCAD's restored layout squeezed it. How long after FreeCAD rearranges its toolbars (a restored layout, a workbench change) the strips' docking is checked.</extracomment>
         <translation>ツールストリップ</translation>
     </message>
     <message>
         <source>Removed the expression on %s</source>
-        <extracomment>Set on a box of FreeCAD&apos;s that the panel hid, and so may show again. FreeCAD&apos;s boxes in the sketch dialog -&gt; the list each one is, if the panel offers to show it; the solver message is never shown. The box the panel&apos;s cards take the place of. Switches FreeCAD keeps in parameters: key -&gt; (group, name, default). Switches that are properties of the sketch&apos;s view provider. Which geometry is drawn, and picked, on top: parameters, top first. Each holds 1 (normal), 2 (construction) or 3 (external). FreeCAD&apos;s command that selects what a status link is about. Sketcher&apos;s own &quot;Auto-update&quot; switch: recompute after every edit. A stock list was asked for, or sent away.</extracomment>
+        <extracomment>Set on a box of FreeCAD's that the panel hid, and so may show again. FreeCAD's boxes in the sketch dialog -&gt; the list each one is, if the panel offers to show it; the solver message is never shown. The box the panel's cards take the place of. Switches FreeCAD keeps in parameters: key -&gt; (group, name, default). Switches that are properties of the sketch's view provider. Which geometry is drawn, and picked, on top: parameters, top first. Each holds 1 (normal), 2 (construction) or 3 (external). FreeCAD's command that selects what a status link is about. Sketcher's own "Auto-update" switch: recompute after every edit. A stock list was asked for, or sent away.</extracomment>
         <translation>%s の式を削除しました</translation>
     </message>
 </context>
@@ -1297,7 +1331,7 @@ The sketch&apos;s axes, by their geometry index.</extracomment>
         <translation>失敗したフィーチャーを表示</translation>
     </message>
     <message>
-        <source>Show the solver&apos;s findings</source>
+        <source>Show the solver's findings</source>
         <translation>ソルバーの結果</translation>
     </message>
     <message>
@@ -1305,7 +1339,7 @@ The sketch&apos;s axes, by their geometry index.</extracomment>
         <translation>使用先を選択</translation>
     </message>
     <message>
-        <source>Select what it&apos;s built from</source>
+        <source>Select what it's built from</source>
         <translation>構成元を選択</translation>
     </message>
     <message>
@@ -1361,7 +1395,7 @@ The sketch&apos;s axes, by their geometry index.</extracomment>
         <translation>バインド先を選択</translation>
     </message>
     <message>
-        <source>FreeCAD&apos;s menu…</source>
+        <source>FreeCAD's menu…</source>
         <translation>FreeCAD のメニュー…</translation>
     </message>
     <message>
@@ -1382,7 +1416,7 @@ The sketch&apos;s axes, by their geometry index.</extracomment>
     </message>
     <message>
         <source>Hide</source>
-        <extracomment>Short labels under the bar&apos;s icons.</extracomment>
+        <extracomment>Short labels under the bar's icons.</extracomment>
         <translation>非表示</translation>
     </message>
     <message>
@@ -1407,12 +1441,12 @@ The sketch&apos;s axes, by their geometry index.</extracomment>
     </message>
     <message>
         <source>%1 %2</source>
-        <extracomment>Labels that show a count for several objects: &quot;Delete 3&quot;. How a count is added to a label; %1 the label, %2 how many.</extracomment>
+        <extracomment>Labels that show a count for several objects: "Delete 3". How a count is added to a label; %1 the label, %2 how many.</extracomment>
         <translation>%1 %2</translation>
     </message>
     <message>
         <source>Model</source>
-        <extracomment>FreeCAD command icons that Nxt&apos;s actions borrow. Group names, listed for translation extraction.</extracomment>
+        <extracomment>FreeCAD command icons that Nxt's actions borrow. Group names, listed for translation extraction.</extracomment>
         <translation>モデル</translation>
     </message>
     <message>
@@ -1461,7 +1495,7 @@ The sketch&apos;s axes, by their geometry index.</extracomment>
     </message>
     <message>
         <source>Visibility</source>
-        <extracomment>The tree header&apos;s menu: its sections and subtitle.</extracomment>
+        <extracomment>The tree header's menu: its sections and subtitle.</extracomment>
         <translation>表示</translation>
     </message>
     <message>
@@ -1482,12 +1516,12 @@ The sketch&apos;s axes, by their geometry index.</extracomment>
     </message>
     <message>
         <source>Edit %1</source>
-        <extracomment>An edit mode&apos;s label; %1 is the object&apos;s label.</extracomment>
+        <extracomment>An edit mode's label; %1 is the object's label.</extracomment>
         <translation>%1 を編集</translation>
     </message>
     <message>
         <source>%1 objects</source>
-        <extracomment>The menu&apos;s title for a selection of several; %1 is how many.</extracomment>
+        <extracomment>The menu's title for a selection of several; %1 is how many.</extracomment>
         <translation>%1 個のオブジェクト</translation>
     </message>
     <message>
@@ -2235,7 +2269,7 @@ The sketch&apos;s axes, by their geometry index.</extracomment>
         <translation>Nxt 面取り</translation>
     </message>
     <message>
-        <source>Chamfer the selected edges by booleans, instead of Part Design&apos;s chamfer</source>
+        <source>Chamfer the selected edges by booleans, instead of Part Design's chamfer</source>
         <translation>Part Design の面取りではなく、ブーリアン演算で選択エッジを面取り</translation>
     </message>
 </context>
@@ -2246,7 +2280,7 @@ The sketch&apos;s axes, by their geometry index.</extracomment>
         <translation>Nxt フィレット</translation>
     </message>
     <message>
-        <source>Fillet the selected edges by cutting a rolling-ball blend, instead of Part Design&apos;s fillet</source>
+        <source>Fillet the selected edges by cutting a rolling-ball blend, instead of Part Design's fillet</source>
         <translation>Part Design のフィレットではなく、転がり球ブレンドで選択エッジをフィレット</translation>
     </message>
 </context>
@@ -2264,7 +2298,7 @@ The sketch&apos;s axes, by their geometry index.</extracomment>
 <context>
     <name>Nxt_Menu</name>
     <message>
-        <source>The Nxt model panel&apos;s commands</source>
+        <source>The Nxt model panel's commands</source>
         <translation>Nxt モデルパネルのコマンド</translation>
     </message>
 </context>
@@ -2297,7 +2331,7 @@ The sketch&apos;s axes, by their geometry index.</extracomment>
         <translation>Nxt プロパティインスペクター</translation>
     </message>
     <message>
-        <source>Show the selection&apos;s properties beside the model panel</source>
+        <source>Show the selection's properties beside the model panel</source>
         <translation>選択のプロパティをモデルパネルの横に表示</translation>
     </message>
 </context>
@@ -2308,7 +2342,7 @@ The sketch&apos;s axes, by their geometry index.</extracomment>
         <translation>Nxt を再読み込み</translation>
     </message>
     <message>
-        <source>Hot-reload the addon&apos;s Python modules</source>
+        <source>Hot-reload the addon's Python modules</source>
         <translation>アドオンの Python モジュールをホットリロード</translation>
     </message>
 </context>
@@ -2417,7 +2451,7 @@ The sketch&apos;s axes, by their geometry index.</extracomment>
     </message>
     <message>
         <source>Custom</source>
-        <extracomment>Gap between the bottom of the 3D view and the bar. Unit schemas offered first, by FreeCAD&apos;s name for them. Significant digits shown. kg/m³ in a kg/mm³, FreeCAD&apos;s internal density unit. The material setting&apos;s value while a custom density is used. Densities at least this large are shown as whole numbers. The QQuickWidget showing the bar, once there is one.</extracomment>
+        <extracomment>Gap between the bottom of the 3D view and the bar. Unit schemas offered first, by FreeCAD's name for them. Significant digits shown. kg/m³ in a kg/mm³, FreeCAD's internal density unit. The material setting's value while a custom density is used. Densities at least this large are shown as whole numbers. The QQuickWidget showing the bar, once there is one.</extracomment>
         <translation>カスタム</translation>
     </message>
 </context>
@@ -2611,11 +2645,11 @@ The sketch&apos;s axes, by their geometry index.</extracomment>
         <translation>アクティブ</translation>
     </message>
     <message>
-        <source>Hide FreeCAD&apos;s lists</source>
+        <source>Hide FreeCAD's lists</source>
         <translation>FreeCAD のリストを隠す</translation>
     </message>
     <message>
-        <source>Show FreeCAD&apos;s lists</source>
+        <source>Show FreeCAD's lists</source>
         <translation>FreeCAD のリストを表示</translation>
     </message>
 </context>
@@ -2823,7 +2857,7 @@ The sketch&apos;s axes, by their geometry index.</extracomment>
         <translation>詳細を隠す</translation>
     </message>
     <message>
-        <source>Can&apos;t drop on %1</source>
+        <source>Can't drop on %1</source>
         <translation>%1 にはドロップできません</translation>
     </message>
     <message>
@@ -2914,6 +2948,10 @@ The sketch&apos;s axes, by their geometry index.</extracomment>
         <translation>依存関係の矢印</translation>
     </message>
     <message>
+        <source>Explain the arrows again</source>
+        <translation>矢印の説明を再表示</translation>
+    </message>
+    <message>
         <source>Highlight related objects</source>
         <translation>関連を強調</translation>
     </message>
@@ -2930,7 +2968,7 @@ The sketch&apos;s axes, by their geometry index.</extracomment>
         <translation>3D にクイック質量</translation>
     </message>
     <message>
-        <source>Auto repair &apos;Wire not closed&apos; errors</source>
+        <source>Auto repair 'Wire not closed' errors</source>
         <translation>「Wire not closed」を自動修復</translation>
     </message>
     <message>

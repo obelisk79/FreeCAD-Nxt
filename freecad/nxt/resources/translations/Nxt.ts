@@ -139,6 +139,41 @@
     </message>
 </context>
 <context>
+    <name>DependencyArrows</name>
+    <message>
+        <source>attached from</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>attached to</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>referenced by</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>references</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>linked by</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>links to</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>shape for</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>built on</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>DetailStrip</name>
     <message>
         <source>All properties · %1…</source>
@@ -2903,6 +2938,10 @@ The sketch&apos;s axes, by their geometry index.</extracomment>
     </message>
     <message>
         <source>Show dependency arrows</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Explain the arrows again</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
