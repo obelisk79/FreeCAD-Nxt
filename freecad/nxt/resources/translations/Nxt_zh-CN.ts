@@ -824,7 +824,7 @@ Hold Alt while dragging to pass through.</source>
     </message>
     <message>
         <source>Low</source>
-        <extracomment>The ambient occlusion&apos;s ranges on the page.</extracomment>
+        <extracomment>The ambient occlusion&apos;s ranges on the page. The automatic radius, in percent of the model&apos;s diagonal.</extracomment>
         <translation>低</translation>
     </message>
     <message>
@@ -890,6 +890,16 @@ Automatic follows the size of the model.</source>
         <translation>半径</translation>
     </message>
     <message>
+        <source>With an automatic radius: how far the shading spreads, as a share of the model&apos;s size.
+The same look on a small part and on a building.</source>
+        <translation>自动半径时：阴影扩散的范围，以模型尺寸的比例表示。
+小零件和建筑物上效果一致。</translation>
+    </message>
+    <message>
+        <source>Spread</source>
+        <translation>扩散</translation>
+    </message>
+    <message>
         <source>How long the view stays still before the full effect returns.</source>
         <translation>视图需静止多久才恢复完整效果。</translation>
     </message>
@@ -906,16 +916,8 @@ Automatic follows the size of the model.</source>
         <translation>更平滑的阴影，视图静止时持续改善。</translation>
     </message>
     <message>
-        <source>Reuse the view&apos;s depth</source>
-        <translation>复用视图深度</translation>
-    </message>
-    <message>
-        <source>Faster on large models: the model is not drawn a second time.</source>
-        <translation>大模型上更快：模型不会被绘制第二次。</translation>
-    </message>
-    <message>
-        <source>These two need the Python package PyOpenGL, which the Addon Manager offers with Nxt.</source>
-        <translation>这两项需要 Python 包 PyOpenGL，插件管理器会随 Nxt 一起提供。</translation>
+        <source>This needs the Python package PyOpenGL, which the Addon Manager offers with Nxt.</source>
+        <translation>需要 Python 包 PyOpenGL，插件管理器会随 Nxt 一起提供。</translation>
     </message>
     <message>
         <source>Undo</source>

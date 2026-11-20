@@ -31,7 +31,8 @@ _VIEW = frozenset({"RowDensity", "ReferenceChips", "UnderConstrainedMarks",
 _SNAPSHOT = frozenset({"PartLayout", "DependencyArrows"})
 #: The 3D views' ambient occlusion (tools/ambient_occlusion.py).
 OCCLUSION = ("AmbientOcclusion", "AOQuality", "AOIntensity", "AORadius",
-             "AOTemporal", "AODepthReuse", "AOWhileNavigating",
+             "AOSpread",
+             "AOTemporal", "AOWhileNavigating",
              "AOResumeDelay")
 
 #: Every value a choice setting may take, in the order it is offered.
@@ -456,6 +457,9 @@ class NxtPreferencesPage:
 INTENSITY_RANGE = (0.1, 3.0)
 INTENSITY_STEP = 0.1
 RADIUS_MAX = 100000.0
+#: The automatic radius, in percent of the model's diagonal.
+SPREAD_RANGE = (0.5, 25.0)
+SPREAD_STEP = 0.5
 RESUME_RANGE = (0, 5000)
 RESUME_STEP = 50
 
@@ -517,6 +521,17 @@ class NxtVisualizationPage:
             "Nxt", "How far apart surfaces still shade each other.\n"
                    "Automatic follows the size of the model."))
         layout.addRow(translate("Nxt", "Radius"), self._radius)
+        self._spread = QtWidgets.QDoubleSpinBox(box)
+        self._spread.setRange(*SPREAD_RANGE)
+        self._spread.setSingleStep(SPREAD_STEP)
+        self._spread.setDecimals(1)
+        self._spread.setSuffix(" %")
+        self._spread.setToolTip(translate(
+            "Nxt", "With an automatic radius: how far the shading spreads, "
+                   "as a share of the model's size.\nThe same look on a "
+                   "small part and on a building."))
+        layout.addRow(translate("Nxt", "Spread"), self._spread)
+        self._radius.valueChanged.connect(self._follow_radius)
         self._resume = QtWidgets.QSpinBox(box)
         self._resume.setRange(*RESUME_RANGE)
         self._resume.setSingleStep(RESUME_STEP)
@@ -531,21 +546,14 @@ class NxtVisualizationPage:
             "Nxt", "Smoother shading, which keeps improving while the "
                    "view is still."))
         layout.addRow(self._temporal)
-        self._reuse = QtWidgets.QCheckBox(translate(
-            "Nxt", "Reuse the view's depth"), box)
-        self._reuse.setToolTip(translate(
-            "Nxt", "Faster on large models: the model is not drawn a "
-                   "second time."))
-        layout.addRow(self._reuse)
         from ..core import pyopengl
         self._needs = QtWidgets.QLabel(translate(
-            "Nxt", "These two need the Python package PyOpenGL, which "
-                   "the Addon Manager offers with Nxt."), box)
+            "Nxt", "This needs the Python package PyOpenGL, which the "
+                   "Addon Manager offers with Nxt."), box)
         self._needs.setWordWrap(True)
         missing = pyopengl.missing() is not None
         self._needs.setVisible(missing)
         self._temporal.setEnabled(not missing)
-        self._reuse.setEnabled(not missing)
         layout.addRow(self._needs)
         self._on.toggled.connect(self._follow_switch)
         outer.addWidget(box)
@@ -563,6 +571,12 @@ class NxtVisualizationPage:
         for field in (*self._choices.values(), self._intensity,
                       self._radius, self._resume):
             field.setEnabled(on)
+        self._follow_radius()
+
+    def _follow_radius(self, *_args: object) -> None:
+        """Spread counts only while the radius is automatic."""
+        self._spread.setEnabled(self._on.isChecked()
+                                and self._radius.value() == 0.0)
 
     def _show(self, value: Any) -> None:
         """Fill the fields from `value(key)`: the store or the defaults."""
@@ -571,9 +585,9 @@ class NxtVisualizationPage:
         self._on.setChecked(bool(value("AmbientOcclusion")))
         self._intensity.setValue(float(value("AOIntensity")))
         self._radius.setValue(float(value("AORadius")))
+        self._spread.setValue(float(value("AOSpread")))
         self._resume.setValue(int(value("AOResumeDelay")))
         self._temporal.setChecked(bool(value("AOTemporal")))
-        self._reuse.setChecked(bool(value("AODepthReuse")))
         self._follow_switch(self._on.isChecked())
 
     # FreeCAD calls these two by name.
@@ -586,9 +600,9 @@ class NxtVisualizationPage:
         settings.put("AmbientOcclusion", self._on.isChecked())
         settings.put("AOIntensity", self._intensity.value())
         settings.put("AORadius", self._radius.value())
+        settings.put("AOSpread", self._spread.value())
         settings.put("AOResumeDelay", self._resume.value())
         settings.put("AOTemporal", self._temporal.isChecked())
-        settings.put("AODepthReuse", self._reuse.isChecked())
         try:
             apply(set(OCCLUSION))
         except Exception:  # noqa: BLE001 - called by FreeCAD's dialog

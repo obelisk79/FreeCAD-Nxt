@@ -163,7 +163,7 @@ class Accumulator:
         gl.glClearColor(0.0, 0.0, 0.0, 0.0)   # an empty history: 0 frames
         for texture in self.textures:
             gl.glBindTexture(gl.GL_TEXTURE_2D, texture)
-            gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, gl.GL_RGBA16F, self.width,
+            gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, gl.GL_RGBA32F, self.width,
                             self.height, 0, gl.GL_RGBA, gl.GL_FLOAT, None)
             pyopengl.attach(gl, self.fbo, texture)
             gl.glClear(gl.GL_COLOR_BUFFER_BIT)

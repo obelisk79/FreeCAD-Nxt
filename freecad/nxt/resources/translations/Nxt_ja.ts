@@ -824,7 +824,7 @@ Hold Alt while dragging to pass through.</source>
     </message>
     <message>
         <source>Low</source>
-        <extracomment>The ambient occlusion&apos;s ranges on the page.</extracomment>
+        <extracomment>The ambient occlusion&apos;s ranges on the page. The automatic radius, in percent of the model&apos;s diagonal.</extracomment>
         <translation>低</translation>
     </message>
     <message>
@@ -890,6 +890,16 @@ Automatic follows the size of the model.</source>
         <translation>半径</translation>
     </message>
     <message>
+        <source>With an automatic radius: how far the shading spreads, as a share of the model&apos;s size.
+The same look on a small part and on a building.</source>
+        <translation>半径が自動のとき：陰影がどこまで広がるかを、モデルの大きさに対する割合で指定します。
+小さな部品でも建物でも同じ見た目になります。</translation>
+    </message>
+    <message>
+        <source>Spread</source>
+        <translation>広がり</translation>
+    </message>
+    <message>
         <source>How long the view stays still before the full effect returns.</source>
         <translation>完全な効果に戻るまでビューが静止している時間。</translation>
     </message>
@@ -906,16 +916,8 @@ Automatic follows the size of the model.</source>
         <translation>より滑らかな陰影。ビューが静止している間、改善し続けます。</translation>
     </message>
     <message>
-        <source>Reuse the view&apos;s depth</source>
-        <translation>ビューの深度を再利用</translation>
-    </message>
-    <message>
-        <source>Faster on large models: the model is not drawn a second time.</source>
-        <translation>大きなモデルで高速：モデルを二度描画しません。</translation>
-    </message>
-    <message>
-        <source>These two need the Python package PyOpenGL, which the Addon Manager offers with Nxt.</source>
-        <translation>この2つにはPythonパッケージPyOpenGLが必要です。アドオンマネージャーがNxtと一緒に提供します。</translation>
+        <source>This needs the Python package PyOpenGL, which the Addon Manager offers with Nxt.</source>
+        <translation>Python パッケージ PyOpenGL が必要です。アドオンマネージャーが Nxt と一緒に提供します。</translation>
     </message>
     <message>
         <source>Undo</source>

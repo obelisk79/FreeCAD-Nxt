@@ -824,7 +824,7 @@ Hold Alt while dragging to pass through.</source>
     </message>
     <message>
         <source>Low</source>
-        <extracomment>The ambient occlusion&apos;s ranges on the page.</extracomment>
+        <extracomment>The ambient occlusion&apos;s ranges on the page. The automatic radius, in percent of the model&apos;s diagonal.</extracomment>
         <translation>Низкое</translation>
     </message>
     <message>
@@ -890,6 +890,16 @@ Automatic follows the size of the model.</source>
         <translation>Радиус</translation>
     </message>
     <message>
+        <source>With an automatic radius: how far the shading spreads, as a share of the model&apos;s size.
+The same look on a small part and on a building.</source>
+        <translation>При автоматическом радиусе: насколько далеко распространяется затенение, как доля размера модели.
+Одинаковый вид и у мелкой детали, и у здания.</translation>
+    </message>
+    <message>
+        <source>Spread</source>
+        <translation>Распространение</translation>
+    </message>
+    <message>
         <source>How long the view stays still before the full effect returns.</source>
         <translation>Сколько вид должен быть неподвижен, прежде чем вернётся полный эффект.</translation>
     </message>
@@ -906,16 +916,8 @@ Automatic follows the size of the model.</source>
         <translation>Более мягкое затенение, которое улучшается, пока вид неподвижен.</translation>
     </message>
     <message>
-        <source>Reuse the view&apos;s depth</source>
-        <translation>Использовать глубину вида</translation>
-    </message>
-    <message>
-        <source>Faster on large models: the model is not drawn a second time.</source>
-        <translation>Быстрее на больших моделях: модель не рисуется второй раз.</translation>
-    </message>
-    <message>
-        <source>These two need the Python package PyOpenGL, which the Addon Manager offers with Nxt.</source>
-        <translation>Этим двум параметрам нужен Python-пакет PyOpenGL, который Менеджер дополнений предлагает вместе с Nxt.</translation>
+        <source>This needs the Python package PyOpenGL, which the Addon Manager offers with Nxt.</source>
+        <translation>Требуется пакет Python PyOpenGL, который менеджер дополнений предлагает вместе с Nxt.</translation>
     </message>
     <message>
         <source>Undo</source>

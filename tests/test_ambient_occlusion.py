@@ -31,7 +31,7 @@ App, Gui = fakes.install(ParamGet=fakes.params(STORE))
 
 from freecad.nxt.core import pyopengl, settings  # noqa: E402
 from freecad.nxt.tools import ambient_occlusion as ao  # noqa: E402
-from freecad.nxt.tools import ao_depth, ao_pipeline, ao_temporal  # noqa: E402
+from freecad.nxt.tools import ao_pipeline, ao_temporal  # noqa: E402
 from freecad.nxt.ui import prefs  # noqa: E402
 
 
@@ -55,18 +55,15 @@ class LookTests(unittest.TestCase):
 
     def setUp(self) -> None:
         STORE.clear()
-        self.saved = (ao_temporal.available, ao_depth.available)
+        self.saved = ao_temporal.available
         ao_temporal.available = lambda: True  # type: ignore[assignment]
-        ao_depth.available = lambda: True  # type: ignore[assignment]
 
     def tearDown(self) -> None:
-        ao_temporal.available, ao_depth.available = (  # type: ignore
-            self.saved)
+        ao_temporal.available = self.saved  # type: ignore[assignment]
 
     def test_defaults(self) -> None:
         look = ao.look(settings.get, 2.0)
-        self.assertEqual(look, ao_pipeline.Look("medium", 0.8, 2.0,
-                                                True, True))
+        self.assertEqual(look, ao_pipeline.Look("medium", 0.8, 2.0, True))
         self.assertFalse(settings.DEFAULTS["AmbientOcclusion"])
 
     def test_unknown_quality_falls_back(self) -> None:
@@ -85,16 +82,14 @@ class LookTests(unittest.TestCase):
             self.assertEqual(t_scales, scales, level)
 
     def test_temporal_failure_falls_back(self) -> None:
-        ao_temporal.available = self.saved[0]  # type: ignore[assignment]
+        ao_temporal.available = self.saved  # type: ignore[assignment]
         self.addCleanup(setattr, ao_temporal, "failed", False)
         ao_temporal.failed = True
         self.assertFalse(ao.look(settings.get, 1.0).temporal)
 
-    def test_toggles_need_pyopengl(self) -> None:
+    def test_temporal_needs_pyopengl(self) -> None:
         ao_temporal.available = lambda: False  # type: ignore[assignment]
-        ao_depth.available = lambda: False  # type: ignore[assignment]
-        look = ao.look(settings.get, 1.0)
-        self.assertFalse(look.temporal or look.reuse)
+        self.assertFalse(ao.look(settings.get, 1.0).temporal)
 
     def test_a_new_look_is_a_new_signature(self) -> None:
         a = ao.look(settings.get, 1.0)
@@ -107,10 +102,20 @@ class LookTests(unittest.TestCase):
 class SizeTests(unittest.TestCase):
 
     def test_auto_radius(self) -> None:
-        self.assertEqual(ao.auto_radius(None), 0.0)
-        self.assertEqual(ao.auto_radius((0, 0, 0, 0, 0, 0)), 0.0)
-        # 6 % of a 100 mm cube's diagonal (173.2), to two digits
-        self.assertEqual(ao.auto_radius((0, 0, 0, 100, 100, 100)), 10.0)
+        self.assertEqual(ao.diagonal(None), 0.0)
+        self.assertEqual(ao.auto_radius(ao.diagonal((0,) * 6), 6.0), 0.0)
+        cube = ao.diagonal((0, 0, 0, 100, 100, 100))    # 173.2 mm
+        # 6 % and 12 % of it, to two digits
+        self.assertEqual(ao.auto_radius(cube, 6.0), 10.0)
+        self.assertEqual(ao.auto_radius(cube, 12.0), 21.0)
+
+    def test_spread_counts_only_with_an_automatic_radius(self) -> None:
+        page = prefs.NxtVisualizationPage()
+        STORE.update(AmbientOcclusion=True, AORadius=0.0)
+        page.loadSettings()
+        self.assertTrue(page._spread.isEnabled())
+        page._radius.setValue(5.0)
+        self.assertFalse(page._spread.isEnabled())
 
     def test_texture_size(self) -> None:
         self.assertEqual(ao_pipeline.texture_size(1000, 500, 0.5),
@@ -141,6 +146,7 @@ class PreferencesTests(unittest.TestCase):
 
     def test_page_round_trip(self) -> None:
         STORE.update(AOQuality="high", AOIntensity=1.5, AORadius=4.0,
+                     AOSpread=12.0,
                      AOWhileNavigating="reduce", AOResumeDelay=500,
                      AOTemporal=False)
         page = prefs.NxtVisualizationPage()
@@ -151,6 +157,7 @@ class PreferencesTests(unittest.TestCase):
         self.assertEqual(STORE["AOWhileNavigating"], "reduce")
         self.assertAlmostEqual(STORE["AOIntensity"], 1.5)
         self.assertAlmostEqual(STORE["AORadius"], 4.0)
+        self.assertAlmostEqual(STORE["AOSpread"], 12.0)
         self.assertEqual(STORE["AOResumeDelay"], 500)
         self.assertFalse(STORE["AOTemporal"])
         self.assertEqual(self.applied[-1], set(prefs.OCCLUSION))
@@ -174,7 +181,7 @@ class PreferencesTests(unittest.TestCase):
         page = prefs.NxtVisualizationPage()
         missing = pyopengl.missing() is not None
         self.assertEqual(page._needs.isVisibleTo(page.form), missing)
-        self.assertEqual(page._reuse.isEnabled(), not missing)
+        self.assertEqual(page._temporal.isEnabled(), not missing)
 
 
 class Node:
@@ -292,6 +299,16 @@ class CullingTests(unittest.TestCase):
         reach = ao_pipeline.QUAD_REACH
         for axis in range(3):
             self.assertEqual({p[axis] for p in points}, {-reach, reach})
+
+
+class ShaderTests(unittest.TestCase):
+
+    def test_occlusion_shader_is_filled_in(self) -> None:
+        shader = ao_pipeline.GTAO_FRAGMENT % {
+            "dirs": 2, "steps": 3, "max_radius": "0.2", "power": "1.5",
+            "edge_on": "%r, %r" % ao_pipeline.EDGE_ON_FADE}
+        self.assertIn("smoothstep(0.05, 0.25, dot(n, V))", shader)
+        self.assertNotIn("%(", shader)
 
 
 class PyOpenGLTests(unittest.TestCase):

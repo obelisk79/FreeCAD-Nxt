@@ -818,7 +818,7 @@ Hold Alt while dragging to pass through.</source>
     </message>
     <message>
         <source>Low</source>
-        <extracomment>The ambient occlusion&apos;s ranges on the page.</extracomment>
+        <extracomment>The ambient occlusion&apos;s ranges on the page. The automatic radius, in percent of the model&apos;s diagonal.</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -883,6 +883,15 @@ Automatic follows the size of the model.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <source>With an automatic radius: how far the shading spreads, as a share of the model&apos;s size.
+The same look on a small part and on a building.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Spread</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>How long the view stays still before the full effect returns.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -899,15 +908,7 @@ Automatic follows the size of the model.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Reuse the view&apos;s depth</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Faster on large models: the model is not drawn a second time.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>These two need the Python package PyOpenGL, which the Addon Manager offers with Nxt.</source>
+        <source>This needs the Python package PyOpenGL, which the Addon Manager offers with Nxt.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>

@@ -22,7 +22,7 @@ import FreeCADGui as Gui
 
 from ..core import log, settings
 from ..core.qt import QtCore
-from . import ao_depth, ao_pipeline, ao_temporal
+from . import ao_pipeline, ao_temporal
 
 VIEW_TYPE = "Gui::View3DInventor"
 SELECTION_ROOT = "SoFCUnifiedSelection"
@@ -36,8 +36,8 @@ NOT_MODEL_TYPES = frozenset({"EventCallback", "TransformSeparator",
 OBJECT_GROUP = "ObjectGroup"
 #: What a view's size, camera and model are checked for, in ms.
 POLL_MS = 400
-#: Automatic radius: this fraction of the model's diagonal.
-RADIUS_OF_DIAGONAL = 0.06
+#: The setting AOSpread is a percentage of the model's diagonal.
+PERCENT = 100.0
 #: Properties whose change moves the model's bounding box.
 GEOMETRY_PROPERTIES = frozenset({"Shape", "Placement", "Visibility", "Mesh",
                                  "Points"})
@@ -60,16 +60,20 @@ def display(mode: str, moving: bool) -> tuple[bool, int]:
     return True, 1 if moving and mode == REDUCE else 0
 
 
-def auto_radius(box: tuple[float, ...] | None) -> float:
-    """The radius for a model of bounding `box`; 0 when there is none.
-
-    Two significant digits, so small edits keep the same effect.
-    """
+def diagonal(box: tuple[float, ...] | None) -> float:
+    """The length of the diagonal of bounding `box`; 0 when there is none."""
     if box is None:
         return 0.0
     low, high = box[:3], box[3:]
-    diagonal = sum((b - a) ** 2 for a, b in zip(low, high)) ** 0.5
-    radius = RADIUS_OF_DIAGONAL * diagonal
+    return float(sum((b - a) ** 2 for a, b in zip(low, high)) ** 0.5)
+
+
+def auto_radius(length: float, spread: float) -> float:
+    """The radius: `spread` percent of a model's diagonal `length`.
+
+    Two significant digits, so small edits keep the same effect.
+    """
+    radius = length * spread / PERCENT
     return float("%.1e" % radius) if radius > 0 else 0.0
 
 
@@ -80,8 +84,7 @@ def look(get: Callable[[str], Any], radius: float) -> ao_pipeline.Look:
         quality=quality if quality in QUALITIES else "medium",
         intensity=float(get("AOIntensity")),
         radius=radius,
-        temporal=bool(get("AOTemporal")) and ao_temporal.available(),
-        reuse=bool(get("AODepthReuse")) and ao_depth.available())
+        temporal=bool(get("AOTemporal")) and ao_temporal.available())
 
 
 def address(node: Any) -> int:
@@ -165,7 +168,8 @@ class Mirror:
         self.group = coin.SoGroup()
         self.group.ref()
         self.stale = True
-        self.radius: float | None = None
+        #: The model's diagonal, measured once until the model changes.
+        self.diagonal: float | None = None
 
     def refresh(self, selection: Any) -> None:
         roots = _model_roots(selection)
@@ -177,8 +181,8 @@ class Mirror:
                 self.group.addChild(node)
         self.stale = False
 
-    def measured_radius(self, view: Any) -> float:
-        if self.radius is None:
+    def measured_diagonal(self, view: Any) -> float:
+        if self.diagonal is None:
             from pivy import coin
             width, height = _viewport(view)
             action = coin.SoGetBoundingBoxAction(
@@ -187,8 +191,8 @@ class Mirror:
             box = action.getBoundingBox()
             corners = None if box.isEmpty() else (
                 *box.getMin().getValue(), *box.getMax().getValue())
-            self.radius = auto_radius(corners)
-        return self.radius
+            self.diagonal = diagonal(corners)
+        return self.diagonal
 
     def release(self) -> None:
         self.group.removeAllChildren()
@@ -199,11 +203,7 @@ class ViewResources:
     """The GL helpers of one view, lent to each rebuild of its effect."""
 
     def __init__(self) -> None:
-        self.depths: dict[str, ao_depth.DepthSource] = {}
         self.accumulators: dict[str, ao_temporal.Accumulator] = {}
-
-    def depth(self, level: str) -> ao_depth.DepthSource:
-        return self.depths.setdefault(level, ao_depth.DepthSource())
 
     def accumulator(self, level: str) -> ao_temporal.Accumulator:
         return self.accumulators.setdefault(level,
@@ -367,12 +367,12 @@ class AmbientOcclusion(QtCore.QObject):
         mirror = self.mirrors.get(doc_name)
         if mirror is not None:
             mirror.stale = True
-            mirror.radius = None
+            mirror.diagonal = None
 
     def moved(self, doc_name: str) -> None:
         mirror = self.mirrors.get(doc_name)
         if mirror is not None:
-            mirror.radius = None
+            mirror.diagonal = None
 
     def forget(self, doc_name: str) -> None:
         mirror = self.mirrors.pop(doc_name, None)
@@ -419,8 +419,8 @@ class AmbientOcclusion(QtCore.QObject):
         camera = view.getCameraNode()
         state.follow(camera)
         width, height = _viewport(view)
-        radius = float(settings.get("AORadius")) or mirror.measured_radius(
-            view)
+        radius = float(settings.get("AORadius")) or auto_radius(
+            mirror.measured_diagonal(view), float(settings.get("AOSpread")))
         if radius <= 0 or width < ao_pipeline.MIN_TEXTURE:
             state.take_down()
             return

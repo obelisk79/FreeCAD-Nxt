@@ -92,8 +92,9 @@ DEFAULTS: dict[str, bool | int | float | str] = {
     "AOIntensity": 0.8,
     # Model units; 0 is automatic, from the size of the model.
     "AORadius": 0.0,
+    # The automatic radius, as a percentage of the model's diagonal.
+    "AOSpread": 10.0,
     "AOTemporal": True,
-    "AODepthReuse": True,
     "AOWhileNavigating": "keep",
     # Milliseconds the camera stays still before a paused effect returns.
     "AOResumeDelay": 250,

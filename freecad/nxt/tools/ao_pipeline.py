@@ -4,7 +4,7 @@ Four passes, built from stock Coin nodes, after Intel's XeGTAO layout of
 ground truth AO (Jimenez et al. 2016):
 
 1. depth: eye depth and facet normal per pixel, drawn into a float
-   texture, or copied from the view's depth buffer (ao_depth.py);
+   texture;
 2. occlusion: horizons searched along a few slices per pixel, the visible
    arc between them integrated exactly;
 3. blur: depth-aware 4x4 at AO resolution, averaging away the 4x4
@@ -59,6 +59,11 @@ INTERACTIVE = "interactive"
 MAX_SCREEN_RADIUS = 0.2
 #: Visibility ** (intensity * POWER): deepens creases, open faces stay 1.
 POWER = 1.5
+#: Facing (cosine between the surface normal and the view) below which
+#: the effect fades out: seen edge-on, a facet's horizons are unreliable,
+#: and the blur cannot average across the silhouette, so the occlusion's
+#: noise would show as dots along curved outlines.
+EDGE_ON_FADE = (0.05, 0.25)
 #: Scene texture sizes are 16 bit.
 MAX_TEXTURE = 8192
 MIN_TEXTURE = 8
@@ -78,7 +83,6 @@ class Look:
     intensity: float
     radius: float
     temporal: bool
-    reuse: bool
 
 
 DEPTH_VERTEX = """#version 120
@@ -194,7 +198,8 @@ void main() {
                      + dt_frame * 0.618034);
     float n2 = fract(mod((cell.y * 4.0 + cell.x) * 5.0 + 3.0, 16.0) / 16.0
                      + dt_frame * 0.381966);
-    float jitter = 0.25 + 0.5 * n2;
+    // the whole step, or the gaps between steps show as bands
+    float jitter = n2;
 
     float vis = 0.0;
     for (int i = 0; i < DT_DIRS; i++) {
@@ -222,6 +227,7 @@ void main() {
         vis += projLen * (arc0 + arc1);
     }
     vis = clamp(vis / float(DT_DIRS), 0.0, 1.0);
+    vis = mix(1.0, vis, smoothstep(%(edge_on)s, dot(n, V)));
     float visibility = pow(vis, max(dt_intensity, 0.0) * %(power)s);
     gl_FragColor = vec4(visibility, c.r, 1.0, 1.0);
 }
@@ -288,7 +294,13 @@ void main() {
             weight += w;
         }
     }
-    gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0 - sum / max(weight, 1e-6));
+    // dithered by under one 8-bit step: smooth shading without bands
+    float dither = fract(52.9829189 * fract(dot(gl_FragCoord.xy,
+                                               vec2(0.06711056,
+                                                    0.00583715))));
+    float darkness = 1.0 - sum / max(weight, 1e-6);
+    gl_FragColor = vec4(0.0, 0.0, 0.0,
+                        clamp(darkness + (dither - 0.5) / 255.0, 0.0, 1.0));
 }
 """
 
@@ -447,11 +459,6 @@ class Builder:
         unit.unit = index
         return unit
 
-    def packed_format(self) -> Any:
-        """Half floats where Coin has them: (visibility, depth) fits."""
-        kinds = self.coin.SoSceneTexture2
-        return getattr(kinds, "RGBA16F", kinds.RGBA32F)
-
     def depth_pass(self, size: tuple[int, int], camera: Any,
                    scene: Any) -> Any:
         coin = self.coin
@@ -492,7 +499,11 @@ class Builder:
 def _pipeline(make: Builder, width: int, height: int, camera: Any,
               scene: Any, look: Look, level: str, resources: Any) -> Any:
     """Depth, occlusion, blur and composite for one quality level."""
-    coin = make.coin
+    # Full floats throughout: (visibility, eye depth) in half floats kept
+    # depth to about three digits, and the depth-aware blur, upsample and
+    # history then weighed neighbours unevenly: grainy shading, worse on
+    # some GPUs than others.
+    float_rgba = make.coin.SoSceneTexture2.RGBA32F
     budget = TEMPORAL_QUALITY if look.temporal else QUALITY
     dirs, steps, depth_scale, ao_scale = budget[level]
     depth_size = texture_size(width, height, depth_scale)
@@ -500,26 +511,15 @@ def _pipeline(make: Builder, width: int, height: int, camera: Any,
     dw, dh = depth_size
     aw, ah = ao_size
 
-    source = resources.depth(level) if look.reuse else None
-    if source is not None:
-        source.resize(dw, dh)
-        # never drawn: there so that model edits re-render the AO
-        watch = coin.SoSwitch()
-        watch.whichChild = coin.SO_SWITCH_NONE
-        watch.addChild(scene)
-        depth_for_ao = [watch, source.bind_node(0)]
-        depth_for_composite = source.bind_node(1)
-    else:
-        depth_tex = make.depth_pass(depth_size, camera, scene)
-        depth_for_ao = [depth_tex]
-        depth_for_composite = depth_tex
+    depth_tex = make.depth_pass(depth_size, camera, scene)
 
     frame = make.scalar("dt_frame", 0.0)
     occlusion = GTAO_FRAGMENT % {"dirs": dirs, "steps": steps,
                                  "max_radius": repr(MAX_SCREEN_RADIUS),
-                                 "power": repr(POWER)}
+                                 "power": repr(POWER),
+                                 "edge_on": "%r, %r" % EDGE_ON_FADE}
     ao_scene = make.group(
-        make.separator(), camera, make.unit(0), *depth_for_ao,
+        make.separator(), camera, make.unit(0), depth_tex,
         make.depth_test(False),
         make.program(QUAD_VERTEX, occlusion,
                      [make.sampler("dt_depthTex", 0),
@@ -529,7 +529,7 @@ def _pipeline(make: Builder, width: int, height: int, camera: Any,
                       make.scalar("dt_intensity", look.intensity),
                       frame]),
         make.quad())
-    ao_tex = make.texture(aw, ah, make.packed_format(), ao_scene)
+    ao_tex = make.texture(aw, ah, float_rgba, ao_scene)
 
     blur_scene = make.group(
         make.separator(), make.unit(0), ao_tex, make.depth_test(False),
@@ -538,12 +538,10 @@ def _pipeline(make: Builder, width: int, height: int, camera: Any,
                       make.vec2("dt_aoTexel", 1.0 / aw, 1.0 / ah),
                       make.scalar("dt_radius", look.radius)]),
         make.quad())
-    blur_tex = make.texture(aw, ah, make.packed_format(), blur_scene)
+    blur_tex = make.texture(aw, ah, float_rgba, blur_scene)
 
     body = make.composite_body()
-    if source is not None:
-        body.insertChild(source.copy_node, 0)   # before anything reads it
-    make.group(body, make.unit(1), depth_for_composite, make.unit(0),
+    make.group(body, make.unit(1), depth_tex, make.unit(0),
                blur_tex)
     accumulator = resources.accumulator(level) if look.temporal else None
     if accumulator is not None:

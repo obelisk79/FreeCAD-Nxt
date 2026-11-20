@@ -22,8 +22,8 @@
   <tag>UI</tag>
   <tag>UX</tag>
   <tag>interface</tag>
-  <!-- the 3D views' ambient occlusion: temporal accumulation and depth
-       reuse; without them the effect falls back to its plain passes -->
+  <!-- the 3D views' ambient occlusion: temporal accumulation; without
+       them the effect runs without it -->
   <depend optional="true" type="python">PyOpenGL</depend>
   <depend optional="true" type="python">numpy</depend>
   <content>
