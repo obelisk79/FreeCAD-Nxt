@@ -33,6 +33,11 @@ NATIVE_MENU_BAR = sys.platform == "darwin"
 TREE_PANEL = "NxtModelPanel"
 #: Keys the Nxt tree claims (NxtTree.qml, Keys.onShortcutOverride).
 TREE_KEYS = ("Space", "Home", "End", "Del", "Backspace")
+#: Widgets that type text when they have the focus.
+TEXT_WIDGETS = (QtWidgets.QLineEdit, QtWidgets.QTextEdit,
+                QtWidgets.QPlainTextEdit, QtWidgets.QAbstractSpinBox)
+#: QML items that type text when they have the active focus.
+TEXT_ITEMS = ("QQuickTextInput", "QQuickTextEdit")
 
 
 def in_tree(widget: Any) -> bool:
@@ -42,6 +47,21 @@ def in_tree(widget: Any) -> bool:
             return True
         widget = widget.parentWidget()
     return False
+
+
+def typing() -> bool:
+    """Whether the focus is in a text field, widget or QML."""
+    widget = QtWidgets.QApplication.focusWidget()
+    if isinstance(widget, TEXT_WIDGETS):
+        return not getattr(widget, "isReadOnly", lambda: False)()
+    if isinstance(widget, QtWidgets.QComboBox):
+        return widget.isEditable()
+    window = getattr(widget, "quickWindow", None)
+    window = window() if window is not None \
+        else QtGui.QGuiApplication.focusWindow()
+    item = getattr(window, "activeFocusItem", lambda: None)()
+    return item is not None and any(item.inherits(name)
+                                    for name in TEXT_ITEMS)
 
 
 def tree_claims(sequence: Any) -> bool:
@@ -211,13 +231,19 @@ class SpaceInView(ApplicationEventFilter):
         kind = event.type()
         if kind == QtCore.QEvent.Type.Shortcut:
             try:
-                return tree_claims(event.key())
+                return (event.key().toString() == "Space" and typing()) \
+                    or tree_claims(event.key())
             except Exception:
                 return False
         if kind not in (QtCore.QEvent.Type.ShortcutOverride,
                         QtCore.QEvent.Type.KeyPress):
             return False
         try:
+            if event.key() == QtCore.Qt.Key.Key_Space and typing():
+                if kind == QtCore.QEvent.Type.KeyPress:
+                    return False
+                event.accept()
+                return True
             if (event.key() != QtCore.Qt.Key.Key_Space
                     or event.modifiers()
                     != QtCore.Qt.KeyboardModifier.NoModifier
