@@ -414,7 +414,7 @@ class Snapshot:
         self._rehome_lifted(objects)
         self._rehome_under_lifted()
         if self.part_layout == EXPRESSION:
-            self._group_models(names, by_name, links)
+            self._group_models(names, by_name, links, claimed_by)
         self._break_parent_cycles()
         self._order_all_children(names, by_name, claimed_by)
         self._order_models()
@@ -575,7 +575,8 @@ class Snapshot:
 
     def _group_models(self, names: list[str],
                       by_name: dict[str, DocObject],
-                      links: _LinkCache) -> None:
+                      links: _LinkCache,
+                      claimed_by: dict[str, list[str]]) -> None:
         """Gather each Part model's steps under its latest operation.
 
         A model is a Part operation nothing else reads, plus its inputs.
@@ -586,9 +587,12 @@ class Snapshot:
         read: set[str] = set()
         for name in free:
             node = self.nodes[name]
+            # Only geometry is a modelling step: a Python Part feature that
+            # links a CAM Job, say, must not adopt the Job.
             node.inputs = tuple(
                 target for target in links.of(name, by_name[name])
-                if target in free and target != name)
+                if target in free and target != name
+                and self.nodes[target].type_id.startswith(LIFTING_PREFIXES))
             inputs[name] = node.inputs
             read.update(node.inputs)
 
@@ -606,9 +610,20 @@ class Snapshot:
                     continue
                 step.model = name
                 pending.extend(step.inputs)
-                if not self._fileable(step_name):
+                if not (self._fileable(step_name) or
+                        self._held_elsewhere(step, claimed_by[name])):
                     step.parent = name
                     step.is_lifted = False
+
+    def _held_elsewhere(self, step: Node, model_claims: list[str]) -> bool:
+        """A group holds the step and the model does not claim it.
+
+        A machine bed links the jig mounted on it, but both stay
+        in the group the user put them in.
+        """
+        holder = self.nodes.get(step.parent)  # type: ignore[arg-type]
+        return (holder is not None and holder.is_container
+                and step.name not in model_claims)
 
     def _order_models(self) -> None:
         """Steps oldest first, every input ahead of what reads it.

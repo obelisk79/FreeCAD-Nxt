@@ -1318,6 +1318,44 @@ class ExpressionModelTests(unittest.TestCase):
         snap = scene.Snapshot(FakeDocument("Doc", [b, sk, pad]))
         self.assertFalse(any(n.is_model for n in snap.nodes.values()))
 
+    def _workholding(self):
+        """CAM fixtures: Python Part features linking a Job and each other."""
+        job = FakeObject("Job", "Path::FeaturePython")
+        clamp = FakeObject("Clamp", "Part::FeaturePython", ["Part::Feature"])
+        jig = FakeObject("Jig", "Part::FeaturePython", ["Part::Feature"])
+        bed = FakeObject("Bed", "Part::FeaturePython", ["Part::Feature"])
+        clamp.link("Job", job)
+        jig.link("Job", job)
+        bed.link("Job", job).link("Mounted", [jig])
+        holder = group("Workholding")
+        holder.Group = [clamp, jig, bed]
+        holder.claims(clamp, jig, bed)
+        return scene.Snapshot(FakeDocument(
+            "Doc", [job, clamp, jig, bed, holder]))
+
+    def test_a_python_part_feature_does_not_adopt_a_cam_job(self):
+        snap = self._workholding()
+        self.assertIsNone(snap.nodes["Job"].parent)
+        self.assertIn("Job", snap.roots)
+
+    def test_a_grouped_input_the_model_does_not_claim_stays_grouped(self):
+        snap = self._workholding()
+        self.assertEqual(snap.nodes["Workholding"].children,
+                         ["Clamp", "Jig", "Bed"])
+        self.assertEqual(snap.nodes["Bed"].children, [])
+
+    def test_a_grouped_operation_still_gathers_what_it_claims(self):
+        box = FakeObject("Box", "Part::Box", ["Part::Feature"])
+        cyl = FakeObject("Cyl", "Part::Cylinder", ["Part::Feature"])
+        cut = FakeObject("Cut", "Part::Cut", ["Part::Feature"])
+        cut.claims(box, cyl).link("Base", box).link("Tool", cyl)
+        holder = group("Group")
+        holder.Group = [box, cyl, cut]
+        holder.claims(box, cyl, cut)
+        snap = scene.Snapshot(FakeDocument("Doc", [holder, box, cyl, cut]))
+        self.assertEqual(snap.nodes["Group"].children, ["Cut"])
+        self.assertEqual(snap.nodes["Cut"].children, ["Box", "Cyl"])
+
 
 def part(name):
     return FakeObject(name, "App::Part", ["App::Part"])
