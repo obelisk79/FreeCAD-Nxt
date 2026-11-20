@@ -31,7 +31,11 @@ App, Gui = fakes.install(ParamGet=fakes.params(STORE))
 
 from freecad.nxt.core import pyopengl, settings  # noqa: E402
 from freecad.nxt.tools import ambient_occlusion as ao  # noqa: E402
-from freecad.nxt.tools import ao_pipeline, ao_temporal  # noqa: E402
+from freecad.nxt.tools import (  # noqa: E402
+    ao_lines,
+    ao_pipeline,
+    ao_temporal,
+)
 from freecad.nxt.ui import prefs  # noqa: E402
 
 
@@ -210,6 +214,10 @@ class Node:
         self._alive()
         del self.children[index]
 
+    def removeAllChildren(self) -> None:  # noqa: N802 - Coin's API
+        self._alive()
+        self.children = []
+
     def _alive(self) -> None:
         if self.freed:
             raise AssertionError("touched a freed scene graph")
@@ -223,11 +231,65 @@ class Sensor:
         self.attached = False
 
 
+class Paths(list):  # type: ignore[type-arg]
+    """SoPathList: what the searches found, in order."""
+
+    def getLength(self) -> int:  # noqa: N802 - Coin's API
+        return len(self)
+
+    def truncate(self, start: int) -> None:
+        del self[start:]
+
+    def sort(self) -> None:  # type: ignore[override]
+        pass
+
+    def uniquify(self) -> None:
+        pass
+
+
+class Search:
+    """SoSearchAction: one path per line type, and where it looked."""
+
+    ALL = "all"
+    searched: list[Any] = []
+
+    def setType(self, kind: str, derived: bool) -> None:  # noqa: N802
+        self.kind = kind
+
+    def setInterest(self, _interest: Any) -> None:  # noqa: N802
+        pass
+
+    def apply(self, root: Any) -> None:
+        Search.searched.append(root)
+
+    def getPaths(self) -> Paths:  # noqa: N802 - Coin's API
+        return Paths([self.kind])
+
+
+class Callback:
+    def setCallback(self, *_args: Any) -> None:  # noqa: N802
+        pass
+
+
+class DepthBuffer:
+    LEQUAL = "lequal"
+    function: Any = None
+
+
+def stub_coin() -> Any:
+    """Enough of pivy.coin for the view state and the line redraw."""
+    return types.SimpleNamespace(
+        SoNodeSensor=Sensor, SoSeparator=Node, SoPathList=Paths,
+        SoSearchAction=Search, SoCallback=Callback,
+        SoDepthBuffer=DepthBuffer,
+        SoType=types.SimpleNamespace(fromName=str))
+
+
 class ClosedViewTests(unittest.TestCase):
     """Closing a document freed its view's scene graph under the effect."""
 
     def setUp(self) -> None:
-        coin = types.SimpleNamespace(SoNodeSensor=Sensor)
+        coin = stub_coin()
         self.saved = sys.modules.get("pivy")
         sys.modules["pivy"] = types.SimpleNamespace(  # type: ignore
             coin=coin)
@@ -256,6 +318,26 @@ class ClosedViewTests(unittest.TestCase):
         self.assertEqual(self.effect.views, {})
         self.assertEqual(self.root.refs, 0)
         self.assertFalse(self.state.sensor.attached)
+        self.assertEqual(self.state.resources.lines.root.refs, 0)
+
+    def test_lines_are_found_in_the_model_only(self) -> None:
+        lines = self.state.resources.lines
+        camera, model = Node(), Node()
+        Search.searched = []
+        lines.follow(camera, model, 1, id)
+        self.assertEqual(Search.searched, [lines.root] * 3)
+        self.assertEqual(lines.root.children[1:], [camera, model])
+        self.assertEqual(list(lines.paths), list(ao_lines.LINE_TYPES))
+
+    def test_lines_are_found_again_only_after_a_change(self) -> None:
+        lines = self.state.resources.lines
+        camera, model = Node(), Node()
+        lines.follow(camera, model, 1, id)
+        Search.searched = []
+        lines.follow(camera, model, 1, id)
+        self.assertEqual(Search.searched, [])
+        lines.follow(camera, model, 2, id)
+        self.assertEqual(len(Search.searched), 3)
 
 
 class CullingTests(unittest.TestCase):

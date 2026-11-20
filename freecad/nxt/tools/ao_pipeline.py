@@ -10,7 +10,8 @@ ground truth AO (Jimenez et al. 2016):
 3. blur: depth-aware 4x4 at AO resolution, averaging away the 4x4
    interleaved noise of the occlusion pass;
 4. composite: depth-aware upsample, blended black over the picture,
-   after the temporal filter (ao_temporal.py) where it runs.
+   after the temporal filter (ao_temporal.py) where it runs; the model's
+   lines and points are then drawn again over it (ao_lines.py).
 
 Each pass re-renders only when its scene notifies a change, so a still
 view costs only the composite. A switch holds a cheap Interactive level
@@ -546,7 +547,7 @@ def _pipeline(make: Builder, width: int, height: int, camera: Any,
     accumulator = resources.accumulator(level) if look.temporal else None
     if accumulator is not None:
         body.addChild(accumulator.attach(aw, ah, frame, look.radius))
-    return make.group(
+    make.group(
         body, make.depth_test(False),
         make.program(QUAD_VERTEX, COMPOSITE_FRAGMENT,
                      [make.sampler("dt_aoTex", 0),
@@ -555,6 +556,11 @@ def _pipeline(make: Builder, width: int, height: int, camera: Any,
                       make.vec2("dt_depthSize", dw, dh),
                       make.scalar("dt_radius", look.radius)]),
         make.framed_quad())
+    # the separator's end unbinds the composite's shader and textures
+    # before the model's lines are drawn again over the result
+    return make.group(make.coin.SoGroup(),
+                      make.group(make.separator(), body),
+                      resources.lines.node)
 
 
 def build(width: int, height: int, camera: Any, scene: Any, look: Look,

@@ -22,7 +22,7 @@ import FreeCADGui as Gui
 
 from ..core import log, settings
 from ..core.qt import QtCore
-from . import ao_pipeline, ao_temporal
+from . import ao_lines, ao_pipeline, ao_temporal
 
 VIEW_TYPE = "Gui::View3DInventor"
 SELECTION_ROOT = "SoFCUnifiedSelection"
@@ -168,6 +168,8 @@ class Mirror:
         self.group = coin.SoGroup()
         self.group.ref()
         self.stale = True
+        #: Counts refreshes: what was found in the model may have changed.
+        self.version = 0
         #: The model's diagonal, measured once until the model changes.
         self.diagonal: float | None = None
 
@@ -179,6 +181,7 @@ class Mirror:
             self.group.removeAllChildren()
             for node in roots:
                 self.group.addChild(node)
+        self.version += 1
         self.stale = False
 
     def measured_diagonal(self, view: Any) -> float:
@@ -204,6 +207,7 @@ class ViewResources:
 
     def __init__(self) -> None:
         self.accumulators: dict[str, ao_temporal.Accumulator] = {}
+        self.lines = ao_lines.LinesOnTop()
 
     def accumulator(self, level: str) -> ao_temporal.Accumulator:
         return self.accumulators.setdefault(level,
@@ -212,6 +216,7 @@ class ViewResources:
     def release(self) -> None:
         for accumulator in self.accumulators.values():
             accumulator.release()
+        self.lines.release()
 
 
 class ViewState:
@@ -424,6 +429,8 @@ class AmbientOcclusion(QtCore.QObject):
         if radius <= 0 or width < ao_pipeline.MIN_TEXTURE:
             state.take_down()
             return
+        state.resources.lines.follow(camera, mirror.group, mirror.version,
+                                     address)
         wanted = look(settings.get, radius)
         signed = ao_pipeline.signature(width, height, address(camera),
                                        address(mirror.group), wanted)
