@@ -1,14 +1,15 @@
 """Real-time ambient occlusion in every 3D view (setting: AmbientOcclusion).
 
-The effect's node tree (ao_pipeline.py) sits right after the selection
-root of each view. A poll keeps it in line with what cannot be observed
-from Python (the view's size, its camera node), rebuilding only when its
-signature changes; document signals mark the model's mirror and the
+The effect's composite (ao_pipeline.py) sits right after the selection
+root of each view, and a node first in the view draws its passes. A
+poll keeps it in line with what cannot be observed from Python (the
+view's size, its camera node), rebuilding only when its signature
+changes; document signals mark the model's mirror and the
 automatic radius stale. A sensor on each camera pauses the effect, or
 drops it to its Interactive level, while the view is navigated.
 
 The depth pass draws the view providers' roots (a "mirror" group per
-document), never FreeCAD's on-top or editing roots: see ao_pipeline.py.
+document), never FreeCAD's on-top or editing roots.
 """
 
 from __future__ import annotations
@@ -22,12 +23,12 @@ import FreeCADGui as Gui
 
 from ..core import log, settings
 from ..core.qt import QtCore
-from . import ao_highlight, ao_pipeline, ao_temporal
+from . import ao_lines, ao_pipeline, ao_temporal
 
 VIEW_TYPE = "Gui::View3DInventor"
 SELECTION_ROOT = "SoFCUnifiedSelection"
-#: Children of the selection root that are not the model: the first holds
-#: nodes that queue paths for after the frame, fatal in a scene texture.
+#: Children of the selection root that are not the model: FreeCAD's
+#: on-top selection, edit mode and dimensions stay clear of the effect.
 NOT_MODEL_NAMES = frozenset({"GroupOnTop", "EditingRoot", "RootDimensions"})
 NOT_MODEL_TYPES = frozenset({"EventCallback", "TransformSeparator",
                              "Environment", "DirectionalLight", "PointLight",
@@ -80,7 +81,7 @@ def auto_radius(length: float, spread: float) -> float:
 def look(get: Callable[[str], Any], radius: float) -> ao_pipeline.Look:
     """The effect as the settings ask for it and this system can show."""
     quality = str(get("AOQuality"))
-    line_px, point_px = ao_highlight.widths()
+    line_px, point_px = ao_lines.widths()
     return ao_pipeline.Look(
         quality=quality if quality in QUALITIES else "medium",
         intensity=float(get("AOIntensity")),
@@ -172,6 +173,8 @@ class Mirror:
         self.stale = True
         #: The model's diagonal, measured once until the model changes.
         self.diagonal: float | None = None
+        #: Bumped by every change to the model: its lines move too.
+        self.version = 0
 
     def refresh(self, selection: Any) -> None:
         roots = _model_roots(selection)
@@ -206,6 +209,13 @@ class ViewResources:
 
     def __init__(self) -> None:
         self.accumulators: dict[str, ao_temporal.Accumulator] = {}
+        self._lines: ao_lines.LineMask | None = None
+
+    @property
+    def lines(self) -> ao_lines.LineMask:
+        if self._lines is None:
+            self._lines = ao_lines.LineMask()
+        return self._lines
 
     def accumulator(self, level: str) -> ao_temporal.Accumulator:
         return self.accumulators.setdefault(level,
@@ -214,6 +224,8 @@ class ViewResources:
     def release(self) -> None:
         for accumulator in self.accumulators.values():
             accumulator.release()
+        if self._lines is not None:
+            self._lines.release()
 
 
 class ViewState:
@@ -224,7 +236,8 @@ class ViewState:
         self.view = view
         self.owner = owner
         self.resources = ViewResources()
-        self.root: Any = None
+        self.effect: ao_pipeline.Effect | None = None
+        self.frame: ao_pipeline.FramePass | None = None
         self.parent: Any = None
         self.camera = 0
         self.pose: tuple[float, ...] | None = None
@@ -259,42 +272,57 @@ class ViewState:
         self.moving = False
         self.show()
 
+    @property
+    def root(self) -> Any:
+        """The composite in the view, or None."""
+        return self.effect.composite if self.effect is not None else None
+
     def show(self) -> None:
         """Put the effect's switches in the state the camera asks for."""
-        if self.root is None:
+        if self.effect is None:
             return
         on, level = display(str(settings.get("AOWhileNavigating")),
                             self.moving)
         from pivy import coin
-        switch = ao_pipeline.find(self.root, ao_pipeline.SWITCH_NAME)
-        levels = ao_pipeline.find(switch, ao_pipeline.LEVEL_NAME)
         shown = coin.SO_SWITCH_ALL if on else coin.SO_SWITCH_NONE
-        if switch.whichChild.getValue() != shown:
-            switch.whichChild = shown
-        if levels.whichChild.getValue() != level:
-            levels.whichChild = level
+        for root in (self.effect.prepass, self.effect.composite):
+            switch = ao_pipeline.find(root, ao_pipeline.SWITCH_NAME)
+            levels = ao_pipeline.find(switch, ao_pipeline.LEVEL_NAME)
+            if switch.whichChild.getValue() != shown:
+                switch.whichChild = shown
+            if levels.whichChild.getValue() != level:
+                levels.whichChild = level
 
-    def place(self, root: Any, parent: Any) -> None:
+    def place(self, effect: ao_pipeline.Effect, parent: Any) -> None:
+        """Put the composite after the selection root, the prepass first."""
         self.take_down()
-        root.ref()
-        parent.addChild(root)
-        self.root, self.parent = root, parent
+        if self.frame is None:
+            self.frame = ao_pipeline.FramePass()
+        effect.composite.ref()
+        parent.addChild(effect.composite)
+        parent.insertChild(self.frame.node, 0)
+        self.frame.show(effect.prepass)
+        self.effect, self.parent = effect, parent
         self.show()
 
     def take_down(self, view_alive: bool = True) -> None:
         """Take the effect out of the view, and let go of it.
 
         A closed view's scene graph is already freed: touching its
-        group crashes FreeCAD, so only our own reference is dropped.
+        group crashes FreeCAD, so only our own references are dropped.
         """
-        if self.root is None:
+        if self.effect is None:
             return
-        if view_alive:
-            index = self.parent.findChild(self.root)
-            if index >= 0:
-                self.parent.removeChild(index)
-        self.root.unref()
-        self.root = self.parent = None
+        if view_alive and self.frame is not None:
+            for node in (self.effect.composite, self.frame.node):
+                index = self.parent.findChild(node)
+                if index >= 0:
+                    self.parent.removeChild(index)
+        if self.frame is not None:
+            self.frame.show(None)
+        self.effect.composite.unref()
+        self.effect = None
+        self.parent = None
 
     def release(self, view_alive: bool) -> None:
         self.resume.stop()
@@ -338,7 +366,6 @@ class AmbientOcclusion(QtCore.QObject):
     def __init__(self, parent: QtCore.QObject | None = None) -> None:
         super().__init__(parent)
         self.mirrors: dict[str, Mirror] = {}
-        self.highlights = ao_highlight.Highlights()
         self.views: dict[int, ViewState] = {}
         self.observer: _Observer | None = None
         #: Views whose update failed once: reported, not every poll.
@@ -350,13 +377,11 @@ class AmbientOcclusion(QtCore.QObject):
     def install(self) -> None:
         self.observer = _Observer(self)
         App.addDocumentObserver(self.observer)
-        self.highlights.install()
         self.poll.start()
         self.sync()
 
     def remove(self) -> None:
         self.poll.stop()
-        self.highlights.remove()
         if self.observer is not None:
             with contextlib.suppress(Exception):
                 App.removeDocumentObserver(self.observer)
@@ -373,14 +398,15 @@ class AmbientOcclusion(QtCore.QObject):
         if mirror is not None:
             mirror.stale = True
             mirror.diagonal = None
+            mirror.version += 1
 
     def moved(self, doc_name: str) -> None:
         mirror = self.mirrors.get(doc_name)
         if mirror is not None:
             mirror.diagonal = None
+            mirror.version += 1
 
     def forget(self, doc_name: str) -> None:
-        self.highlights.forget(doc_name)
         mirror = self.mirrors.pop(doc_name, None)
         if mirror is not None:
             mirror.release()
@@ -431,13 +457,16 @@ class AmbientOcclusion(QtCore.QObject):
             state.take_down()
             return
         wanted = look(settings.get, radius)
-        mask = self.highlights.group(doc.Name)
+        lines = state.resources.lines
+        lines.refresh(mirror.version)
         signed = ao_pipeline.signature(width, height, address(camera),
-                                       address(mirror.group), address(mask),
-                                       wanted)
+                                       address(mirror.group),
+                                       address(lines.node), wanted)
         if (state.root is not None
                 and ao_pipeline.current_signature(state.root) == signed):
             return
+        mask_key = (address(camera), address(mirror.group), wanted)
         state.place(ao_pipeline.build(width, height, camera, mirror.group,
-                                      mask, wanted, state.resources, signed),
+                                      mask_key, wanted, state.resources,
+                                      signed),
                     parent)

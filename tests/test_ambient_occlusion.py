@@ -32,7 +32,7 @@ App, Gui = fakes.install(ParamGet=fakes.params(STORE))
 from freecad.nxt.core import pyopengl, settings  # noqa: E402
 from freecad.nxt.tools import ambient_occlusion as ao  # noqa: E402
 from freecad.nxt.tools import (  # noqa: E402
-    ao_highlight,
+    ao_lines,
     ao_pipeline,
     ao_temporal,
 )
@@ -214,9 +214,25 @@ class Node:
         self._alive()
         del self.children[index]
 
+    def insertChild(self, child: Node,  # noqa: N802 - Coin's API
+                    index: int) -> None:
+        self._alive()
+        self.children.insert(index, child)
+
     def _alive(self) -> None:
         if self.freed:
             raise AssertionError("touched a freed scene graph")
+
+
+class Frame:
+    """ao_pipeline.FramePass, without Coin."""
+
+    def __init__(self) -> None:
+        self.node = Node()
+        self.prepass: Node | None = None
+
+    def show(self, prepass: Node | None) -> None:
+        self.prepass = prepass
 
 
 class Sensor:
@@ -239,18 +255,30 @@ class ClosedViewTests(unittest.TestCase):
         self.state = ao.ViewState(object(), self.effect)
         self.state.show = lambda: None  # type: ignore[method-assign]
         self.root, self.parent = Node(), Node()
-        self.state.place(self.root, self.parent)
+        self.prepass = Node()
+        self.frame = mock.patch.object(ao_pipeline, "FramePass", Frame)
+        self.frame.start()
+        self.state.place(ao_pipeline.Effect(self.prepass, self.root),
+                         self.parent)
 
     def tearDown(self) -> None:
+        self.frame.stop()
         if self.saved is not None:
             sys.modules["pivy"] = self.saved
         else:
             sys.modules.pop("pivy", None)
 
+    def test_prepass_comes_first_composite_last(self) -> None:
+        self.parent.children[1:1] = [Node()]   # the selection root
+        self.assertIs(self.parent.children[0], self.state.frame.node)
+        self.assertIs(self.parent.children[-1], self.root)
+        self.assertIs(self.state.frame.prepass, self.prepass)
+
     def test_live_view_gets_its_group_back(self) -> None:
         self.state.release(view_alive=True)
         self.assertEqual(self.parent.children, [])
         self.assertEqual(self.root.refs, 0)
+        self.assertIsNone(self.state.frame.prepass)
 
     def test_closed_view_is_not_touched(self) -> None:
         self.parent.freed = True
@@ -327,92 +355,17 @@ class PyOpenGLTests(unittest.TestCase):
         self.assertFalse(fake.ERROR_LOGGING)  # type: ignore[attr-defined]
 
 
-class Point:
-    def __init__(self, x: float) -> None:
-        self.x, self.y, self.z = x, 0.0, 0.0
-
-
-class Edge:
-    Length = 10.0
-
-    def discretize(self, Deflection: float) -> list[Point]:  # noqa: N803
-        return [Point(0.0), Point(10.0)]
-
-
-class Shape:
-    def __init__(self, kind: str) -> None:
-        self.Edges = [Edge()] if kind != "Vertex" else []
-        self.Vertexes = [types.SimpleNamespace(Point=Point(5.0))]
-
-
-def fake_part() -> Any:
-    """Part.getShape giving one edge, or one vertex, by sub-element."""
-    def get_shape(_obj: Any, subname: str,
-                  needSubElement: bool) -> Shape:  # noqa: N803 - Part's
-        kind = ao_highlight.element_kind(subname)
-        if kind is None:
-            raise AssertionError("asked for a face: %s" % subname)
-        return Shape(kind)
-
-    return types.SimpleNamespace(getShape=get_shape)
-
-
-class HighlightTests(unittest.TestCase):
-    """Picked edges and vertices are kept clear of the AO; faces not."""
-
-    def test_only_edges_and_vertices_count(self) -> None:
-        self.assertEqual(ao_highlight.element_kind("Body.Pad.Edge12"),
-                         ao_highlight.EDGE)
-        self.assertEqual(ao_highlight.element_kind("Vertex3"),
-                         ao_highlight.VERTEX)
-        for sub in ("Face2", "Body.Pad.Face1", "", "Body.", "EdgeX",
-                    "Edges"):
-            self.assertIsNone(ao_highlight.element_kind(sub), sub)
-
-    def test_faces_and_objects_are_left_out(self) -> None:
-        picks = [("Pad", "Body.Pad.Face1"), ("Pad", "Body."),
-                 ("Pad", "Body.Pad.Edge4"), ("Pad", "Body.Pad.Vertex2")]
-        with mock.patch.dict(sys.modules, {"Part": fake_part()}):
-            lines, points = ao_highlight.polylines(picks)
-        self.assertEqual(lines, [[(0.0, 0.0, 0.0), (10.0, 0.0, 0.0)]])
-        self.assertEqual(points, [(5.0, 0.0, 0.0)])
+class LineTests(unittest.TestCase):
 
     def test_widths_follow_freecad(self) -> None:
         STORE.update(DefaultShapeLineWidth=4, DefaultShapePointSize=6)
         try:
-            line, point = ao_highlight.widths()
+            line, point = ao_lines.widths()
         finally:
             STORE.clear()
         self.assertEqual((line, point),
-                         (4.0 + ao_highlight.MARGIN_PX,
-                          6.0 + ao_highlight.MARGIN_PX))
-
-    def test_picks_include_the_preselection(self) -> None:
-        pad = object()
-        doc = types.SimpleNamespace(getObject=lambda name: pad)
-        chosen = types.SimpleNamespace(Object=pad,
-                                       SubElementNames=["Edge1"])
-        selection = types.SimpleNamespace(
-            getSelectionEx=lambda _doc, _resolve: [chosen])
-        highlights = ao_highlight.Highlights()
-        highlights.preselected = ("Doc", "Pad", "Vertex2")
-        with mock.patch.object(ao_highlight.App, "getDocument",
-                               lambda _name: doc, create=True), \
-                mock.patch.object(ao_highlight.Gui, "Selection",
-                                  selection, create=True):
-            picks = highlights._picks("Doc")
-        self.assertEqual(picks, [(pad, "Edge1"), (pad, "Vertex2")])
-
-    def test_another_documents_preselection_is_ignored(self) -> None:
-        selection = types.SimpleNamespace(
-            getSelectionEx=lambda _doc, _resolve: [])
-        highlights = ao_highlight.Highlights()
-        highlights.preselected = ("Other", "Pad", "Edge1")
-        with mock.patch.object(ao_highlight.App, "getDocument",
-                               lambda _name: None, create=True), \
-                mock.patch.object(ao_highlight.Gui, "Selection",
-                                  selection, create=True):
-            self.assertEqual(highlights._picks("Doc"), [])
+                         (4.0 + ao_lines.MARGIN_PX,
+                          6.0 + ao_lines.MARGIN_PX))
 
 
 if __name__ == "__main__":

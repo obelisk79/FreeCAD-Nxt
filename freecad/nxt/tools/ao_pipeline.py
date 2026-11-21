@@ -1,29 +1,35 @@
-"""The Coin node tree of the ambient occlusion: depth to composite.
+"""The Coin node trees of the ambient occlusion: depth to composite.
 
 Four passes, built from stock Coin nodes, after Intel's XeGTAO layout of
 ground truth AO (Jimenez et al. 2016):
 
-1. depth: eye depth and facet normal per pixel, drawn into a float
-   texture;
+1. depth: eye depth and facet normal per pixel of the solid model,
+   drawn into a float texture; transparent shapes and lines are left
+   out;
 2. occlusion: horizons searched along a few slices per pixel, the visible
    arc between them integrated exactly;
 3. blur: depth-aware 4x4 at AO resolution, averaging away the 4x4
    interleaved noise of the occlusion pass;
 4. composite: depth-aware upsample, blended black over the picture,
-   after the temporal filter (ao_temporal.py) where it runs; picked
-   edges and vertices (ao_highlight.py), drawn into a mask of their
-   own, are left undarkened.
+   after the temporal filter (ao_temporal.py) where it runs; the model's
+   lines and points (ao_lines.py), drawn into a mask of their own, are
+   left undarkened.
+
+Two trees, so that nothing of the passes leaks into the view's drawing:
+
+- the "prepass" holds the scene textures. A callback at the start of the
+  view's frame (FramePass) draws it with a render action of its own, so
+  paths queued for later (annotations) replay in that action, and GL
+  state is restored after it;
+- the composite is an ordinary node right after the view's selection
+  root: it binds the textures, already up to date, and blends one quad.
+  It runs in the opaque part of the view's frame, so transparent objects,
+  FreeCAD's on-top selection, annotations and draggers come after it and
+  stay clear of the effect.
 
 Each pass re-renders only when its scene notifies a change, so a still
 view costs only the composite. A switch holds a cheap Interactive level
 for while the camera moves.
-
-Crash to avoid: a scene texture renders with the view's render action,
-and nodes that queue paths for the end of the frame (selection on top,
-annotations, transparent objects) would queue paths starting at our
-node, which Coin replays from the wrong root. So the depth pass holds
-only the view providers' roots, draws everything opaque, and the effect
-sits in an SoAnnotation.
 """
 
 from __future__ import annotations
@@ -31,7 +37,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from ..core import opengl
+
 ROOT_NAME = "NxtAmbientOcclusion"
+PREPASS_NAME = ROOT_NAME + "Prepass"
 #: On/off, flipped while the camera moves when the AO pauses then.
 SWITCH_NAME = ROOT_NAME + "Switch"
 #: Child 0 is the chosen quality, child 1 the Interactive level.
@@ -75,6 +84,12 @@ MIN_TEXTURE = 8
 QUAD_REACH = 1e9
 #: Half the material's opacity: there only to make Coin enable blending.
 BLEND_TRANSPARENCY = 0.5
+#: Opacity below which a shape counts as transparent, and stays out of
+#: the depth pass: datum and origin planes, transparent objects.
+OPAQUE_ALPHA = 0.99
+GL_ALL_ATTRIB_BITS = 0x000FFFFF
+GL_MODELVIEW = 0x1700
+GL_PROJECTION = 0x1701
 #: How much nearer than the face under it a picked edge or vertex may be
 #: and still count as seen, as a fraction of the radius: an edge lies on
 #: its faces, a hidden one far behind the face in front.
@@ -96,9 +111,11 @@ class Look:
 
 DEPTH_VERTEX = """#version 120
 varying vec3 dt_eye;
+varying float dt_alpha;
 void main() {
     vec4 eye = gl_ModelViewMatrix * gl_Vertex;
     dt_eye = eye.xyz;
+    dt_alpha = gl_Color.a;          // Coin's diffuse colour and opacity
     gl_ClipVertex = eye;            // keep FreeCAD"s clipping planes
     gl_Position = ftransform();
 }
@@ -115,7 +132,9 @@ void main() {
 
 DEPTH_FRAGMENT = """#version 120
 varying vec3 dt_eye;
+varying float dt_alpha;
 void main() {
+    if (dt_alpha < %(opaque)s) discard;
     vec3 n = normalize(cross(dFdx(dt_eye), dFdy(dt_eye)));
     if (n.z < 0.0) n = -n;
     gl_FragColor = vec4(-dt_eye.z, n);  // a zero normal: background
@@ -279,7 +298,7 @@ void main() {
 COMPOSITE_FRAGMENT = """#version 120
 uniform sampler2D dt_aoTex;
 uniform sampler2D dt_depthTex;
-uniform sampler2D dt_maskTex;  // picked edges, vertices: a = 1, r = depth
+uniform sampler2D dt_maskTex;  // the model's lines: a = 1, r = depth
 uniform vec2 dt_aoSize;
 uniform vec2 dt_depthSize;
 uniform vec2 dt_maskSize;
@@ -489,32 +508,57 @@ class Builder:
         lines.linePattern = 0
         for name in ("style", "pointSize", "lineWidth"):
             lines.getField(name).setIgnored(True)
-        opaque = coin.SoTransparencyType()
-        opaque.value = coin.SoTransparencyType.NONE
+        # drawn in place, never queued for later, and with their opacity
+        # for the shader to leave them out
+        blend = coin.SoTransparencyType()
+        blend.value = coin.SoTransparencyType.BLEND
         # off then on: SoAnnotation turns depth testing off behind Coin's
         # back, and only a change of value makes Coin turn it on again
         depth_scene = self.group(
             self.separator(), self.depth_test(False),
-            self.depth_test(True), self.overriding(opaque), camera,
+            self.depth_test(True), self.overriding(blend), camera,
             self.overriding(lines),
-            self.program(DEPTH_VERTEX, DEPTH_FRAGMENT, []), scene)
+            self.program(DEPTH_VERTEX, DEPTH_FRAGMENT
+                         % {"opaque": repr(OPAQUE_ALPHA)}, []), scene)
         return self.texture(*size, coin.SoSceneTexture2.RGBA32F,
                             depth_scene)
 
-    def mask_pass(self, size: tuple[int, int], camera: Any, mask: Any,
-                  look: Look) -> Any:
-        """The picked edges and vertices, as eye depths, at full size."""
+    def mask_state(self, look: Look) -> list[Any]:
+        """The draw style and shader the model's lines are masked with."""
         coin = self.coin
         widths = coin.SoDrawStyle()
         widths.lineWidth = look.line_px
         widths.pointSize = look.point_px
+        widths.linePattern = 0xFFFF
+        widths.style.setIgnored(True)
         flat = coin.SoLightModel()
         flat.model = coin.SoLightModel.BASE_COLOR
+        return [self.overriding(widths), flat,
+                self.program(DEPTH_VERTEX, MASK_FRAGMENT, [])]
+
+    def mask_pass(self, size: tuple[int, int], lines: Any, camera: Any,
+                  scene: Any) -> Any:
+        """The model's lines and points, as eye depths, at full size.
+
+        `lines` is the node that draws them (ao_lines.LineMask). It
+        draws them from a root of its own, so a change of the camera or
+        the model would not reach this texture, which would keep the
+        lines where they were: white ghosts of edges while orbiting. So
+        both are traversed here too, the model drawn invisible, only to
+        pass their changes on. (A switch showing no child would not do:
+        Coin's SoSwitch drops notifications from children it hides.)
+        """
+        coin = self.coin
+        invisible = coin.SoDrawStyle()
+        invisible.style = coin.SoDrawStyle.INVISIBLE
+        for name in ("pointSize", "lineWidth", "linePattern"):
+            invisible.getField(name).setIgnored(True)
+        watch = self.group(self.separator(), camera,
+                           self.overriding(invisible), scene)
         mask_scene = self.group(
-            self.separator(), self.depth_test(False),
-            self.depth_test(True), camera, widths, flat,
-            self.program(DEPTH_VERTEX, MASK_FRAGMENT, []), mask)
-        return self.texture(*size, coin.SoSceneTexture2.RGBA32F,
+            self.separator(), watch,
+            self.depth_test(False), self.depth_test(True), lines)
+        return self.texture(*size, self.coin.SoSceneTexture2.RGBA32F,
                             mask_scene)
 
     def composite_body(self) -> Any:
@@ -535,10 +579,20 @@ class Builder:
         return self.group(body, pick, light_model, style, blend, material)
 
 
+@dataclass(frozen=True)
+class Effect:
+    """The two node trees of the effect: see the module's docstring."""
+
+    #: Drawn by FramePass at the start of the view's frame.
+    prepass: Any
+    #: Placed right after the view's selection root.
+    composite: Any
+
+
 def _pipeline(make: Builder, width: int, height: int, camera: Any,
-              scene: Any, mask: Any, look: Look, level: str,
-              resources: Any) -> Any:
-    """Depth, occlusion, blur and composite for one quality level."""
+              scene: Any, mask_key: tuple[Any, ...], look: Look,
+              level: str, resources: Any) -> tuple[Any, Any]:
+    """The passes of one quality level: (prepass, composite)."""
     # Full floats throughout: (visibility, eye depth) in half floats kept
     # depth to about three digits, and the depth-aware blur, upsample and
     # history then weighed neighbours unevenly: grainy shading, worse on
@@ -581,7 +635,15 @@ def _pipeline(make: Builder, width: int, height: int, camera: Any,
     blur_tex = make.texture(aw, ah, float_rgba, blur_scene)
 
     mask_size = texture_size(width, height, 1.0)
-    mask_tex = make.mask_pass(mask_size, camera, mask, look)
+    lines = resources.lines.follow(
+        mask_key, mask_size,
+        lambda: [camera, *make.mask_state(look), scene])
+    mask_tex = make.mask_pass(mask_size, lines, camera, scene)
+
+    # each texture renders here if its scene changed; the composite then
+    # finds them up to date and only binds them
+    prepass = make.group(make.separator(), depth_tex, ao_tex, blur_tex,
+                         mask_tex)
 
     body = make.composite_body()
     make.group(body, make.unit(2), mask_tex, make.unit(1), depth_tex,
@@ -589,7 +651,7 @@ def _pipeline(make: Builder, width: int, height: int, camera: Any,
     accumulator = resources.accumulator(level) if look.temporal else None
     if accumulator is not None:
         body.addChild(accumulator.attach(aw, ah, frame, look.radius))
-    return make.group(
+    composite = make.group(
         body, make.depth_test(False),
         make.program(QUAD_VERTEX, COMPOSITE_FRAGMENT,
                      [make.sampler("dt_aoTex", 0),
@@ -602,21 +664,12 @@ def _pipeline(make: Builder, width: int, height: int, camera: Any,
                       make.scalar("dt_maskTolerance",
                                   MASK_TOLERANCE_OF_RADIUS * look.radius)]),
         make.framed_quad())
+    return prepass, composite
 
 
-def build(width: int, height: int, camera: Any, scene: Any, mask: Any,
-          look: Look, resources: Any, signed: str) -> Any:
-    """The effect's node tree, to add right after the view's scene.
-
-    `mask` holds the picked edges and vertices to keep clear;
-    `resources` lends each level its GL helpers (ViewResources).
-    """
-    make = Builder()
+def _levels(make: Builder, root: Any, signed: str) -> Any:
+    """Give `root` the info, on/off switch and level switch; the latter."""
     coin = make.coin
-    root = coin.SoAnnotation()
-    root.setName(ROOT_NAME)
-    root.renderCulling = coin.SoSeparator.OFF
-    root.pickCulling = coin.SoSeparator.OFF
     info = coin.SoInfo()
     info.setName(INFO_NAME)
     info.string = signed
@@ -627,10 +680,88 @@ def build(width: int, height: int, camera: Any, scene: Any, mask: Any,
     levels.setName(LEVEL_NAME)
     levels.whichChild = 0
     make.group(root, info, make.group(switch, levels))
-    chosen = _pipeline(make, width, height, camera, scene, mask, look,
+    return levels
+
+
+def build(width: int, height: int, camera: Any, scene: Any,
+          mask_key: tuple[Any, ...], look: Look, resources: Any,
+          signed: str) -> Effect:
+    """The effect's two node trees.
+
+    `mask_key` changes when the model's lines must be searched again;
+    `resources` lends each level its GL helpers (ViewResources).
+    """
+    make = Builder()
+    coin = make.coin
+    # Inside an annotation, the passes render while Coin replays delayed
+    # paths: an annotation in the model then draws in place, into the
+    # texture, instead of queueing a path for after the prepass.
+    prepass = coin.SoAnnotation()
+    prepass.setName(PREPASS_NAME)
+    composite = make.separator()
+    composite.setName(ROOT_NAME)
+    for root in (prepass, composite):
+        root.renderCulling = coin.SoSeparator.OFF
+        root.pickCulling = coin.SoSeparator.OFF
+    early = _levels(make, prepass, signed)
+    late = _levels(make, composite, signed)
+    chosen = _pipeline(make, width, height, camera, scene, mask_key, look,
                        look.quality, resources)
-    levels.addChild(chosen)
-    levels.addChild(chosen if look.quality == INTERACTIVE else _pipeline(
-        make, width, height, camera, scene, mask, look, INTERACTIVE,
-        resources))
-    return root
+    reduced = chosen if look.quality == INTERACTIVE else _pipeline(
+        make, width, height, camera, scene, mask_key, look, INTERACTIVE,
+        resources)
+    for passes in (chosen, reduced):
+        early.addChild(passes[0])
+        late.addChild(passes[1])
+    return Effect(prepass, composite)
+
+
+class FramePass:
+    """The node that draws a view's prepass at the start of its frame.
+
+    It sits first in the view's scene graph and draws the prepass with
+    a render action of its own, sharing the view's GL cache context, so
+    the textures' GL objects are the ones the composite binds later in
+    the frame. GL attributes and matrices are restored after it.
+    """
+
+    def __init__(self) -> None:
+        from pivy import coin
+        self.prepass: Any = None
+        self.action: Any = None
+        self.node = coin.SoCallback()
+        self.node.setCallback(self._render, None)
+
+    def show(self, prepass: Any) -> None:
+        """Draw `prepass` from the next frame on; None draws nothing."""
+        if self.prepass is not None:
+            self.prepass.unref()
+        self.prepass = prepass
+        if prepass is not None:
+            prepass.ref()
+
+    def _render(self, data: Any, action: Any) -> None:
+        from pivy import coin
+        render = coin.SoGLRenderAction.getClassTypeId()
+        if self.prepass is None or not action.isOfType(render):
+            return
+        # pivy hands callbacks the base SoAction wrapper
+        action = coin.cast(action, "SoGLRenderAction")
+        region = action.getViewportRegion()
+        if self.action is None:
+            self.action = coin.SoGLRenderAction(region)
+        else:
+            self.action.setViewportRegion(region)
+        self.action.setCacheContext(action.getCacheContext())
+        gl = opengl.library()
+        gl.glPushAttrib(GL_ALL_ATTRIB_BITS)
+        for mode in (GL_PROJECTION, GL_MODELVIEW):
+            gl.glMatrixMode(mode)
+            gl.glPushMatrix()
+        try:
+            self.action.apply(self.prepass)
+        finally:
+            for mode in (GL_PROJECTION, GL_MODELVIEW):
+                gl.glMatrixMode(mode)
+                gl.glPopMatrix()
+            gl.glPopAttrib()
