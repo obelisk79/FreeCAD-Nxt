@@ -122,6 +122,8 @@ class Accumulator:
         self.locations: dict[str, int] = {}
         self.index = 0
         self.previous: tuple[Any, Any] | None = None
+        #: The size the history textures hold; None: (re)clear them.
+        self.allocated: tuple[int, int] | None = None
         self.still = 0
         self.sensor = coin.SoOneShotSensor(self._next_frame, None)
         self.node = coin.SoCallback()
@@ -140,6 +142,19 @@ class Accumulator:
         self.frame = frame
         frame.ref()
         return self.node
+
+    def reset(self) -> None:
+        """Forget the history: the model changed under a still camera.
+
+        Without this, shading cast by a part that is gone, where the
+        surface it fell on stayed, passes the depth test of the history
+        and lingers until the camera moves. The textures are cleared at
+        the next frame, in the view's GL context.
+        """
+        self.allocated = None
+        self.previous = None
+        self.still = 0
+        self.sensor.schedule()
 
     def release(self) -> None:
         """Let go of the scene graph; GL objects go with the context."""
@@ -173,7 +188,7 @@ class Accumulator:
                     projection: Any, moving: bool) -> int:
         """Blend this frame into the history; the texture it went to."""
         import numpy
-        if getattr(self, "allocated", None) != (self.width, self.height):
+        if self.allocated != (self.width, self.height):
             self._allocate(gl)
         target = self.textures[self.index]
         previous_view, previous_projection = (self.previous

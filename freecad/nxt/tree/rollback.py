@@ -307,6 +307,7 @@ class Rollback:
             log.error("could not finish the tip drag on %s" % body_name)
         self._bridge.invalidate(icons=True)
         self.publish()
+        _redraw_occlusion()
 
     def _commit_tip_drag(self, doc: Any, drag: dict[str, Any],
                          body_name: str) -> None:
@@ -344,6 +345,7 @@ class Rollback:
                     vo.Visibility = wanted
             self._tree.touch(self._snapshot.retip(body_name,
                                                   feature_name or None))
+            _redraw_occlusion()
             return True
         except Exception:
             log.error("could not show %s at %s" % (body_name, feature_name))
@@ -427,6 +429,7 @@ class Rollback:
             # Patch the snapshot; a drag suppresses rebuilds.
             self._tree.touch(self._snapshot.retip(body_name,
                                                   feature_name or None))
+            _redraw_occlusion()
             return True
         except Exception:
             log.error("could not set the tip of %s to %s"
@@ -508,3 +511,15 @@ class Rollback:
             vo = getattr(doc.getObject(other), "ViewObject", None)
             if vo is not None and bool(vo.Visibility) != (other == tip):
                 vo.Visibility = other == tip
+
+
+def _redraw_occlusion() -> None:
+    """Shade the 3D views afresh.
+
+    The rollback bar shows and hides features under a still camera: AO
+    shading cast by them must not linger until the view moves.
+    """
+    from ..app import services
+    live = services.instance()
+    if live is not None:
+        live.redraw_occlusion()

@@ -233,6 +233,11 @@ class ViewResources:
         return self.accumulators.setdefault(level,
                                             ao_temporal.Accumulator())
 
+    def reset(self) -> None:
+        """Start the temporal histories over."""
+        for accumulator in self.accumulators.values():
+            accumulator.reset()
+
     def release(self) -> None:
         for accumulator in self.accumulators.values():
             accumulator.release()
@@ -411,12 +416,27 @@ class AmbientOcclusion(QtCore.QObject):
             mirror.stale = True
             mirror.diagonal = None
             mirror.version += 1
+        self.redraw(doc_name)
 
     def moved(self, doc_name: str) -> None:
         mirror = self.mirrors.get(doc_name)
         if mirror is not None:
             mirror.diagonal = None
             mirror.version += 1
+        self.redraw(doc_name)
+
+    def redraw(self, doc_name: str | None = None) -> None:
+        """Shade the model afresh: every pass, and no history.
+
+        For changes that show or hide parts under a still camera (the
+        tree's rollback bar): the passes are told the model changed, and
+        the temporal filter forgets shading cast by what is gone.
+        """
+        for name, mirror in self.mirrors.items():
+            if doc_name is None or name == doc_name:
+                mirror.group.touch()
+        for state in self.views.values():
+            state.resources.reset()
 
     def forget(self, doc_name: str) -> None:
         mirror = self.mirrors.pop(doc_name, None)

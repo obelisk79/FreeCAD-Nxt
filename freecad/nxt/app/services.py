@@ -289,6 +289,15 @@ class Services(QtCore.QObject):
             log.error("could not set up the ambient occlusion")
             self._remove_occlusion()
 
+    def redraw_occlusion(self) -> None:
+        """Shade the 3D views afresh, after the model changed in place."""
+        if self._occlusion is None:
+            return
+        try:
+            self._occlusion.redraw()
+        except Exception:
+            log.error("could not redraw the ambient occlusion")
+
     def _remove_occlusion(self) -> None:
         if self._occlusion is None:
             return
