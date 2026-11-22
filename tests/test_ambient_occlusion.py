@@ -150,7 +150,7 @@ class PreferencesTests(unittest.TestCase):
 
     def test_page_round_trip(self) -> None:
         STORE.update(AOQuality="high", AOIntensity=1.5, AORadius=4.0,
-                     AOSpread=12.0,
+                     AOSpread=12.0, AOEdgeBlend=2.5,
                      AOWhileNavigating="reduce", AOResumeDelay=500,
                      AOTemporal=False)
         page = prefs.NxtVisualizationPage()
@@ -162,9 +162,18 @@ class PreferencesTests(unittest.TestCase):
         self.assertAlmostEqual(STORE["AOIntensity"], 1.5)
         self.assertAlmostEqual(STORE["AORadius"], 4.0)
         self.assertAlmostEqual(STORE["AOSpread"], 12.0)
+        self.assertAlmostEqual(STORE["AOEdgeBlend"], 2.5)
         self.assertEqual(STORE["AOResumeDelay"], 500)
         self.assertFalse(STORE["AOTemporal"])
         self.assertEqual(self.applied[-1], set(prefs.OCCLUSION))
+
+    def test_edge_blend_applies_live(self) -> None:
+        page = prefs.NxtVisualizationPage()
+        page.loadSettings()
+        self.applied.clear()
+        page._edge_blend.setValue(2.0)
+        self.assertAlmostEqual(STORE["AOEdgeBlend"], 2.0)
+        self.assertEqual(self.applied, [{"AOEdgeBlend"}])
 
     def test_page_reset(self) -> None:
         STORE.update(AmbientOcclusion=False, AOQuality="low")

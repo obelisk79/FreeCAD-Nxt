@@ -31,7 +31,7 @@ _VIEW = frozenset({"RowDensity", "ReferenceChips", "UnderConstrainedMarks",
 _SNAPSHOT = frozenset({"PartLayout", "DependencyArrows"})
 #: The 3D views' ambient occlusion (tools/ambient_occlusion.py).
 OCCLUSION = ("AmbientOcclusion", "AOQuality", "AOIntensity", "AORadius",
-             "AOSpread",
+             "AOSpread", "AOEdgeBlend",
              "AOTemporal", "AOWhileNavigating",
              "AOResumeDelay")
 
@@ -460,6 +460,8 @@ RADIUS_MAX = 100000.0
 #: The automatic radius, in percent of the model's diagonal.
 SPREAD_RANGE = (0.5, 25.0)
 SPREAD_STEP = 0.5
+EDGE_BLEND_RANGE = (0.0, 4.0)
+EDGE_BLEND_STEP = 0.25
 RESUME_RANGE = (0, 5000)
 RESUME_STEP = 50
 
@@ -483,6 +485,8 @@ class NxtVisualizationPage:
     """Edit > Preferences > FreeCAD-Nxt > Visualization."""
 
     def __init__(self) -> None:
+        #: Set while the fields are filled: no live update then.
+        self._loading = False
         self.form = QtWidgets.QWidget()
         self.form.setWindowTitle(translate("Nxt", "Visualization"))
         self.form.setWindowIcon(QtGui.QIcon(str(resources.LOGO)))
@@ -532,6 +536,17 @@ class NxtVisualizationPage:
                    "small part and on a building."))
         layout.addRow(translate("Nxt", "Spread"), self._spread)
         self._radius.valueChanged.connect(self._follow_radius)
+        self._edge_blend = QtWidgets.QDoubleSpinBox(box)
+        self._edge_blend.setRange(*EDGE_BLEND_RANGE)
+        self._edge_blend.setSingleStep(EDGE_BLEND_STEP)
+        self._edge_blend.setDecimals(2)
+        self._edge_blend.setSuffix(" px")
+        self._edge_blend.setToolTip(translate(
+            "Nxt", "How softly the shading fades in beside edges and "
+                   "vertices; 0 is a hard edge.\nApplied as you change "
+                   "it."))
+        layout.addRow(translate("Nxt", "Edge blend"), self._edge_blend)
+        self._edge_blend.valueChanged.connect(self._live_edge_blend)
         self._resume = QtWidgets.QSpinBox(box)
         self._resume.setRange(*RESUME_RANGE)
         self._resume.setSingleStep(RESUME_STEP)
@@ -569,9 +584,19 @@ class NxtVisualizationPage:
 
     def _follow_switch(self, on: bool) -> None:
         for field in (*self._choices.values(), self._intensity,
-                      self._radius, self._resume):
+                      self._radius, self._edge_blend, self._resume):
             field.setEnabled(on)
         self._follow_radius()
+
+    def _live_edge_blend(self, value: float) -> None:
+        """Edge blend shows at once, for tuning while watching the view."""
+        if self._loading:
+            return
+        settings.put("AOEdgeBlend", value)
+        try:
+            apply({"AOEdgeBlend"})
+        except Exception:  # noqa: BLE001 - a Qt slot
+            App.Console.PrintError("Nxt: could not apply the edge blend\n")
 
     def _follow_radius(self, *_args: object) -> None:
         """Spread counts only while the radius is automatic."""
@@ -586,6 +611,9 @@ class NxtVisualizationPage:
         self._intensity.setValue(float(value("AOIntensity")))
         self._radius.setValue(float(value("AORadius")))
         self._spread.setValue(float(value("AOSpread")))
+        self._loading = True
+        self._edge_blend.setValue(float(value("AOEdgeBlend")))
+        self._loading = False
         self._resume.setValue(int(value("AOResumeDelay")))
         self._temporal.setChecked(bool(value("AOTemporal")))
         self._follow_switch(self._on.isChecked())
@@ -601,6 +629,7 @@ class NxtVisualizationPage:
         settings.put("AOIntensity", self._intensity.value())
         settings.put("AORadius", self._radius.value())
         settings.put("AOSpread", self._spread.value())
+        settings.put("AOEdgeBlend", self._edge_blend.value())
         settings.put("AOResumeDelay", self._resume.value())
         settings.put("AOTemporal", self._temporal.isChecked())
         try:

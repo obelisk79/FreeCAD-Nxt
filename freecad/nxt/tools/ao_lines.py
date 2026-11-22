@@ -27,12 +27,14 @@ from ..core import opengl
 #: Node types whose subclasses draw FreeCAD's edges and vertices
 #: (SoBrepEdgeSet, SoBrepPointSet) and Sketcher's lines and markers.
 LINE_TYPES = ("SoLineSet", "SoIndexedLineSet", "SoPointSet")
-#: FreeCAD's own line width and point size, in pixels, and the margin the
-#: mask adds so a line's antialiased rim stays clear too.
+#: FreeCAD's own line width and point size, in pixels, and a margin the
+#: mask could add. None: with every edge masked (not only picked ones), a
+#: wider mask left a light rim along each edge, undarkened face beside
+#: the line, plain to see in creases.
 VIEW_PARAMS = "User parameter:BaseApp/Preferences/View"
 LINE_WIDTH = ("DefaultShapeLineWidth", 2)
 POINT_SIZE = ("DefaultShapePointSize", 2)
-MARGIN_PX = 1
+MARGIN_PX = 0
 GL_ALL_ATTRIB_BITS = 0x000FFFFF
 GL_MODELVIEW = 0x1700
 GL_PROJECTION = 0x1701

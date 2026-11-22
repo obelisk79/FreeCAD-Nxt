@@ -1,4 +1,5 @@
-<?xml version='1.0' encoding='utf-8'?>
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE TS>
 <TS version="2.1" language="fr_FR">
 <context>
     <name>AttachTask</name>
@@ -32,7 +33,7 @@
     </message>
     <message>
         <source>Pick in the 3D view or the tree. A whole object takes its position.</source>
-        <translation>Choisissez dans la vue 3D ou l'arbre. Un objet entier prend sa position.</translation>
+        <translation>Choisissez dans la vue 3D ou l&apos;arbre. Un objet entier prend sa position.</translation>
     </message>
     <message>
         <source>Way</source>
@@ -87,7 +88,7 @@
     <name>CommandDrawer</name>
     <message>
         <source>Already on the toolbar</source>
-        <translation>Déjà dans la barre d'outils</translation>
+        <translation>Déjà dans la barre d&apos;outils</translation>
     </message>
     <message>
         <source>Search commands</source>
@@ -99,7 +100,7 @@
     </message>
     <message>
         <source>Drag a separator onto the toolbar</source>
-        <translation>Glisser un séparateur sur la barre d'outils</translation>
+        <translation>Glisser un séparateur sur la barre d&apos;outils</translation>
     </message>
     <message>
         <source>New group</source>
@@ -107,7 +108,7 @@
     </message>
     <message>
         <source>Drag onto the toolbar, then drop commands on it</source>
-        <translation>Glisser sur la barre d'outils, puis y déposer des commandes</translation>
+        <translation>Glisser sur la barre d&apos;outils, puis y déposer des commandes</translation>
     </message>
     <message>
         <source>Other icons</source>
@@ -184,11 +185,11 @@
     </message>
     <message>
         <source>Edit attachment…</source>
-        <translation>Éditer l'attachement…</translation>
+        <translation>Éditer l&apos;attachement…</translation>
     </message>
     <message>
         <source>Edit attachment</source>
-        <translation>Éditer l'attachement</translation>
+        <translation>Éditer l&apos;attachement</translation>
     </message>
     <message>
         <source>fully constrained</source>
@@ -234,7 +235,7 @@
         <translation>Dans %1</translation>
     </message>
     <message>
-        <source>Can't move here</source>
+        <source>Can&apos;t move here</source>
         <translation>Impossible ici</translation>
     </message>
     <message>
@@ -265,7 +266,7 @@
     </message>
     <message>
         <source>fits up to %1</source>
-        <translation>jusqu'à %1</translation>
+        <translation>jusqu&apos;à %1</translation>
     </message>
     <message>
         <source>All edges · %1</source>
@@ -292,11 +293,11 @@
         <translation>Choisir à nouveau pour retirer. Survolez une puce pour trouver son arête.</translation>
     </message>
     <message>
-        <source>%1 of %2 edges won't chamfer at %3.</source>
+        <source>%1 of %2 edges won&apos;t chamfer at %3.</source>
         <translation>%1 arêtes sur %2 ne se chanfreinent pas à %3.</translation>
     </message>
     <message>
-        <source>%1 of %2 edges won't fillet at %3.</source>
+        <source>%1 of %2 edges won&apos;t fillet at %3.</source>
         <translation>%1 arêtes sur %2 refusent le congé à %3.</translation>
     </message>
     <message>
@@ -382,14 +383,14 @@
     </message>
     <message>
         <source>Exit isolation</source>
-        <translation>Quitter l'isolation</translation>
+        <translation>Quitter l&apos;isolation</translation>
     </message>
 </context>
 <context>
     <name>LinkChips</name>
     <message>
         <source>Double-click to edit the sketch</source>
-        <translation>Double-clic pour éditer l'esquisse</translation>
+        <translation>Double-clic pour éditer l&apos;esquisse</translation>
     </message>
     <message>
         <source>Remove %1</source>
@@ -405,7 +406,7 @@
     </message>
     <message>
         <source>Pick in the tree or 3D view</source>
-        <translation>Choisir dans l'arbre ou la vue 3D</translation>
+        <translation>Choisir dans l&apos;arbre ou la vue 3D</translation>
     </message>
     <message>
         <source>Pick</source>
@@ -416,7 +417,7 @@
     <name>Nxt</name>
     <message>
         <source>Addons updated</source>
-        <extracomment>The running check; held so Qt doesn't lose the workers, and so the check runs once a session. FreeCAD's settings for bringing up a hidden Report view when a message arrives. The Addon Manager's workers report fetch problems as warnings and errors; during the check they are only logged. Longest the Report view is kept down, in case a worker never finishes.</extracomment>
+        <extracomment>The running check; held so Qt doesn&apos;t lose the workers, and so the check runs once a session. FreeCAD&apos;s settings for bringing up a hidden Report view when a message arrives. The Addon Manager&apos;s workers report fetch problems as warnings and errors; during the check they are only logged. Longest the Report view is kept down, in case a worker never finishes.</extracomment>
         <translation>Extensions mises à jour</translation>
     </message>
     <message>
@@ -441,12 +442,12 @@ Redémarrer FreeCAD maintenant pour utiliser les nouvelles versions ?</translati
         <translation>Fermer</translation>
     </message>
     <message>
-        <source>Show FreeCAD's property table</source>
+        <source>Show FreeCAD&apos;s property table</source>
         <translation>Afficher la table des propriétés de FreeCAD</translation>
     </message>
     <message>
         <source>Back to the inspector</source>
-        <translation>Retour à l'inspecteur</translation>
+        <translation>Retour à l&apos;inspecteur</translation>
     </message>
     <message>
         <source>Drag to resize</source>
@@ -458,7 +459,7 @@ Redémarrer FreeCAD maintenant pour utiliser les nouvelles versions ?</translati
     </message>
     <message>
         <source>Taper 2</source>
-        <extracomment>The property each task panel field sets, where it is known. The scene nodes that hold a handle: an arrow, and a rotation handle. Per feature type, each kind of handle and the task fields its handles drag, in the order FreeCAD creates them. The task panel field a feature's arrow drags, by feature type. Any other type with an arrow falls back to the first length field shown. The number a field's text starts with, and its decimals.</extracomment>
+        <extracomment>The property each task panel field sets, where it is known. The scene nodes that hold a handle: an arrow, and a rotation handle. Per feature type, each kind of handle and the task fields its handles drag, in the order FreeCAD creates them. The task panel field a feature&apos;s arrow drags, by feature type. Any other type with an arrow falls back to the first length field shown. The number a field&apos;s text starts with, and its decimals.</extracomment>
         <translation>Dépouille 2</translation>
     </message>
     <message>
@@ -483,7 +484,7 @@ Redémarrer FreeCAD maintenant pour utiliser les nouvelles versions ?</translati
     </message>
     <message>
         <source>Isolated: %1</source>
-        <extracomment>Passes over the saved visibility; each settles what the last upset. What the targets hold, and each Body's Tip, going in.</extracomment>
+        <extracomment>Passes over the saved visibility; each settles what the last upset. What the targets hold, and each Body&apos;s Tip, going in.</extracomment>
         <translation>Isolé : %1</translation>
     </message>
     <message>
@@ -531,7 +532,7 @@ Redémarrer FreeCAD maintenant pour utiliser les nouvelles versions ?</translati
     </message>
     <message>
         <source>%s is not closed (%s)</source>
-        <translation>%s n'est pas fermé (%s)</translation>
+        <translation>%s n&apos;est pas fermé (%s)</translation>
     </message>
     <message>
         <source>Edit</source>
@@ -584,7 +585,7 @@ Redémarrer FreeCAD maintenant pour utiliser les nouvelles versions ?</translati
     </message>
     <message>
         <source>conflicting constraints</source>
-        <extracomment>(attribute, severity, phrase), worst first. Properties on Sketcher::SketchObject holding the last solve's results.</extracomment>
+        <extracomment>(attribute, severity, phrase), worst first. Properties on Sketcher::SketchObject holding the last solve&apos;s results.</extracomment>
         <translation>contraintes en conflit</translation>
     </message>
     <message>
@@ -601,7 +602,7 @@ Redémarrer FreeCAD maintenant pour utiliser les nouvelles versions ?</translati
     </message>
     <message>
         <source>solver findings unavailable in this build</source>
-        <extracomment>Names worth showing in a dump. Only these may be called: `autoRemoveRedundants` also matches "redund" and would edit the sketch.</extracomment>
+        <extracomment>Names worth showing in a dump. Only these may be called: `autoRemoveRedundants` also matches &quot;redund&quot; and would edit the sketch.</extracomment>
         <translation>diagnostic du solveur indisponible dans cette version</translation>
     </message>
     <message>
@@ -610,7 +611,7 @@ Redémarrer FreeCAD maintenant pour utiliser les nouvelles versions ?</translati
     </message>
     <message>
         <source>Activate overlay mode over the 3D view</source>
-        <extracomment>Events that mean "you may have been moved into, or out of, an overlay". Events that mean "the colours under you just changed". The stock tree (colour source) may not exist yet at startup. How far up the parent chain to look for FreeCAD's overlay container. Acts on the dock under the cursor, i.e. ours when our button is clicked.</extracomment>
+        <extracomment>Events that mean &quot;you may have been moved into, or out of, an overlay&quot;. Events that mean &quot;the colours under you just changed&quot;. The stock tree (colour source) may not exist yet at startup. How far up the parent chain to look for FreeCAD&apos;s overlay container. Acts on the dock under the cursor, i.e. ours when our button is clicked.</extracomment>
         <translation>Mode superposé sur la vue 3D</translation>
     </message>
     <message>
@@ -622,18 +623,18 @@ Redémarrer FreeCAD maintenant pour utiliser les nouvelles versions ?</translati
         <translation>Fermer le panneau</translation>
     </message>
     <message>
-        <source>QtQuick is not available in this FreeCAD's Qt packaging.
+        <source>QtQuick is not available in this FreeCAD&apos;s Qt packaging.
 The panel needs PySide6.QtQuickWidgets.</source>
-        <translation>QtQuick n'est pas disponible dans le Qt de ce FreeCAD.
+        <translation>QtQuick n&apos;est pas disponible dans le Qt de ce FreeCAD.
 Le panneau requiert PySide6.QtQuickWidgets.</translation>
     </message>
     <message>
         <source>The Nxt model panel could not start.</source>
-        <translation>Le panneau Nxt n'a pas pu démarrer.</translation>
+        <translation>Le panneau Nxt n&apos;a pas pu démarrer.</translation>
     </message>
     <message>
         <source>Tip of %s moved to %s</source>
-        <extracomment>Where a Body's bar sets no tip: above its first feature. Objects made but not yet placed against the bar, at most. Objects just made: a Body's bar moves below each, as below a new feature, if it lands where the bar rests.</extracomment>
+        <extracomment>Where a Body&apos;s bar sets no tip: above its first feature. Objects made but not yet placed against the bar, at most. Objects just made: a Body&apos;s bar moves below each, as below a new feature, if it lands where the bar rests.</extracomment>
         <translation>Fonction résultante de %s déplacée vers %s</translation>
     </message>
     <message>
@@ -642,8 +643,8 @@ Le panneau requiert PySide6.QtQuickWidgets.</translation>
     </message>
     <message>
         <source>Expression rows</source>
-        <extracomment>The page's group in FreeCAD's Preferences dialog. What the quick panel offers. The page offers these and more. Settings the theme reads: changing one restyles the panel. Settings the snapshot reads: changing one rebuilds it. The 3D views' ambient occlusion (tools/ambient_occlusion.py). Every value a choice setting may take, in the order it is offered.</extracomment>
-        <translation>Lignes d'expression</translation>
+        <extracomment>The page&apos;s group in FreeCAD&apos;s Preferences dialog. What the quick panel offers. The page offers these and more. Settings the theme reads: changing one restyles the panel. Settings the snapshot reads: changing one rebuilds it. The 3D views&apos; ambient occlusion (tools/ambient_occlusion.py). Every value a choice setting may take, in the order it is offered.</extracomment>
+        <translation>Lignes d&apos;expression</translation>
     </message>
     <message>
         <source>Nested</source>
@@ -699,8 +700,8 @@ Le panneau requiert PySide6.QtQuickWidgets.</translation>
         <translation>Signaler les esquisses sous-contraintes</translation>
     </message>
     <message>
-        <source>Show tooltips on the tree's rows</source>
-        <translation>Infobulles dans l'arbre</translation>
+        <source>Show tooltips on the tree&apos;s rows</source>
+        <translation>Infobulles dans l&apos;arbre</translation>
     </message>
     <message>
         <source>Show objects picked in the 3D view</source>
@@ -711,7 +712,7 @@ Le panneau requiert PySide6.QtQuickWidgets.</translation>
         <translation>Double-clic sur une face pour éditer sa fonction</translation>
     </message>
     <message>
-        <source>Auto repair 'Wire not closed' errors</source>
+        <source>Auto repair &apos;Wire not closed&apos; errors</source>
         <translation>Réparer « Wire not closed »</translation>
     </message>
     <message>
@@ -719,29 +720,29 @@ Le panneau requiert PySide6.QtQuickWidgets.</translation>
         <translation>Renommer les nouvelles esquisses, conteneurs et fonctions</translation>
     </message>
     <message>
-        <source>When a new object's edit closes (or a container is made), its name opens for editing in the tree.</source>
-        <translation>À la fermeture de l'édition d'un nouvel objet (ou à la création d'un conteneur), son nom s'ouvre en édition dans l'arbre.</translation>
+        <source>When a new object&apos;s edit closes (or a container is made), its name opens for editing in the tree.</source>
+        <translation>À la fermeture de l&apos;édition d&apos;un nouvel objet (ou à la création d&apos;un conteneur), son nom s&apos;ouvre en édition dans l&apos;arbre.</translation>
     </message>
     <message>
         <source>Experimental: Dynamic toolbars</source>
-        <translation>Expérimental : barres d'outils dynamiques</translation>
+        <translation>Expérimental : barres d&apos;outils dynamiques</translation>
     </message>
     <message>
-        <source>Nxt's toolbars in place of FreeCAD's: each command on its own, arranged per workbench in edit mode.</source>
-        <translation>Les barres d'outils de Nxt à la place de celles de FreeCAD : chaque commande séparée, disposée par atelier en mode édition.</translation>
+        <source>Nxt&apos;s toolbars in place of FreeCAD&apos;s: each command on its own, arranged per workbench in edit mode.</source>
+        <translation>Les barres d&apos;outils de Nxt à la place de celles de FreeCAD : chaque commande séparée, disposée par atelier en mode édition.</translation>
     </message>
     <message>
         <source>Attach a new sketch to three picked points without asking</source>
         <translation>Attacher une esquisse à trois points sans demander</translation>
     </message>
     <message>
-        <source>Three points, or a straight edge and a point, give the sketch's plane.
+        <source>Three points, or a straight edge and a point, give the sketch&apos;s plane.
 Hold Shift to get the attachment dialog anyway.</source>
-        <translation>Trois points, ou une arête droite et un point, définissent le plan de l'esquisse.
-Maintenez Maj pour obtenir quand même le dialogue d'attachement.</translation>
+        <translation>Trois points, ou une arête droite et un point, définissent le plan de l&apos;esquisse.
+Maintenez Maj pour obtenir quand même le dialogue d&apos;attachement.</translation>
     </message>
     <message>
-        <source>Show the selection's dependencies as arrows</source>
+        <source>Show the selection&apos;s dependencies as arrows</source>
         <translation>Dépendances en flèches</translation>
     </message>
     <message>
@@ -750,10 +751,10 @@ Maintenez Maj pour obtenir quand même le dialogue d'attachement.</translation>
     </message>
     <message>
         <source>Show tree lines</source>
-        <translation>Lignes de l'arbre</translation>
+        <translation>Lignes de l&apos;arbre</translation>
     </message>
     <message>
-        <source>Show a row's details when it is clicked</source>
+        <source>Show a row&apos;s details when it is clicked</source>
         <translation>Détails au clic</translation>
     </message>
     <message>
@@ -774,15 +775,15 @@ Maintenez Maj pour obtenir quand même le dialogue d'attachement.</translation>
     </message>
     <message>
         <source>Keep the Property Inspector open (pinned)</source>
-        <translation>Garder l'inspecteur ouvert (épinglé)</translation>
+        <translation>Garder l&apos;inspecteur ouvert (épinglé)</translation>
     </message>
     <message>
         <source>Check installed addons for updates at startup</source>
         <translation>Vérifier les mises à jour au démarrage</translation>
     </message>
     <message>
-        <source>Uses the Addon Manager's check, once per session, and lists any updates to review and apply.</source>
-        <translation>Utilise la vérification du gestionnaire d'extensions, une fois par session, et liste les mises à jour à examiner et appliquer.</translation>
+        <source>Uses the Addon Manager&apos;s check, once per session, and lists any updates to review and apply.</source>
+        <translation>Utilise la vérification du gestionnaire d&apos;extensions, une fois par session, et liste les mises à jour à examiner et appliquer.</translation>
     </message>
     <message>
         <source>Menus in a FreeCAD button, menu bar hidden</source>
@@ -790,7 +791,7 @@ Maintenez Maj pour obtenir quand même le dialogue d'attachement.</translation>
     </message>
     <message>
         <source>The menus open from the FreeCAD logo, first on the toolbars. Shortcuts keep working.</source>
-        <translation>Les menus s'ouvrent depuis le logo FreeCAD, en tête des barres d'outils. Les raccourcis restent actifs.</translation>
+        <translation>Les menus s&apos;ouvrent depuis le logo FreeCAD, en tête des barres d&apos;outils. Les raccourcis restent actifs.</translation>
     </message>
     <message>
         <source>3D drag handles</source>
@@ -813,8 +814,8 @@ Maintenez Maj pour obtenir quand même le dialogue d'attachement.</translation>
         <translation>Maintenir pour changer</translation>
     </message>
     <message>
-        <source>Kept with FreeCAD's dialog history: another tool, such as Transform, may change it.</source>
-        <translation>Conservé dans l'historique des dialogues de FreeCAD : un autre outil, comme Transformer, peut le modifier.</translation>
+        <source>Kept with FreeCAD&apos;s dialog history: another tool, such as Transform, may change it.</source>
+        <translation>Conservé dans l&apos;historique des dialogues de FreeCAD : un autre outil, comme Transformer, peut le modifier.</translation>
     </message>
     <message>
         <source>Fine step</source>
@@ -834,12 +835,12 @@ Maintenez Maj pour obtenir quand même le dialogue d'attachement.</translation>
     </message>
     <message>
         <source>No drag handles when a feature is edited from the tree</source>
-        <translation>Sans poignées en édition depuis l'arbre</translation>
+        <translation>Sans poignées en édition depuis l&apos;arbre</translation>
     </message>
     <message>
-        <source>Double-clicking a feature's row opens it without the handles.
+        <source>Double-clicking a feature&apos;s row opens it without the handles.
 A new feature still gets them.</source>
-        <translation>Un double-clic sur la ligne d'une fonction l'ouvre sans les poignées.
+        <translation>Un double-clic sur la ligne d&apos;une fonction l&apos;ouvre sans les poignées.
 Une nouvelle fonction les reçoit toujours.</translation>
     </message>
     <message>
@@ -849,7 +850,7 @@ Une nouvelle fonction les reçoit toujours.</translation>
     <message>
         <source>Pad and Pocket lengths stop on a face square to the arrow.
 Hold Alt while dragging to pass through.</source>
-        <translation>Les longueurs de Protrusion et Cavité s'arrêtent sur une face perpendiculaire à la flèche.
+        <translation>Les longueurs de Protrusion et Cavité s&apos;arrêtent sur une face perpendiculaire à la flèche.
 Maintenez Alt en glissant pour traverser.</translation>
     </message>
     <message>
@@ -858,7 +859,7 @@ Maintenez Alt en glissant pour traverser.</translation>
     </message>
     <message>
         <source>Low</source>
-        <extracomment>The ambient occlusion's ranges on the page. The automatic radius, in percent of the model's diagonal.</extracomment>
+        <extracomment>The ambient occlusion&apos;s ranges on the page. The automatic radius, in percent of the model&apos;s diagonal.</extracomment>
         <translation>Basse</translation>
     </message>
     <message>
@@ -871,7 +872,7 @@ Maintenez Alt en glissant pour traverser.</translation>
     </message>
     <message>
         <source>Keep the effect</source>
-        <translation>Garder l'effet</translation>
+        <translation>Garder l&apos;effet</translation>
     </message>
     <message>
         <source>Lower its quality</source>
@@ -879,10 +880,11 @@ Maintenez Alt en glissant pour traverser.</translation>
     </message>
     <message>
         <source>Pause the effect</source>
-        <translation>Suspendre l'effet</translation>
+        <translation>Suspendre l&apos;effet</translation>
     </message>
     <message>
         <source>Visualization</source>
+        <extracomment>Set while the fields are filled: no live update then.</extracomment>
         <translation>Visualisation</translation>
     </message>
     <message>
@@ -895,7 +897,7 @@ Maintenez Alt en glissant pour traverser.</translation>
     </message>
     <message>
         <source>Darkens where surfaces meet, as ambient light does, so shapes read at a glance.</source>
-        <translation>Assombrit là où les surfaces se rejoignent, comme la lumière ambiante, pour lire les formes d'un coup d'œil.</translation>
+        <translation>Assombrit là où les surfaces se rejoignent, comme la lumière ambiante, pour lire les formes d&apos;un coup d&apos;œil.</translation>
     </message>
     <message>
         <source>Quality</source>
@@ -916,7 +918,7 @@ Maintenez Alt en glissant pour traverser.</translation>
     <message>
         <source>How far apart surfaces still shade each other.
 Automatic follows the size of the model.</source>
-        <translation>Distance jusqu'à laquelle les surfaces s'ombrent encore.
+        <translation>Distance jusqu&apos;à laquelle les surfaces s&apos;ombrent encore.
 Automatique suit la taille du modèle.</translation>
     </message>
     <message>
@@ -924,9 +926,9 @@ Automatique suit la taille du modèle.</translation>
         <translation>Rayon</translation>
     </message>
     <message>
-        <source>With an automatic radius: how far the shading spreads, as a share of the model's size.
+        <source>With an automatic radius: how far the shading spreads, as a share of the model&apos;s size.
 The same look on a small part and on a building.</source>
-        <translation>Avec un rayon automatique : jusqu'où l'ombrage s'étend, en part de la taille du modèle.
+        <translation>Avec un rayon automatique : jusqu&apos;où l&apos;ombrage s&apos;étend, en part de la taille du modèle.
 Le même rendu sur une petite pièce et sur un bâtiment.</translation>
     </message>
     <message>
@@ -934,8 +936,18 @@ Le même rendu sur une petite pièce et sur un bâtiment.</translation>
         <translation>Étendue</translation>
     </message>
     <message>
+        <source>How softly the shading fades in beside edges and vertices; 0 is a hard edge.
+Applied as you change it.</source>
+        <translation>Douceur avec laquelle l&apos;ombrage apparaît à côté des arêtes et des sommets ; 0 donne un bord net.
+Appliqué dès que vous le modifiez.</translation>
+    </message>
+    <message>
+        <source>Edge blend</source>
+        <translation>Fondu des arêtes</translation>
+    </message>
+    <message>
         <source>How long the view stays still before the full effect returns.</source>
-        <translation>Durée d'immobilité de la vue avant le retour de l'effet complet.</translation>
+        <translation>Durée d&apos;immobilité de la vue avant le retour de l&apos;effet complet.</translation>
     </message>
     <message>
         <source>Back after</source>
@@ -947,11 +959,11 @@ Le même rendu sur une petite pièce et sur un bâtiment.</translation>
     </message>
     <message>
         <source>Smoother shading, which keeps improving while the view is still.</source>
-        <translation>Ombrage plus doux, qui s'améliore tant que la vue reste immobile.</translation>
+        <translation>Ombrage plus doux, qui s&apos;améliore tant que la vue reste immobile.</translation>
     </message>
     <message>
         <source>This needs the Python package PyOpenGL, which the Addon Manager offers with Nxt.</source>
-        <translation>Nécessite le paquet Python PyOpenGL, que le gestionnaire d'extensions propose avec Nxt.</translation>
+        <translation>Nécessite le paquet Python PyOpenGL, que le gestionnaire d&apos;extensions propose avec Nxt.</translation>
     </message>
     <message>
         <source>Undo</source>
@@ -960,7 +972,7 @@ Le même rendu sur une petite pièce et sur un bâtiment.</translation>
     </message>
     <message>
         <source>Plane</source>
-        <extracomment>Most references an attachment takes. Mode -&gt; its variant's label, in the order offered. What the variants choose ("Plane"); empty with one mode. Its modes read MapPathParameter.</extracomment>
+        <extracomment>Most references an attachment takes. Mode -&gt; its variant&apos;s label, in the order offered. What the variants choose (&quot;Plane&quot;); empty with one mode. Its modes read MapPathParameter.</extracomment>
         <translation>Plan</translation>
     </message>
     <message>
@@ -982,7 +994,7 @@ Le même rendu sur une petite pièce et sur un bâtiment.</translation>
     </message>
     <message>
         <source>Normal to edge</source>
-        <translation>Normal à l'arête</translation>
+        <translation>Normal à l&apos;arête</translation>
     </message>
     <message>
         <source>Along path</source>
@@ -1018,11 +1030,11 @@ Le même rendu sur une petite pièce et sur un bâtiment.</translation>
     </message>
     <message>
         <source>Same as object</source>
-        <translation>Comme l'objet</translation>
+        <translation>Comme l&apos;objet</translation>
     </message>
     <message>
         <source>Inertia axes</source>
-        <translation>Axes d'inertie</translation>
+        <translation>Axes d&apos;inertie</translation>
     </message>
     <message>
         <source>Align to points</source>
@@ -1034,7 +1046,7 @@ Le même rendu sur une petite pièce et sur un bâtiment.</translation>
     </message>
     <message>
         <source>Move origin only</source>
-        <translation>Déplacer l'origine seule</translation>
+        <translation>Déplacer l&apos;origine seule</translation>
     </message>
     <message>
         <source>Folding</source>
@@ -1042,7 +1054,7 @@ Le même rendu sur une petite pièce et sur un bâtiment.</translation>
     </message>
     <message>
         <source>Point</source>
-        <extracomment>FreeCAD's reference types -&gt; the word a pick is shown with.</extracomment>
+        <extracomment>FreeCAD&apos;s reference types -&gt; the word a pick is shown with.</extracomment>
         <translation>Point</translation>
     </message>
     <message>
@@ -1051,7 +1063,7 @@ Le même rendu sur une petite pièce et sur un bâtiment.</translation>
     </message>
     <message>
         <source>Line</source>
-        <extracomment>Part's geometry classes, by the name a sketch's element goes by.</extracomment>
+        <extracomment>Part&apos;s geometry classes, by the name a sketch&apos;s element goes by.</extracomment>
         <translation>Ligne</translation>
     </message>
     <message>
@@ -1068,7 +1080,7 @@ Le même rendu sur une petite pièce et sur un bâtiment.</translation>
     </message>
     <message>
         <source>These points are in a line, so no plane fits.</source>
-        <extracomment>Reference types -&gt; the glyph a pick is drawn with. FreeCAD's message (a fragment, lower case) -&gt; what went wrong in plain words, and what to do about it.</extracomment>
+        <extracomment>Reference types -&gt; the glyph a pick is drawn with. FreeCAD&apos;s message (a fragment, lower case) -&gt; what went wrong in plain words, and what to do about it.</extracomment>
         <translation>Ces points sont alignés, aucun plan ne convient.</translation>
     </message>
     <message>
@@ -1089,16 +1101,16 @@ Le même rendu sur une petite pièce et sur un bâtiment.</translation>
     </message>
     <message>
         <source>Pick one at an angle to the other.</source>
-        <translation>Choisissez-en un en angle avec l'autre.</translation>
+        <translation>Choisissez-en un en angle avec l&apos;autre.</translation>
     </message>
     <message>
         <source>Deleted %s from %s</source>
-        <extracomment>Selection and undo counts are polled; both are cheap to read. In a task of Nxt's own: what it edits, rather than FreeCAD's object in edit. Inside a task dialog (task_layout.py): the object it edits, never the selection; the Data tab, a template's cards only. What is wrong with the object, shown above its cards. Per panel list picking its reference: the item chosen before, its "Select reference..." item, and what has been picked. While picking for a link: its property and whose it is. The property whose field has the keyboard: a rebuild of the cards (Two sides adds one) gives it back, so arrows keep working.</extracomment>
+        <extracomment>Selection and undo counts are polled; both are cheap to read. In a task of Nxt&apos;s own: what it edits, rather than FreeCAD&apos;s object in edit. Inside a task dialog (task_layout.py): the object it edits, never the selection; the Data tab, a template&apos;s cards only. What is wrong with the object, shown above its cards. Per panel list picking its reference: the item chosen before, its &quot;Select reference...&quot; item, and what has been picked. While picking for a link: its property and whose it is. The property whose field has the keyboard: a rebuild of the cards (Two sides adds one) gives it back, so arrows keep working.</extracomment>
         <translation>%s supprimée de %s</translation>
     </message>
     <message>
         <source>%s is also a unit, which FreeCAD reads first: rename the variable</source>
-        <extracomment>Kinds that fit half a row. Everything else takes a whole one. Groups collapsed unless something in them has an expression. An enumeration this short is joined buttons, not a drop-down. How close two unit axes' dot product must come to 1 to point the same way. The rotation axis as last typed, per object and property. FreeCAD keeps a rotation as a quaternion and reads its axis back scaled to length 1, or as Z when the angle is 0; the typed numbers stay shown while the rotation still turns about them.</extracomment>
+        <extracomment>Kinds that fit half a row. Everything else takes a whole one. Groups collapsed unless something in them has an expression. An enumeration this short is joined buttons, not a drop-down. How close two unit axes&apos; dot product must come to 1 to point the same way. The rotation axis as last typed, per object and property. FreeCAD keeps a rotation as a quaternion and reads its axis back scaled to length 1, or as Z when the angle is 0; the typed numbers stay shown while the rotation still turns about them.</extracomment>
         <translation>%s est aussi une unité, que FreeCAD lit en premier : renommez la variable</translation>
     </message>
     <message>
@@ -1107,16 +1119,16 @@ Le même rendu sur une petite pièce et sur un bâtiment.</translation>
     </message>
     <message>
         <source>Accessible light and dark themes.</source>
-        <extracomment>Install states, as QML shows them. From FreeCAD's addon index (github.com/FreeCAD/Addons, Data/Index.json).</extracomment>
+        <extracomment>Install states, as QML shows them. From FreeCAD&apos;s addon index (github.com/FreeCAD/Addons, Data/Index.json).</extracomment>
         <translation>Thèmes clairs et sombres accessibles.</translation>
     </message>
     <message>
         <source>Shares non-identifying usage data.</source>
-        <translation>Partage des données d'usage non identifiantes.</translation>
+        <translation>Partage des données d&apos;usage non identifiantes.</translation>
     </message>
     <message>
         <source>pip did not run: %s</source>
-        <translation>pip ne s'est pas lancé : %s</translation>
+        <translation>pip ne s&apos;est pas lancé : %s</translation>
     </message>
     <message>
         <source>no Python found to run pip</source>
@@ -1124,7 +1136,7 @@ Le même rendu sur une petite pièce et sur un bâtiment.</translation>
     </message>
     <message>
         <source>its Python packages were not installed</source>
-        <translation>ses paquets Python n'ont pas été installés</translation>
+        <translation>ses paquets Python n&apos;ont pas été installés</translation>
     </message>
     <message>
         <source>Welcome to Nxt</source>
@@ -1133,17 +1145,17 @@ Le même rendu sur une petite pièce et sur un bâtiment.</translation>
     </message>
     <message>
         <source>Menu</source>
-        <extracomment>The setting's name while it was on by default; dropped at startup. After the window first shows, the button is checked this often for this long: FreeCAD may still be restoring its toolbar layout. What FreeCAD's toolbar layout does to the button's toolbar.</extracomment>
+        <extracomment>The setting&apos;s name while it was on by default; dropped at startup. After the window first shows, the button is checked this often for this long: FreeCAD may still be restoring its toolbar layout. What FreeCAD&apos;s toolbar layout does to the button&apos;s toolbar.</extracomment>
         <translation>Menu</translation>
     </message>
     <message>
         <source>Attachment</source>
-        <extracomment>Offset fields in panel order: move X Y Z, then turn about X Y Z. FreeCAD's attachment box, in its dialog for a datum or a new sketch. How long after an object is made its dialog may still be opening, s. Binders take an attachment only when asked: FreeCAD's editor adds it. A way chosen before the picks it needs: its mode.</extracomment>
+        <extracomment>Offset fields in panel order: move X Y Z, then turn about X Y Z. FreeCAD&apos;s attachment box, in its dialog for a datum or a new sketch. How long after an object is made its dialog may still be opening, s. Binders take an attachment only when asked: FreeCAD&apos;s editor adds it. A way chosen before the picks it needs: its mode.</extracomment>
         <translation>Attachement</translation>
     </message>
     <message>
         <source>Edit attachment</source>
-        <translation>Éditer l'attachement</translation>
+        <translation>Éditer l&apos;attachement</translation>
     </message>
     <message>
         <source>Next: %1</source>
@@ -1155,7 +1167,7 @@ Le même rendu sur une petite pièce et sur un bâtiment.</translation>
     </message>
     <message>
         <source>Needs other picks</source>
-        <translation>Demande d'autres sélections</translation>
+        <translation>Demande d&apos;autres sélections</translation>
     </message>
     <message>
         <source>add %1</source>
@@ -1163,9 +1175,9 @@ Le même rendu sur une petite pièce et sur un bâtiment.</translation>
     </message>
     <message>
         <source>External</source>
-        <extracomment>Element filters, then constraint filters. A geometric group longer than this starts folded. Constraint chips shown on an element's strip before "+n". A constraint's geometry index where it names none (GeoEnum::GeoUndef). External geometry's indices count down from this one (GeoEnum::RefExt). ExternalGeo holds the two axes first, then the external geometry. The status marks, as SeverityMark.qml draws them.
+        <extracomment>Element filters, then constraint filters. A geometric group longer than this starts folded. Constraint chips shown on an element&apos;s strip before &quot;+n&quot;. A constraint&apos;s geometry index where it names none (GeoEnum::GeoUndef). External geometry&apos;s indices count down from this one (GeoEnum::RefExt). ExternalGeo holds the two axes first, then the external geometry. The status marks, as SeverityMark.qml draws them.
 ----------
-External geometry's indices count down from this one (GeoEnum::RefExt).</extracomment>
+External geometry&apos;s indices count down from this one (GeoEnum::RefExt).</extracomment>
         <translation>Externe</translation>
     </message>
     <message>
@@ -1178,7 +1190,7 @@ External geometry's indices count down from this one (GeoEnum::RefExt).</extraco
     </message>
     <message>
         <source>edge</source>
-        <extracomment>What part of an element is still free, by Sketcher's PointPos.</extracomment>
+        <extracomment>What part of an element is still free, by Sketcher&apos;s PointPos.</extracomment>
         <translation>arête</translation>
     </message>
     <message>
@@ -1195,9 +1207,9 @@ External geometry's indices count down from this one (GeoEnum::RefExt).</extraco
     </message>
     <message>
         <source>Horizontal axis</source>
-        <extracomment>Axes, by geometry index, as a constraint's chips name them.
+        <extracomment>Axes, by geometry index, as a constraint&apos;s chips name them.
 ----------
-The sketch's axes, by their geometry index.</extracomment>
+The sketch&apos;s axes, by their geometry index.</extracomment>
         <translation>Axe horizontal</translation>
     </message>
     <message>
@@ -1206,7 +1218,7 @@ The sketch's axes, by their geometry index.</extracomment>
     </message>
     <message>
         <source>Point on object</source>
-        <extracomment>Constraint types that hold a value, and so can drive or be driven. Sketcher's constraint types whose name is not already a plain word.</extracomment>
+        <extracomment>Constraint types that hold a value, and so can drive or be driven. Sketcher&apos;s constraint types whose name is not already a plain word.</extracomment>
         <translation>Point sur objet</translation>
     </message>
     <message>
@@ -1235,11 +1247,11 @@ The sketch's axes, by their geometry index.</extracomment>
     </message>
     <message>
         <source>Elliptical arc</source>
-        <translation>Arc d'ellipse</translation>
+        <translation>Arc d&apos;ellipse</translation>
     </message>
     <message>
         <source>Hyperbolic arc</source>
-        <translation>Arc d'hyperbole</translation>
+        <translation>Arc d&apos;hyperbole</translation>
     </message>
     <message>
         <source>Parabolic arc</source>
@@ -1256,7 +1268,7 @@ The sketch's axes, by their geometry index.</extracomment>
     </message>
     <message>
         <source>Over-constrained</source>
-        <extracomment>A solver finding's heading, by the sketch attribute that lists it.</extracomment>
+        <extracomment>A solver finding&apos;s heading, by the sketch attribute that lists it.</extracomment>
         <translation>Surcontraint</translation>
     </message>
     <message>
@@ -1273,7 +1285,7 @@ The sketch's axes, by their geometry index.</extracomment>
     </message>
     <message>
         <source>Empty sketch</source>
-        <extracomment>The status mark's shapes (SeverityMark.qml): none, ring, triangle, disc. A finding's mark is its health severity, past the ring. A constraint's geometry index where it names none (GeoEnum::GeoUndef). The status link that selects what is still free to move. Selection names inside a sketch, and what each picks.</extracomment>
+        <extracomment>The status mark&apos;s shapes (SeverityMark.qml): none, ring, triangle, disc. A finding&apos;s mark is its health severity, past the ring. A constraint&apos;s geometry index where it names none (GeoEnum::GeoUndef). The status link that selects what is still free to move. Selection names inside a sketch, and what each picks.</extracomment>
         <translation>Esquisse vide</translation>
     </message>
     <message>
@@ -1286,17 +1298,17 @@ The sketch's axes, by their geometry index.</extracomment>
     </message>
     <message>
         <source>Group</source>
-        <extracomment>Wait after the last toolbar change before reading them all again. Proxied buttons emit nothing when their text or state changes (Draft Tray shows the current layer): read again this often. FreeCAD's toolbar icon sizes, offered in edit mode. Where on screen a strip's view is: its area and the point in it. The drawer's separator and New group tiles, as their drags carry them. dropCarried's "not on a new-row zone". The areas holding something changed (a side strip shows or goes). The carried item is over `area`'s strip at x, y; "" over none. The carried item was let go over `area`'s strip at x, y. The group open in the editor row, by identity: rows move. Group key -&gt; the member key last used, kept across rebuilds. The item dragged out of its view: (area, row) or a drawer key.</extracomment>
+        <extracomment>Wait after the last toolbar change before reading them all again. Proxied buttons emit nothing when their text or state changes (Draft Tray shows the current layer): read again this often. FreeCAD&apos;s toolbar icon sizes, offered in edit mode. Where on screen a strip&apos;s view is: its area and the point in it. The drawer&apos;s separator and New group tiles, as their drags carry them. dropCarried&apos;s &quot;not on a new-row zone&quot;. The areas holding something changed (a side strip shows or goes). The carried item is over `area`&apos;s strip at x, y; &quot;&quot; over none. The carried item was let go over `area`&apos;s strip at x, y. The group open in the editor row, by identity: rows move. Group key -&gt; the member key last used, kept across rebuilds. The item dragged out of its view: (area, row) or a drawer key.</extracomment>
         <translation>Groupe</translation>
     </message>
     <message>
         <source>Tool strip</source>
-        <extracomment>Each strip's toolbar name and where it docks. Toolbars that are the strips' own and never covered. The most of the window's height the top strip may take: a first layout at a sliver of its width (FreeCAD 1.1 lays toolbars out before the window has its size) wraps every item onto its own row, and a strip fixed at that height was never widened again. The least share of the window's width the top strip takes when docked as it should be; narrower, FreeCAD's restored layout squeezed it. How long after FreeCAD rearranges its toolbars (a restored layout, a workbench change) the strips' docking is checked.</extracomment>
-        <translation>Bande d'outils</translation>
+        <extracomment>Each strip&apos;s toolbar name and where it docks. Toolbars that are the strips&apos; own and never covered. The most of the window&apos;s height the top strip may take: a first layout at a sliver of its width (FreeCAD 1.1 lays toolbars out before the window has its size) wraps every item onto its own row, and a strip fixed at that height was never widened again. The least share of the window&apos;s width the top strip takes when docked as it should be; narrower, FreeCAD&apos;s restored layout squeezed it. How long after FreeCAD rearranges its toolbars (a restored layout, a workbench change) the strips&apos; docking is checked.</extracomment>
+        <translation>Bande d&apos;outils</translation>
     </message>
     <message>
         <source>Removed the expression on %s</source>
-        <extracomment>Set on a box of FreeCAD's that the panel hid, and so may show again. FreeCAD's boxes in the sketch dialog -&gt; the list each one is, if the panel offers to show it; the solver message is never shown. The box the panel's cards take the place of. Switches FreeCAD keeps in parameters: key -&gt; (group, name, default). Switches that are properties of the sketch's view provider. Which geometry is drawn, and picked, on top: parameters, top first. Each holds 1 (normal), 2 (construction) or 3 (external). FreeCAD's command that selects what a status link is about. Sketcher's own "Auto-update" switch: recompute after every edit. A stock list was asked for, or sent away.</extracomment>
+        <extracomment>Set on a box of FreeCAD&apos;s that the panel hid, and so may show again. FreeCAD&apos;s boxes in the sketch dialog -&gt; the list each one is, if the panel offers to show it; the solver message is never shown. The box the panel&apos;s cards take the place of. Switches FreeCAD keeps in parameters: key -&gt; (group, name, default). Switches that are properties of the sketch&apos;s view provider. Which geometry is drawn, and picked, on top: parameters, top first. Each holds 1 (normal), 2 (construction) or 3 (external). FreeCAD&apos;s command that selects what a status link is about. Sketcher&apos;s own &quot;Auto-update&quot; switch: recompute after every edit. A stock list was asked for, or sent away.</extracomment>
         <translation>Expression de %s supprimée</translation>
     </message>
 </context>
@@ -1316,7 +1328,7 @@ The sketch's axes, by their geometry index.</extracomment>
     </message>
     <message>
         <source>Edit attachment</source>
-        <translation>Éditer l'attachement</translation>
+        <translation>Éditer l&apos;attachement</translation>
     </message>
     <message>
         <source>Recompute</source>
@@ -1324,14 +1336,14 @@ The sketch's axes, by their geometry index.</extracomment>
     </message>
     <message>
         <source>Why did it fail?</source>
-        <translation>Pourquoi l'échec ?</translation>
+        <translation>Pourquoi l&apos;échec ?</translation>
     </message>
     <message>
         <source>Show the failed feature</source>
         <translation>Montrer la fonction en échec</translation>
     </message>
     <message>
-        <source>Show the solver's findings</source>
+        <source>Show the solver&apos;s findings</source>
         <translation>Diagnostic du solveur</translation>
     </message>
     <message>
@@ -1339,16 +1351,16 @@ The sketch's axes, by their geometry index.</extracomment>
         <translation>Sélectionner les utilisateurs</translation>
     </message>
     <message>
-        <source>Select what it's built from</source>
+        <source>Select what it&apos;s built from</source>
         <translation>Sélectionner les sources</translation>
     </message>
     <message>
         <source>Roll back to here</source>
-        <translation>Revenir jusqu'ici</translation>
+        <translation>Revenir jusqu&apos;ici</translation>
     </message>
     <message>
         <source>Roll forward to here</source>
-        <translation>Avancer jusqu'ici</translation>
+        <translation>Avancer jusqu&apos;ici</translation>
     </message>
     <message>
         <source>Make active</source>
@@ -1384,7 +1396,7 @@ The sketch's axes, by their geometry index.</extracomment>
     </message>
     <message>
         <source>Open file location</source>
-        <translation>Ouvrir l'emplacement</translation>
+        <translation>Ouvrir l&apos;emplacement</translation>
     </message>
     <message>
         <source>Synchronize</source>
@@ -1392,10 +1404,10 @@ The sketch's axes, by their geometry index.</extracomment>
     </message>
     <message>
         <source>Select bound object</source>
-        <translation>Sélectionner l'objet lié</translation>
+        <translation>Sélectionner l&apos;objet lié</translation>
     </message>
     <message>
-        <source>FreeCAD's menu…</source>
+        <source>FreeCAD&apos;s menu…</source>
         <translation>Menu FreeCAD…</translation>
     </message>
     <message>
@@ -1416,7 +1428,7 @@ The sketch's axes, by their geometry index.</extracomment>
     </message>
     <message>
         <source>Hide</source>
-        <extracomment>Short labels under the bar's icons.</extracomment>
+        <extracomment>Short labels under the bar&apos;s icons.</extracomment>
         <translation>Masquer</translation>
     </message>
     <message>
@@ -1425,7 +1437,7 @@ The sketch's axes, by their geometry index.</extracomment>
     </message>
     <message>
         <source>Exit isolate</source>
-        <translation>Quitter l'isolation</translation>
+        <translation>Quitter l&apos;isolation</translation>
     </message>
     <message>
         <source>Fit</source>
@@ -1441,12 +1453,12 @@ The sketch's axes, by their geometry index.</extracomment>
     </message>
     <message>
         <source>%1 %2</source>
-        <extracomment>Labels that show a count for several objects: "Delete 3". How a count is added to a label; %1 the label, %2 how many.</extracomment>
+        <extracomment>Labels that show a count for several objects: &quot;Delete 3&quot;. How a count is added to a label; %1 the label, %2 how many.</extracomment>
         <translation>%1 %2</translation>
     </message>
     <message>
         <source>Model</source>
-        <extracomment>FreeCAD command icons that Nxt's actions borrow. Group names, listed for translation extraction.</extracomment>
+        <extracomment>FreeCAD command icons that Nxt&apos;s actions borrow. Group names, listed for translation extraction.</extracomment>
         <translation>Modèle</translation>
     </message>
     <message>
@@ -1495,7 +1507,7 @@ The sketch's axes, by their geometry index.</extracomment>
     </message>
     <message>
         <source>Visibility</source>
-        <extracomment>The tree header's menu: its sections and subtitle.</extracomment>
+        <extracomment>The tree header&apos;s menu: its sections and subtitle.</extracomment>
         <translation>Visibilité</translation>
     </message>
     <message>
@@ -1516,12 +1528,12 @@ The sketch's axes, by their geometry index.</extracomment>
     </message>
     <message>
         <source>Edit %1</source>
-        <extracomment>An edit mode's label; %1 is the object's label.</extracomment>
+        <extracomment>An edit mode&apos;s label; %1 is the object&apos;s label.</extracomment>
         <translation>Éditer %1</translation>
     </message>
     <message>
         <source>%1 objects</source>
-        <extracomment>The menu's title for a selection of several; %1 is how many.</extracomment>
+        <extracomment>The menu&apos;s title for a selection of several; %1 is how many.</extracomment>
         <translation>%1 objets</translation>
     </message>
     <message>
@@ -1593,22 +1605,22 @@ The sketch's axes, by their geometry index.</extracomment>
     <message>
         <source>To last</source>
         <comment>pd-extrude</comment>
-        <translation>Jusqu'au dernier</translation>
+        <translation>Jusqu&apos;au dernier</translation>
     </message>
     <message>
         <source>To first</source>
         <comment>pd-extrude</comment>
-        <translation>Jusqu'au premier</translation>
+        <translation>Jusqu&apos;au premier</translation>
     </message>
     <message>
         <source>Up to face</source>
         <comment>pd-extrude</comment>
-        <translation>Jusqu'à la face</translation>
+        <translation>Jusqu&apos;à la face</translation>
     </message>
     <message>
         <source>Up to shape</source>
         <comment>pd-extrude</comment>
-        <translation>Jusqu'à la forme</translation>
+        <translation>Jusqu&apos;à la forme</translation>
     </message>
     <message>
         <source>Profile</source>
@@ -1633,7 +1645,7 @@ The sketch's axes, by their geometry index.</extracomment>
     <message>
         <source>Sketch normal</source>
         <comment>pd-extrude</comment>
-        <translation>Normale à l'esquisse</translation>
+        <translation>Normale à l&apos;esquisse</translation>
     </message>
     <message>
         <source>Custom</source>
@@ -1658,7 +1670,7 @@ The sketch's axes, by their geometry index.</extracomment>
     <message>
         <source>Up to</source>
         <comment>pd-extrude</comment>
-        <translation>Jusqu'à</translation>
+        <translation>Jusqu&apos;à</translation>
     </message>
     <message>
         <source>Taper</source>
@@ -1743,7 +1755,7 @@ The sketch's axes, by their geometry index.</extracomment>
     <message>
         <source>One edge of a tangent chain fillets the whole chain.</source>
         <comment>pd-fillet</comment>
-        <translation>Une arête d'une chaîne tangente arrondit toute la chaîne.</translation>
+        <translation>Une arête d&apos;une chaîne tangente arrondit toute la chaîne.</translation>
     </message>
     <message>
         <source>Result</source>
@@ -1788,22 +1800,22 @@ The sketch's axes, by their geometry index.</extracomment>
     <message>
         <source>To last</source>
         <comment>pd-revolve</comment>
-        <translation>Jusqu'au dernier</translation>
+        <translation>Jusqu&apos;au dernier</translation>
     </message>
     <message>
         <source>To first</source>
         <comment>pd-revolve</comment>
-        <translation>Jusqu'au premier</translation>
+        <translation>Jusqu&apos;au premier</translation>
     </message>
     <message>
         <source>Up to face</source>
         <comment>pd-revolve</comment>
-        <translation>Jusqu'à la face</translation>
+        <translation>Jusqu&apos;à la face</translation>
     </message>
     <message>
         <source>Up to shape</source>
         <comment>pd-revolve</comment>
-        <translation>Jusqu'à la forme</translation>
+        <translation>Jusqu&apos;à la forme</translation>
     </message>
     <message>
         <source>Profile</source>
@@ -1838,7 +1850,7 @@ The sketch's axes, by their geometry index.</extracomment>
     <message>
         <source>Up to</source>
         <comment>pd-revolve</comment>
-        <translation>Jusqu'à</translation>
+        <translation>Jusqu&apos;à</translation>
     </message>
     <message>
         <source>Second side</source>
@@ -2093,22 +2105,22 @@ The sketch's axes, by their geometry index.</extracomment>
     <message>
         <source>Translate origin</source>
         <comment>sketch</comment>
-        <translation>Translater l'origine</translation>
+        <translation>Translater l&apos;origine</translation>
     </message>
     <message>
         <source>XY of object</source>
         <comment>sketch</comment>
-        <translation>XY de l'objet</translation>
+        <translation>XY de l&apos;objet</translation>
     </message>
     <message>
         <source>XZ of object</source>
         <comment>sketch</comment>
-        <translation>XZ de l'objet</translation>
+        <translation>XZ de l&apos;objet</translation>
     </message>
     <message>
         <source>YZ of object</source>
         <comment>sketch</comment>
-        <translation>YZ de l'objet</translation>
+        <translation>YZ de l&apos;objet</translation>
     </message>
     <message>
         <source>Plane face</source>
@@ -2123,7 +2135,7 @@ The sketch's axes, by their geometry index.</extracomment>
     <message>
         <source>Normal to edge</source>
         <comment>sketch</comment>
-        <translation>Normal à l'arête</translation>
+        <translation>Normal à l&apos;arête</translation>
     </message>
     <message>
         <source>Frenet NB</source>
@@ -2168,7 +2180,7 @@ The sketch's axes, by their geometry index.</extracomment>
     <message>
         <source>Inertia axes</source>
         <comment>sketch</comment>
-        <translation>Axes d'inertie</translation>
+        <translation>Axes d&apos;inertie</translation>
     </message>
     <message>
         <source>Align O-X-Y</source>
@@ -2269,7 +2281,7 @@ The sketch's axes, by their geometry index.</extracomment>
         <translation>Chanfrein Nxt</translation>
     </message>
     <message>
-        <source>Chamfer the selected edges by booleans, instead of Part Design's chamfer</source>
+        <source>Chamfer the selected edges by booleans, instead of Part Design&apos;s chamfer</source>
         <translation>Chanfreiner les arêtes choisies par booléens, au lieu du chanfrein de Part Design</translation>
     </message>
 </context>
@@ -2280,7 +2292,7 @@ The sketch's axes, by their geometry index.</extracomment>
         <translation>Congé Nxt</translation>
     </message>
     <message>
-        <source>Fillet the selected edges by cutting a rolling-ball blend, instead of Part Design's fillet</source>
+        <source>Fillet the selected edges by cutting a rolling-ball blend, instead of Part Design&apos;s fillet</source>
         <translation>Arrondir les arêtes choisies par une boule roulante, au lieu du congé de Part Design</translation>
     </message>
 </context>
@@ -2292,13 +2304,13 @@ The sketch's axes, by their geometry index.</extracomment>
     </message>
     <message>
         <source>Show only the selected objects in the 3D view; again to exit</source>
-        <translation>N'afficher que les objets choisis en 3D ; à nouveau pour quitter</translation>
+        <translation>N&apos;afficher que les objets choisis en 3D ; à nouveau pour quitter</translation>
     </message>
 </context>
 <context>
     <name>Nxt_Menu</name>
     <message>
-        <source>The Nxt model panel's commands</source>
+        <source>The Nxt model panel&apos;s commands</source>
         <translation>Commandes du panneau Nxt</translation>
     </message>
 </context>
@@ -2331,7 +2343,7 @@ The sketch's axes, by their geometry index.</extracomment>
         <translation>Inspecteur Nxt</translation>
     </message>
     <message>
-        <source>Show the selection's properties beside the model panel</source>
+        <source>Show the selection&apos;s properties beside the model panel</source>
         <translation>Afficher les propriétés de la sélection à côté du panneau</translation>
     </message>
 </context>
@@ -2342,8 +2354,8 @@ The sketch's axes, by their geometry index.</extracomment>
         <translation>Recharger Nxt</translation>
     </message>
     <message>
-        <source>Hot-reload the addon's Python modules</source>
-        <translation>Recharger à chaud les modules Python de l'extension</translation>
+        <source>Hot-reload the addon&apos;s Python modules</source>
+        <translation>Recharger à chaud les modules Python de l&apos;extension</translation>
     </message>
 </context>
 <context>
@@ -2365,7 +2377,7 @@ The sketch's axes, by their geometry index.</extracomment>
     </message>
     <message>
         <source>Show the other side of the section plane</source>
-        <translation>Montrer l'autre côté du plan de coupe</translation>
+        <translation>Montrer l&apos;autre côté du plan de coupe</translation>
     </message>
 </context>
 <context>
@@ -2376,7 +2388,7 @@ The sketch's axes, by their geometry index.</extracomment>
     </message>
     <message>
         <source>Cut the view with a plane facing you, or on the selected face, datum plane or three points; drag its frame to move it. Again to finish editing; up to three sections can cut at once</source>
-        <translation>Couper la vue par un plan face à vous, ou sur la face, le plan de référence ou les trois points choisis ; glissez son cadre pour le déplacer. À nouveau pour finir ; jusqu'à trois coupes simultanées</translation>
+        <translation>Couper la vue par un plan face à vous, ou sur la face, le plan de référence ou les trois points choisis ; glissez son cadre pour le déplacer. À nouveau pour finir ; jusqu&apos;à trois coupes simultanées</translation>
     </message>
 </context>
 <context>
@@ -2420,7 +2432,7 @@ The sketch's axes, by their geometry index.</extracomment>
     </message>
     <message>
         <source>Show every object except datums, coordinate systems and Assembly joints; inside a Body only its tip</source>
-        <translation>Afficher tous les objets sauf références, systèmes de coordonnées et liaisons d'assemblage ; dans un corps, seulement sa fonction résultante</translation>
+        <translation>Afficher tous les objets sauf références, systèmes de coordonnées et liaisons d&apos;assemblage ; dans un corps, seulement sa fonction résultante</translation>
     </message>
 </context>
 <context>
@@ -2451,7 +2463,7 @@ The sketch's axes, by their geometry index.</extracomment>
     </message>
     <message>
         <source>Custom</source>
-        <extracomment>Gap between the bottom of the 3D view and the bar. Unit schemas offered first, by FreeCAD's name for them. Significant digits shown. kg/m³ in a kg/mm³, FreeCAD's internal density unit. The material setting's value while a custom density is used. Densities at least this large are shown as whole numbers. The QQuickWidget showing the bar, once there is one.</extracomment>
+        <extracomment>Gap between the bottom of the 3D view and the bar. Unit schemas offered first, by FreeCAD&apos;s name for them. Significant digits shown. kg/m³ in a kg/mm³, FreeCAD&apos;s internal density unit. The material setting&apos;s value while a custom density is used. Densities at least this large are shown as whole numbers. The QQuickWidget showing the bar, once there is one.</extracomment>
         <translation>Personnalisé</translation>
     </message>
 </context>
@@ -2614,7 +2626,7 @@ The sketch's axes, by their geometry index.</extracomment>
     </message>
     <message>
         <source>Validate sketch…</source>
-        <translation>Valider l'esquisse…</translation>
+        <translation>Valider l&apos;esquisse…</translation>
     </message>
     <message>
         <source>Construction</source>
@@ -2645,11 +2657,11 @@ The sketch's axes, by their geometry index.</extracomment>
         <translation>Actif</translation>
     </message>
     <message>
-        <source>Hide FreeCAD's lists</source>
+        <source>Hide FreeCAD&apos;s lists</source>
         <translation>Masquer les listes de FreeCAD</translation>
     </message>
     <message>
-        <source>Show FreeCAD's lists</source>
+        <source>Show FreeCAD&apos;s lists</source>
         <translation>Afficher les listes de FreeCAD</translation>
     </message>
 </context>
@@ -2693,7 +2705,7 @@ The sketch's axes, by their geometry index.</extracomment>
     </message>
     <message>
         <source>Snap angle</source>
-        <translation>Angle d'aimantation</translation>
+        <translation>Angle d&apos;aimantation</translation>
     </message>
     <message>
         <source>Auto constraints</source>
@@ -2701,7 +2713,7 @@ The sketch's axes, by their geometry index.</extracomment>
     </message>
     <message>
         <source>Render order, top first</source>
-        <translation>Ordre d'affichage, haut d'abord</translation>
+        <translation>Ordre d&apos;affichage, haut d&apos;abord</translation>
     </message>
     <message>
         <source>Draw above</source>
@@ -2709,14 +2721,14 @@ The sketch's axes, by their geometry index.</extracomment>
     </message>
     <message>
         <source>Sketch settings</source>
-        <translation>Réglages de l'esquisse</translation>
+        <translation>Réglages de l&apos;esquisse</translation>
     </message>
 </context>
 <context>
     <name>ToolStrip</name>
     <message>
         <source>Remove from the toolbar</source>
-        <translation>Retirer de la barre d'outils</translation>
+        <translation>Retirer de la barre d&apos;outils</translation>
     </message>
     <message>
         <source>Locked: the same in every workbench</source>
@@ -2728,7 +2740,7 @@ The sketch's axes, by their geometry index.</extracomment>
     </message>
     <message>
         <source>Edit the toolbar</source>
-        <translation>Modifier la barre d'outils</translation>
+        <translation>Modifier la barre d&apos;outils</translation>
     </message>
 </context>
 <context>
@@ -2767,7 +2779,7 @@ The sketch's axes, by their geometry index.</extracomment>
     </message>
     <message>
         <source>Tree settings</source>
-        <translation>Réglages de l'arbre</translation>
+        <translation>Réglages de l&apos;arbre</translation>
     </message>
 </context>
 <context>
@@ -2822,7 +2834,7 @@ The sketch's axes, by their geometry index.</extracomment>
     </message>
     <message>
         <source>Ctrl+click for the Property Inspector</source>
-        <translation>Ctrl+clic pour l'inspecteur</translation>
+        <translation>Ctrl+clic pour l&apos;inspecteur</translation>
     </message>
     <message>
         <source>Collapse</source>
@@ -2857,7 +2869,7 @@ The sketch's axes, by their geometry index.</extracomment>
         <translation>Masquer les détails</translation>
     </message>
     <message>
-        <source>Can't drop on %1</source>
+        <source>Can&apos;t drop on %1</source>
         <translation>Impossible de déposer sur %1</translation>
     </message>
     <message>
@@ -2881,7 +2893,7 @@ The sketch's axes, by their geometry index.</extracomment>
     <name>TreeSettings</name>
     <message>
         <source>Tree settings</source>
-        <translation>Réglages de l'arbre</translation>
+        <translation>Réglages de l&apos;arbre</translation>
     </message>
     <message>
         <source>Tree structure</source>
@@ -2889,7 +2901,7 @@ The sketch's axes, by their geometry index.</extracomment>
     </message>
     <message>
         <source>Expression rows</source>
-        <translation>Lignes d'expression</translation>
+        <translation>Lignes d&apos;expression</translation>
     </message>
     <message>
         <source>Nested</source>
@@ -2941,7 +2953,7 @@ The sketch's axes, by their geometry index.</extracomment>
     </message>
     <message>
         <source>Double-click a face to edit its feature</source>
-        <translation>Double-clic sur une face pour l'éditer</translation>
+        <translation>Double-clic sur une face pour l&apos;éditer</translation>
     </message>
     <message>
         <source>Show dependency arrows</source>
@@ -2957,7 +2969,7 @@ The sketch's axes, by their geometry index.</extracomment>
     </message>
     <message>
         <source>Show tree lines</source>
-        <translation>Lignes de l'arbre</translation>
+        <translation>Lignes de l&apos;arbre</translation>
     </message>
     <message>
         <source>Show details on click</source>
@@ -2968,12 +2980,12 @@ The sketch's axes, by their geometry index.</extracomment>
         <translation>Masse rapide en 3D</translation>
     </message>
     <message>
-        <source>Auto repair 'Wire not closed' errors</source>
+        <source>Auto repair &apos;Wire not closed&apos; errors</source>
         <translation>Réparer « Wire not closed »</translation>
     </message>
     <message>
         <source>Experimental dynamic toolbars</source>
-        <translation>Barres d'outils dynamiques expérimentales</translation>
+        <translation>Barres d&apos;outils dynamiques expérimentales</translation>
     </message>
     <message>
         <source>Rename new objects</source>
@@ -3078,7 +3090,7 @@ The sketch's axes, by their geometry index.</extracomment>
     </message>
     <message>
         <source>What it sets</source>
-        <translation>Ce qu'elle définit</translation>
+        <translation>Ce qu&apos;elle définit</translation>
     </message>
     <message>
         <source>Delete</source>

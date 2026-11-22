@@ -105,8 +105,8 @@ class Look:
     radius: float
     temporal: bool
     #: FreeCAD's line width and point size, plus a margin, in pixels.
-    line_px: float = 3.0
-    point_px: float = 3.0
+    line_px: float = 2.0
+    point_px: float = 2.0
 
 
 DEPTH_VERTEX = """#version 120
@@ -304,16 +304,34 @@ uniform vec2 dt_depthSize;
 uniform vec2 dt_maskSize;
 uniform float dt_radius;
 uniform float dt_maskTolerance;
+uniform float dt_maskBlend;    // tent spacing, in mask texels
 varying vec2 dt_uv;
+
+// 1 where a seen line or point covers the mask texel at `uv`
+float line(vec2 uv, float z) {
+    vec4 m = texture2D(dt_maskTex, uv);
+    return step(0.5, m.a) * step(m.r, z + dt_maskTolerance);
+}
 
 void main() {
     vec2 duv = (floor(dt_uv * dt_depthSize) + 0.5) / dt_depthSize;
     vec4 d = texture2D(dt_depthTex, duv);
     if (dot(d.gba, d.gba) < 0.5) discard;
     float z = d.r;
+    // a 3x3 tent over the mask (centre 1/4, sides 1/8, corners 1/16):
+    // a soft edge in place of a hard, aliased one, which left jaggies
+    // and a rim of unshaded face beside antialiased lines
     vec2 muv = (floor(dt_uv * dt_maskSize) + 0.5) / dt_maskSize;
-    vec4 m = texture2D(dt_maskTex, muv);
-    if (m.a > 0.5 && m.r <= z + dt_maskTolerance) discard;
+    vec2 mt = 1.0 / dt_maskSize;
+    float covered = 0.0;
+    for (int x = -1; x <= 1; x++) {
+        for (int y = -1; y <= 1; y++) {
+            float w = (2.0 - abs(float(x))) * (2.0 - abs(float(y))) / 16.0;
+            covered += w * line(muv + vec2(float(x), float(y)) * mt
+                                    * dt_maskBlend, z);
+        }
+    }
+    if (covered > 0.99) discard;
     vec2 p = dt_uv * dt_aoSize - 0.5;
     vec2 base = floor(p);
     vec2 f = p - base;
@@ -339,7 +357,7 @@ void main() {
     float dither = fract(52.9829189 * fract(dot(gl_FragCoord.xy,
                                                vec2(0.06711056,
                                                     0.00583715))));
-    float darkness = 1.0 - sum / max(weight, 1e-6);
+    float darkness = (1.0 - sum / max(weight, 1e-6)) * (1.0 - covered);
     gl_FragColor = vec4(0.0, 0.0, 0.0,
                         clamp(darkness + (dither - 0.5) / 255.0, 0.0, 1.0));
 }
@@ -635,6 +653,8 @@ def _pipeline(make: Builder, width: int, height: int, camera: Any,
     blur_tex = make.texture(aw, ah, float_rgba, blur_scene)
 
     mask_size = texture_size(width, height, 1.0)
+    blend = make.scalar("dt_maskBlend", resources.edge_blend)
+    resources.blends.append(blend)
     lines = resources.lines.follow(
         mask_key, mask_size,
         lambda: [camera, *make.mask_state(look), scene])
@@ -662,7 +682,8 @@ def _pipeline(make: Builder, width: int, height: int, camera: Any,
                       make.vec2("dt_maskSize", *mask_size),
                       make.scalar("dt_radius", look.radius),
                       make.scalar("dt_maskTolerance",
-                                  MASK_TOLERANCE_OF_RADIUS * look.radius)]),
+                                  MASK_TOLERANCE_OF_RADIUS * look.radius),
+                      blend]),
         make.framed_quad())
     return prepass, composite
 
@@ -693,6 +714,7 @@ def build(width: int, height: int, camera: Any, scene: Any,
     """
     make = Builder()
     coin = make.coin
+    resources.blends.clear()
     # Inside an annotation, the passes render while Coin replays delayed
     # paths: an annotation in the model then draws in place, into the
     # texture, instead of queueing a path for after the prepass.

@@ -95,7 +95,10 @@ DEFAULTS: dict[str, bool | int | float | str] = {
     # Model units; 0 is automatic, from the size of the model.
     "AORadius": 0.0,
     # The automatic radius, as a percentage of the model's diagonal.
-    "AOSpread": 10.0,
+    "AOSpread": 14.0,
+    # How far, in pixels, the edge of the lines' mask is blended into the
+    # shading around it; 0 is a hard edge.
+    "AOEdgeBlend": 3.0,
     "AOTemporal": True,
     "AOWhileNavigating": "keep",
     # Milliseconds the camera stays still before a paused effect returns.

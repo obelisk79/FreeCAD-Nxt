@@ -210,6 +210,18 @@ class ViewResources:
     def __init__(self) -> None:
         self.accumulators: dict[str, ao_temporal.Accumulator] = {}
         self._lines: ao_lines.LineMask | None = None
+        #: The setting AOEdgeBlend, and the composite's uniforms that
+        #: hold it: changed in place, without a rebuild, so it can be
+        #: tuned while watching.
+        self.edge_blend = 3.0
+        self.blends: list[Any] = []
+
+    def set_edge_blend(self, value: float) -> None:
+        if value == self.edge_blend:
+            return
+        self.edge_blend = value
+        for blend in self.blends:
+            blend.value = value
 
     @property
     def lines(self) -> ao_lines.LineMask:
@@ -459,6 +471,7 @@ class AmbientOcclusion(QtCore.QObject):
         wanted = look(settings.get, radius)
         lines = state.resources.lines
         lines.refresh(mirror.version)
+        state.resources.set_edge_blend(float(settings.get("AOEdgeBlend")))
         signed = ao_pipeline.signature(width, height, address(camera),
                                        address(mirror.group),
                                        address(lines.node), wanted)

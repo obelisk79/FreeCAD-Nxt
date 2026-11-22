@@ -878,6 +878,7 @@ Hold Alt while dragging to pass through.</source>
     </message>
     <message>
         <source>Visualization</source>
+        <extracomment>Set while the fields are filled: no live update then.</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -924,6 +925,15 @@ The same look on a small part and on a building.</source>
     </message>
     <message>
         <source>Spread</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>How softly the shading fades in beside edges and vertices; 0 is a hard edge.
+Applied as you change it.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Edge blend</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
