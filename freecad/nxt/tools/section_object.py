@@ -193,6 +193,13 @@ def group(doc: Any) -> Any:
     return found
 
 
+def drop_empty_group(doc: Any) -> None:
+    """Remove the Sections group once nothing is left in it."""
+    found = doc.getObject(GROUP_NAME)
+    if found is not None and not found.Group:
+        doc.removeObject(found.Name)
+
+
 def create(doc: Any, normal: Any, point: Any, x_axis: Any) -> Any:
     """A new section object in the Sections group, visible."""
     obj = doc.addObject("App::FeaturePython", SECTION_NAME)

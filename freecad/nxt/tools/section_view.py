@@ -1639,14 +1639,21 @@ def current() -> Section | None:
 
 
 def end(section: Section) -> None:
-    """Delete a section object, its exact cut and everything drawn."""
+    """Delete a section object, its exact cut and everything drawn.
+
+    The Sections group goes too once it is empty.
+    """
+    from . import section_object
     obj = section.obj
     if obj is None:
         section.remove(delete_cut=True)
-        return
-    doc = obj.Document
-    stop(obj, delete_cut=True)
-    doc.removeObject(obj.Name)
+        doc = section.doc
+    else:
+        doc = obj.Document
+        stop(obj, delete_cut=True)
+        doc.removeObject(obj.Name)
+    if doc is not None:
+        section_object.drop_empty_group(doc)
 
 
 def toggle() -> None:
