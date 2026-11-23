@@ -57,8 +57,14 @@ Gui.ActiveDocument = types.SimpleNamespace(
     getInEdit=lambda: sketch.ViewObject)
 
 
-def _add(_doc: str, _obj: str, name: str) -> None:
-    selected.append(name)
+def _add(*args: Any) -> None:
+    """FreeCAD's two forms: (doc, object, name) or (object, [names])."""
+    if len(args) == 3:
+        selected.append(args[2])
+    elif isinstance(args[1], (list, tuple)) and not isinstance(args[0], str):
+        selected.extend(args[1])
+    else:
+        raise ValueError("type must be 'DocumentObject, list of subnames'")
 
 
 Gui.Selection = types.SimpleNamespace(
@@ -156,8 +162,22 @@ check("the cards show only the closed Contents card",
                                "Show FreeCAD's lists"])
 check("the pill links the degrees of freedom", "3 DoF" in texts(pill))
 click(pill, text_item(pill, "3 DoF"))
-check("the link selects what is free",
-      commands == ["Sketcher_SelectElementsWithDoFs"])
+check("the link selects what is free: points and edges",
+      selected == ["Vertex6", "Edge4"] and not commands)
+check("and lists it in Contents", bridge.contents.open
+      and bridge.contents.filters == ["free"])
+
+
+def close_contents() -> None:
+    """Back to the quiet panel: Contents closed, unfiltered, nothing picked."""
+    settle(0.2)
+    bridge.contents.toggleFilter("free")
+    bridge.contents.setOpen(False)
+    selected.clear()
+    settle()
+
+
+close_contents()
 quiet_height = cards.rootObject().property("implicitHeight")
 
 
@@ -185,6 +205,8 @@ check("a press on the link stays in the pill",
 check("so does one on its plain parts",
       accepted_press(pill, pill.rootObject()))
 commands.clear()
+close_contents()     # the press on the link opened it
+quiet_height = cards.rootObject().property("implicitHeight")
 
 print("an element")
 pick("Edge1")
@@ -398,7 +420,25 @@ check("3000 rows make only the delegates on screen",
 print("click away")
 from freecad.nxt.ui import quick_host  # noqa: E402
 
-holder = QtWidgets.QWidget()
+
+class Viewport(QtWidgets.QWidget):
+    """The 3D view under the pill: records the mouse events it is given."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.got: list[Any] = []
+
+    def mousePressEvent(self, event: Any) -> None:  # noqa: N802
+        self.got.append(event.type())
+
+    def mouseReleaseEvent(self, event: Any) -> None:  # noqa: N802
+        self.got.append(event.type())
+
+    def mouseMoveEvent(self, event: Any) -> None:  # noqa: N802
+        self.got.append(event.type())
+
+
+holder = Viewport()
 holder.resize(600, 400)
 elsewhere = QtWidgets.QWidget(holder)
 elsewhere.setGeometry(0, 300, 600, 100)
@@ -409,7 +449,47 @@ floating = quick_host.make_view(holder, "SketchPill.qml",
                                 {"theme": theme, "sketch": bridge},
                                 floating=True)
 away = sketch_panel._ClickAway(floating)
+shield = sketch_panel._Shield(floating, holder)
 holder.show()
+settle()
+link = next(i for i in items_of(floating.rootObject())
+            if i.property("text") == "3 DoF")
+at = link.mapToScene(QtCore.QPointF(4, 4)).toPoint()
+outside = QtCore.QPoint(floating.width() + 40, floating.height() + 40)
+selected.clear()
+QTest.mousePress(floating, QtCore.Qt.MouseButton.LeftButton,
+                 QtCore.Qt.KeyboardModifier.NoModifier, at)
+QTest.mouseMove(floating, outside)
+QTest.mouseRelease(floating, QtCore.Qt.MouseButton.LeftButton,
+                   QtCore.Qt.KeyboardModifier.NoModifier, outside)
+settle(0.3)
+check("a quick press on DoF still selects what is free",
+      selected == ["Vertex6", "Edge4"])
+check("and its release never reaches the sketch view", not holder.got)
+# As some Qt versions do: the pill's press handed on to the view too.
+under = floating.geometry().center()
+for kind, buttons in ((QtCore.QEvent.Type.MouseButtonPress,
+                       QtCore.Qt.MouseButton.LeftButton),
+                      (QtCore.QEvent.Type.MouseMove,
+                       QtCore.Qt.MouseButton.LeftButton),
+                      (QtCore.QEvent.Type.MouseButtonRelease,
+                       QtCore.Qt.MouseButton.NoButton)):
+    at_view = QtCore.QPointF(under if kind != QtCore.QEvent.Type.MouseMove
+                             else outside + floating.pos())
+    QtWidgets.QApplication.sendEvent(holder, QtGui.QMouseEvent(
+        kind, at_view, QtCore.QPointF(holder.mapToGlobal(
+            at_view.toPoint())), QtCore.Qt.MouseButton.LeftButton
+        if kind != QtCore.QEvent.Type.MouseMove
+        else QtCore.Qt.MouseButton.NoButton, buttons,
+        QtCore.Qt.KeyboardModifier.NoModifier))
+check("a press on the pill handed to the view is kept from it, drag "
+      "and release too", not holder.got)
+QTest.mouseClick(holder, QtCore.Qt.MouseButton.LeftButton)
+settle()
+check("a click on the view itself still does",
+      QtCore.QEvent.Type.MouseButtonRelease in holder.got)
+bridge.contents.toggleFilter("free")
+bridge.contents.setOpen(False)
 settle()
 top = floating.rootObject()
 top.setProperty("open", True)

@@ -309,6 +309,22 @@ class SketchBridge(QtCore.QObject):
         if command:
             self._queue("select", lambda _sketch: run_command(command))
 
+    @QtCore.Slot()
+    def selectFree(self) -> None:  # noqa: N802
+        """Select what can still move, as the solver reports it.
+
+        Selected here, not by Sketcher_SelectElementsWithDoFs: in some
+        FreeCAD versions that command left the selection empty.
+        """
+        def free(sketch: Any) -> None:
+            names = sketch_contents.free_names(sketch)
+            Gui.Selection.clearSelection()
+            # Several names only with the object itself: by document
+            # and object name it takes one.
+            if names:
+                Gui.Selection.addSelection(sketch, names)
+        self._queue("select", free)
+
     @QtCore.Slot(str)
     def pick(self, name: str) -> None:
         """Select one element or constraint of the sketch ("Edge3")."""
@@ -502,11 +518,48 @@ class Pill(TopNotice):
         widget = super()._ensure(host)
         if widget is not None and fresh:
             widget.nxt_away = _ClickAway(widget)  # type: ignore[attr-defined]
+            widget.nxt_shield = _Shield(  # type: ignore[attr-defined]
+                widget, host)
         return widget
 
     def _drop(self) -> None:
         super()._drop()
         self.placed.emit()
+
+
+class _Shield(QtCore.QObject):
+    """Keeps the sketch's 3D view from acting on the pill's clicks.
+
+    Some Qt versions pass a press on the pill on to the view under it as
+    well, where Sketcher starts a box selection. The view is given no
+    mouse event over the pill, nor any of a press that began there,
+    until its release, whichever widget Qt meant it for.
+    """
+
+    _MOUSE = (QtCore.QEvent.Type.MouseButtonPress,
+              QtCore.QEvent.Type.MouseButtonDblClick,
+              QtCore.QEvent.Type.MouseButtonRelease,
+              QtCore.QEvent.Type.MouseMove, QtCore.QEvent.Type.Wheel)
+
+    def __init__(self, view: Any, host: Any) -> None:
+        super().__init__(view)
+        self._view = view
+        self._held = False
+        host.installEventFilter(self)
+
+    def eventFilter(self, _watched: Any, event: Any) -> bool:  # noqa: N802
+        kind = event.type()
+        if kind not in self._MOUSE or not widgets.alive(self._view) \
+                or not self._view.isVisible():
+            return False
+        over = self._view.geometry().contains(event.position().toPoint())
+        if kind == QtCore.QEvent.Type.MouseButtonPress and over:
+            self._held = True
+        if self._held:
+            if kind == QtCore.QEvent.Type.MouseButtonRelease:
+                self._held = False
+            return True
+        return over
 
 
 class _ClickAway(QtCore.QObject):
@@ -545,13 +598,20 @@ class _ClickAway(QtCore.QObject):
                 and event.key() == QtCore.Qt.Key.Key_Escape:
             self._close()
             return True
-        # A window passes its presses on to a widget: judge them there.
+        # Judged by where, not which widget: some Qt versions deliver a
+        # press on the pill to a widget that is not the pill's.
         if kind == QtCore.QEvent.Type.MouseButtonPress \
                 and isinstance(watched, QtWidgets.QWidget) \
-                and watched is not self._view \
-                and not self._view.isAncestorOf(watched):
+                and not self._inside(event.globalPosition().toPoint()):
             self._close()
         return False
+
+    def _inside(self, point: QtCore.QPoint) -> bool:
+        """Whether a screen point is on the pill or its settings."""
+        if not widgets.alive(self._view):
+            return False
+        corner = self._view.mapToGlobal(QtCore.QPoint(0, 0))
+        return QtCore.QRect(corner, self._view.size()).contains(point)
 
 
 class _Selection:

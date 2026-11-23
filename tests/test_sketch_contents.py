@@ -152,6 +152,10 @@ class ConstraintTests(unittest.TestCase):
             tab=contents.CONSTRAINTS)) if r["key"] == "c1")
         self.assertEqual(row["expression"], "Sheet.w")
 
+    def test_free_names_are_what_sketcher_selects(self) -> None:
+        self.assertEqual(contents.free_names(Sketch()),
+                         ["Vertex6", "Edge4"])
+
     def test_paths_follow_freecad(self) -> None:
         self.assertEqual(contents.constraint_path("Width", 1),
                          "Constraints.Width")

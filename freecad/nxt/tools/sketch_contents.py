@@ -37,6 +37,8 @@ CHIP_CAP = 6
 UNSET = -2000
 #: External geometry's indices count down from this one (GeoEnum::RefExt).
 FIRST_EXTERNAL = -3
+#: The most points an element has: start, end and centre.
+POINTS_PER_ELEMENT = 3
 #: ExternalGeo holds the two axes first, then the external geometry.
 AXES_IN_EXTERNAL_GEO = 2
 
@@ -158,6 +160,32 @@ def expressions(sketch: Any) -> dict[str, str]:
             if path.startswith("Constraints"):
                 found[path] = str(expression)
     return found
+
+
+def free_names(sketch: Any) -> list[str]:
+    """Selection names of every part the solver says can still move.
+
+    What Sketcher_SelectElementsWithDoFs selects, from the same solver
+    findings: a free edge as "EdgeN", a free point as "VertexN".
+    """
+    free = _free_parts(sketch)
+    if not free:
+        return []
+    vertices: dict[tuple[int, int], int] = {}
+    with contextlib.suppress(Exception):  # past the last point
+        for vertex in range(POINTS_PER_ELEMENT * len(sketch.Geometry)):
+            geo, part = sketch.getGeoVertexIndex(vertex)
+            if int(geo) == UNSET:
+                break
+            vertices[(int(geo), int(part))] = vertex
+    names = []
+    for geo in sorted(free):
+        for part in sorted(free[geo]):
+            if part == 0:
+                names.append("Edge%d" % (geo + 1))
+            elif (geo, part) in vertices:
+                names.append("Vertex%d" % (vertices[(geo, part)] + 1))
+    return names
 
 
 def read(sketch: Any) -> Snapshot:

@@ -109,10 +109,21 @@ class StaleDragGuard(ApplicationEventFilter):
             self._free_dragger(event.position())
         if button in _TRACKED:
             if kind == _Type.MouseButtonPress:
+                if self._on_overlay(event.position()):
+                    return
                 self._armed = True
                 self._down[button] = event.position()
             elif kind == _Type.MouseButtonRelease:
                 self._down.pop(button, None)
+
+    def _on_overlay(self, position: QtCore.QPointF) -> bool:
+        """Whether a press is on a widget laid over the view (a notice).
+
+        Its release goes to that widget, and some Qt versions also pass
+        the press on to the view: a release sent for it would land on
+        the view as a click there (in a sketch, clearing the selection).
+        """
+        return self._viewport.childAt(position.toPoint()) is not None
 
     def _send_release(self, button: Any, where: QtCore.QPointF,
                       held: Any) -> None:

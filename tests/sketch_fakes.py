@@ -113,6 +113,9 @@ class Sketch:
         return 0
 
     def getGeoVertexIndex(self, vertex: int) -> tuple[int, int]:
+        """Two points an element, start then end; UNSET past the last."""
+        if vertex // 2 >= len(self.Geometry):
+            return UNSET, 0
         return vertex // 2, 1 + vertex % 2
 
     def delConstraint(self, index: int) -> None:

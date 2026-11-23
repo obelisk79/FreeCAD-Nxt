@@ -47,6 +47,13 @@ class Viewport(QtWidgets.QWidget):
         return super().event(e)
 
 
+class Notice(QtWidgets.QWidget):
+    """A widget over the view that takes its clicks, as the pill does."""
+
+    def mouseReleaseEvent(self, e: Any) -> None:  # noqa: N802
+        e.accept()
+
+
 def send(widget: Any, kind: Any, button: Any, held: Any) -> None:
     point = QtCore.QPointF(10, 10)
     QtWidgets.QApplication.sendEvent(widget, QtGui.QMouseEvent(
@@ -74,6 +81,17 @@ class LostReleaseTests(unittest.TestCase):
         send(self.view, Type.MouseButtonPress, RIGHT, RIGHT)
         self.assertEqual(self.view.seen,
                          [("release", LEFT), ("press", RIGHT)])
+
+    def test_a_press_on_an_overlay_is_not_the_views(self) -> None:
+        notice = Notice(self.view)
+        notice.setGeometry(0, 0, 40, 40)
+        notice.show()
+        send(self.view, Type.MouseButtonPress, LEFT, LEFT)
+        send(notice, Type.MouseButtonRelease, LEFT, NONE)
+        self.view.seen.clear()
+        send(self.view, Type.MouseMove, NONE, NONE)
+        self.assertEqual(self.view.seen, [])
+        notice.deleteLater()
 
     def test_idle_move_settles_a_lost_middle_release(self) -> None:
         send(self.view, Type.MouseButtonPress, MIDDLE, MIDDLE)

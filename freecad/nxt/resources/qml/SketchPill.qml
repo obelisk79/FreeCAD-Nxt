@@ -233,25 +233,25 @@ Item {
                     font.underline: true
                     color: theme.link
                 }
-                // Ctrl: list what is free in Contents, without selecting.
+                // Degrees of freedom: what is free is selected and listed
+                // in Contents; a problem's constraints are selected.
+                // On the press: a pointer already moving on to the sketch
+                // as the button comes up must not lose the click.
                 MouseArea {
                     anchors.fill: parent
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: function (mouse) {
-                        follow.listing = root.status.action === "dof"
-                            && (mouse.modifiers & Qt.ControlModifier) !== 0;
-                        follow.restart();
-                    }
+                    onPressed: follow.restart()
                 }
                 Timer {
                     id: follow
-                    property bool listing: false
                     interval: 30
                     onTriggered: {
-                        if (listing)
+                        if (root.status.action === "dof") {
                             sketch.contents.showFree();
-                        else
+                            sketch.selectFree();
+                        } else {
                             sketch.select(root.status.action);
+                        }
                     }
                 }
             }
