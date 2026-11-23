@@ -93,6 +93,11 @@ class Bridge(QtCore.QObject):
     def setPart(self, prop: str, part: str, text: str) -> None:
         self.calls.append(("part", prop, part, text))
 
+    @QtCore.Slot(str, "QVariantList")
+    def setParts(self, prop: str, parts: list[Any]) -> None:
+        self.calls.append(("parts", prop,
+                           [tuple(p) for p in parts]))
+
     @QtCore.Slot(str, str)
     def pickColour(self, prop: str, current: str) -> None:
         self.calls.append(("colour", prop))
@@ -236,6 +241,20 @@ check("a collapsed group opens, and the bridge remembers it",
 parts = [i for i in items_of(root, "QQuickTextInput")
          if i.property("text") in ("1", "2", "3", "0", "90")]
 check("a placement shows its seven components", len(parts) == 7)
+spots = {id(i): i.mapToScene(QtCore.QPointF(0, 0)) for i in parts}
+parts.sort(key=lambda i: (round(spots[id(i)].y()), spots[id(i)].x()))
+for field, key in ((parts[3], QtCore.Qt.Key.Key_4),
+                   (parts[4], QtCore.Qt.Key.Key_5)):
+    click(view, field)
+    QTest.keyClick(view, key)
+click(view, parts[6])
+QTest.keyClick(view, QtCore.Qt.Key.Key_6)
+QTest.keyClick(view, QtCore.Qt.Key.Key_Return)
+settle()
+sent = [c for c in bridge.calls if c[0] == "parts"]
+check("components typed before Return go with it, in order",
+      bool(sent) and sent[-1][2] == [
+          ("Axis.x", "4"), ("Axis.y", "5"), ("Angle", "6")])
 starts = {round(e.mapToScene(QtCore.QPointF(0, 0)).x())
           for e in items_of(root, "ValueEditor") if e.property("visible")}
 check("every editor starts after the same label column", len(starts) == 1)

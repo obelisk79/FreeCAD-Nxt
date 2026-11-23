@@ -22,6 +22,24 @@ Item {
     signal linkOpened(string key)
     signal pickRequested()
     signal partEdited(string path, string text)
+    //: [[path, text], ...]: components typed before one was entered.
+    signal partsEdited(var parts)
+
+    //: The component fields, in the spec's order.
+    property var partFields: []
+
+    function sendParts(entered: var): void {
+        var parts = [];
+        for (var i = 0; i < partFields.length; ++i) {
+            var field = partFields[i];
+            if (field === entered || field.text !== field.shown)
+                parts.push([field.path, field.text]);
+        }
+        if (parts.length === 1)
+            partEdited(parts[0][0], parts[0][1]);
+        else
+            partsEdited(parts);
+    }
     signal colourRequested()
     signal nativeRequested()
 
@@ -529,9 +547,19 @@ Item {
                             }
                             TextField {
                                 id: partField
+                                readonly property string path:
+                                    part.modelData.path
+                                readonly property string shown:
+                                    part.modelData.text
                                 width: 58
-                                Component.onCompleted:
-                                    partField.text = part.modelData.text
+                                Component.onCompleted: {
+                                    partField.text = part.modelData.text;
+                                    editor.partFields =
+                                        editor.partFields.concat([partField]);
+                                }
+                                Component.onDestruction:
+                                    editor.partFields = editor.partFields
+                                        .filter(f => f !== partField)
                                 stepFor: editor.wheelFor(part.modelData.unit)
                                 onStepped: editor.partEdited(
                                                part.modelData.path,
@@ -541,8 +569,7 @@ Item {
                                         Qt.callLater(partField.input.selectAll);
                                 }
                                 onAccepted: {
-                                    editor.partEdited(part.modelData.path,
-                                                      partField.text);
+                                    editor.sendParts(partField);
                                     partField.input.focus = false;
                                 }
                                 onDismissed: {

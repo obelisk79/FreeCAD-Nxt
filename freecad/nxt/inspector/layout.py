@@ -58,6 +58,9 @@ NUMBER_FORMAT = "%.6g"
 #: How close two unit axes' dot product must come to 1 to point the same
 #: way.
 SAME_DIRECTION = 1e-9
+#: `apply_many`'s part for edits that each name their part in place of
+#: a unit.
+EACH_PART = "*"
 
 #: The rotation axis as last typed, per object and property. FreeCAD keeps
 #: a rotation as a quaternion and reads its axis back scaled to length 1,
@@ -429,19 +432,37 @@ def _axis_key(container: Any, prop: str) -> tuple[str, str, str]:
 def shown_axis(container: Any, prop: str, rotation: Any) -> Any:
     """The rotation axis to show: as typed, while the rotation keeps it.
 
+    Typed here, or in FreeCAD's own editor while it shows the object.
+
     Changed elsewhere (dragged, undone, an expression), the rotation
     turns about another axis: FreeCAD's is shown and the typed one
     forgotten. At angle 0 any axis holds, so the typed one stays.
     """
     key = _axis_key(container, prop)
-    typed = _typed_axes.get(key)
     stored = rotation.Axis
-    if typed is not None and (
-            not rotation.Angle
-            or _same_direction(typed, (stored.x, stored.y, stored.z))):
-        return type(stored)(*typed)
-    _typed_axes.pop(key, None)
+    for typed in (_typed_axes.get(key), _native_axis(container, prop)):
+        if typed is not None and (
+                not rotation.Angle
+                or _same_direction(typed, (stored.x, stored.y, stored.z))):
+            _typed_axes[key] = typed
+            return type(stored)(*typed)
+        _typed_axes.pop(key, None)
     return type(stored)(stored.x, stored.y, stored.z)
+
+
+def _native_axis(container: Any, prop: str
+                 ) -> tuple[float, float, float] | None:
+    """The axis FreeCAD's own editor shows, while it shows this object."""
+    data = not hasattr(container, "Object")
+    obj = container if data else container.Object
+    try:
+        import FreeCADGui as Gui
+        if Gui.Selection.getSelection() != [obj]:
+            return None
+        from . import native
+        return native.axis(label_for(prop), data)
+    except Exception:
+        return None
 
 
 def _same_direction(first: tuple[float, float, float],
@@ -495,6 +516,14 @@ def apply(objects: list[DocObject], prop: str, value: Any,
     return apply_many(objects, [(prop, value, unit)], tab, part, problems)
 
 
+def apply_parts(objects: list[DocObject], prop: str,
+                parts: list[tuple[str, str]], tab: str = DATA,
+                problems: list[str] | None = None) -> bool:
+    """Set several (part, text) components of `prop` as one undo step."""
+    return apply_many(objects, [(prop, text, path) for path, text in parts],
+                      tab, EACH_PART, problems)
+
+
 def apply_many(objects: list[DocObject],
                edits: list[tuple[str, Any, str]], tab: str = DATA,
                part: str = "", problems: list[str] | None = None) -> bool:
@@ -514,7 +543,9 @@ def apply_many(objects: list[DocObject],
                     container = _container(obj, tab)
                     try:
                         if part:
-                            _assign_part(container, prop, part, str(value))
+                            _assign_part(container, prop,
+                                         unit if part == EACH_PART else part,
+                                         str(value))
                         else:
                             _assign(container, obj, prop, value, unit)
                     except Exception as exc:

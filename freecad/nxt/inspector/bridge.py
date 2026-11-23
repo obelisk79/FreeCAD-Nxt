@@ -524,6 +524,16 @@ class InspectorBridge(QtCore.QObject):
     def setPart(self, prop: str, part: str, text: str) -> None:
         self._defer(lambda: self._set_part(prop, part, text))
 
+    @QtCore.Slot(str, "QVariantList")
+    def setParts(self, prop: str, parts: list[Any]) -> None:  # noqa: N802
+        """Several components typed before one was entered, together."""
+        edits = [(str(path), str(text)) for path, text in parts]
+        self._defer(lambda: self._set_parts(prop, edits))
+
+    def _set_parts(self, prop: str, parts: list[tuple[str, str]]) -> None:
+        if inspector.apply_parts(self._objects(), prop, parts, self._tab):
+            self.refresh()
+
     def _set_part(self, prop: str, part: str, text: str) -> None:
         if inspector.apply(self._objects(), prop, text, self._tab,
                            part=part):

@@ -71,6 +71,9 @@ Row {
         onPartEdited: function (path, text) {
             inspector.setPart(field.spec.name, path, text);
         }
+        onPartsEdited: function (parts) {
+            inspector.setParts(field.spec.name, parts);
+        }
         onColourRequested: inspector.pickColour(field.spec.name, field.spec.text)
         onNativeRequested: inspector.editNative(field.spec.name)
         onLinkRemoved: function (key) { inspector.removeLink(field.spec.name, key); }
