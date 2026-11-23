@@ -32,6 +32,8 @@ class Rollback:
         #: new feature, if it lands where the bar rests.
         self._created: list[str] = []
         self._pending_finish: tuple[str, bool] | None = None
+        #: Body or model -> what the user hid that its history would show.
+        self._hidden: dict[str, set[str]] = {}
         self._bars_timer = bridge._deferral(bridge.tipBarsChanged.emit)
         self._drain_timer = bridge._deferral(self._drain_tip_drag)
         self._finish_timer = bridge._deferral(self._finish_pending_drag)
@@ -327,6 +329,49 @@ class Rollback:
             doc.commitTransaction()
             self._toast_tip(doc, body_name, wanted)
 
+    def _shown(self, name: str, tip: str | None) -> dict[str, bool]:
+        """What the history shows of a Body or model ended at `tip`."""
+        node = self._snapshot.nodes[name]
+        if node.is_model:
+            return {step: shown for step, (_built, shown)
+                    in self._snapshot.model_state(name, tip).items()}
+        return {other: other == tip for other in node.stack}
+
+    def _note_hidden(self, doc: Any, name: str) -> set[str]:
+        """Learn what the user hid at the current tip, and keep it hidden.
+
+        A step the history shows but the user hid stays hidden as the
+        tip moves; one the user shows again is forgotten.
+        """
+        hidden = self._hidden.setdefault(name, set())
+        node = self._snapshot.nodes.get(name)
+        if node is None:
+            return hidden
+        for step, shown in self._shown(name, node.tip).items():
+            vo = getattr(doc.getObject(step), "ViewObject", None)
+            if vo is None or not shown:
+                continue
+            if node.is_model:
+                if vo.Visibility:
+                    hidden.discard(step)
+                else:
+                    hidden.add(step)
+            else:
+                # A Body shows one step: its result is hidden or not.
+                hidden.clear()
+                if not vo.Visibility:
+                    hidden.update(node.stack)
+        return hidden
+
+    def _show(self, doc: Any, name: str, tip: str | None,
+              hidden: set[str]) -> None:
+        """Write the visibilities that differ; each write wakes observers."""
+        for step, shown in self._shown(name, tip).items():
+            vo = getattr(doc.getObject(step), "ViewObject", None)
+            wanted = shown and step not in hidden
+            if vo is not None and bool(vo.Visibility) != wanted:
+                vo.Visibility = wanted
+
     def _preview_tip(self, body_name: str, feature_name: str) -> bool:
         """Show the Body as it would be with this tip, without setting it."""
         node = self._snapshot.nodes.get(body_name)
@@ -336,13 +381,8 @@ class Rollback:
         if node.is_model:
             return self._apply_tip(body_name, feature_name)
         try:
-            for other in node.stack:
-                vo = getattr(doc.getObject(other), "ViewObject", None)
-                if vo is None:
-                    continue
-                wanted = other == feature_name
-                if bool(getattr(vo, "Visibility", not wanted)) != wanted:
-                    vo.Visibility = wanted
+            self._show(doc, body_name, feature_name or None,
+                       self._note_hidden(doc, body_name))
             self._tree.touch(self._snapshot.retip(body_name,
                                                   feature_name or None))
             _redraw_occlusion()
@@ -382,11 +422,8 @@ class Rollback:
         doc = App.ActiveDocument
         if doc is None:
             return
-        for name, (_built, shown) in self._snapshot.model_state(
-                model_name, tip_name).items():
-            vo = getattr(doc.getObject(name), "ViewObject", None)
-            if vo is not None and bool(vo.Visibility) != shown:
-                vo.Visibility = shown
+        self._show(doc, model_name, tip_name,
+                   self._note_hidden(doc, model_name))
         self._tree.touch(self._snapshot.retip(model_name, tip_name))
         if tip_name == model_name:
             self._model_tips.pop(model_name, None)
@@ -414,17 +451,9 @@ class Rollback:
                           % (body_name, feature_name))
                 return False
         try:
+            hidden = self._note_hidden(doc, body_name)
             body.Tip = feature
-            # Only write visibilities that differ; each write wakes
-            # observers.
-            for other in body_node.stack:
-                obj = doc.getObject(other)
-                vo = getattr(obj, "ViewObject", None)
-                if vo is None:
-                    continue
-                wanted = (other == feature_name)
-                if bool(getattr(vo, "Visibility", not wanted)) != wanted:
-                    vo.Visibility = wanted
+            self._show(doc, body_name, feature_name or None, hidden)
             self._recompute(doc, body)
             # Patch the snapshot; a drag suppresses rebuilds.
             self._tree.touch(self._snapshot.retip(body_name,
@@ -505,12 +534,10 @@ class Rollback:
         body = doc.getObject(body_name)
         if body is None:
             return
+        if body_name not in self._snapshot.nodes:
+            return
         tip = getattr(getattr(body, "Tip", None), "Name", None)
-        for other in getattr(
-                self._snapshot.nodes.get(body_name), "stack", ()):
-            vo = getattr(doc.getObject(other), "ViewObject", None)
-            if vo is not None and bool(vo.Visibility) != (other == tip):
-                vo.Visibility = other == tip
+        self._show(doc, body_name, tip, self._hidden.get(body_name, set()))
 
 
 def _redraw_occlusion() -> None:
