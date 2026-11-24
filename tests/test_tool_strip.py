@@ -981,6 +981,13 @@ class Fitting(unittest.TestCase):
         self.assertEqual(strip.fitted_height(2556, 1200),
                          int(1200 * strip.MOST_OF_WINDOW))
 
+    def test_editing_lets_the_drawer_push_further_down(self) -> None:
+        self.assertEqual(strip.fitted_height(900, 1200, strip.EDITING_SHARE),
+                         900)
+        self.assertEqual(strip.fitted_height(2556, 1200,
+                                             strip.EDITING_SHARE),
+                         int(1200 * strip.EDITING_SHARE))
+
     def test_a_squeezed_strip_is_docked_again(self) -> None:
         self.assertTrue(strip.squeezed(100, 2560))
         self.assertFalse(strip.squeezed(2500, 2560))

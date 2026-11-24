@@ -43,6 +43,10 @@ def _see_through(view: Any) -> None:
 #: window has its size) wraps every item onto its own row, and a strip
 #: fixed at that height was never widened again.
 MOST_OF_WINDOW = 1 / 3
+#: While the toolbars are edited: the drawer pushes the 3D view down,
+#: rather than the rows' growth pushing it out of view (overloaded
+#: workbenches fill many rows), but never past the window.
+EDITING_SHARE = 0.85
 
 
 #: The least share of the window's width the top strip takes when docked
@@ -58,9 +62,13 @@ def squeezed(strip_width: int, window_width: int) -> bool:
     return strip_width < window_width * LEAST_OF_WIDTH
 
 
-def fitted_height(wanted: float, window_height: int) -> int:
-    """The top strip's height: what QML wants, within MOST_OF_WINDOW."""
-    return min(math.ceil(wanted), max(1, int(window_height * MOST_OF_WINDOW)))
+def fitted_height(wanted: float, window_height: int,
+                  share: float = MOST_OF_WINDOW) -> int:
+    """The top strip's height: what QML wants, within a `share` of the window.
+
+    MOST_OF_WINDOW normally, EDITING_SHARE in edit mode.
+    """
+    return min(math.ceil(wanted), max(1, int(window_height * share)))
 
 
 class _Host(QtCore.QObject):
@@ -103,6 +111,7 @@ class _Host(QtCore.QObject):
         self._fit_timer.start()
         self.toolbar.addWidget(self.view)
         self._main = main
+        self._bridge = bridge
         self._dock = dock
         self._place()
         self.toolbar.installEventFilter(self)
@@ -136,8 +145,10 @@ class _Host(QtCore.QObject):
     def _fit(self) -> None:
         root = self.view.rootObject()
         if self.area == state.TOP:
+            editing = bool(self._bridge.property("editing"))
             self.view.setFixedHeight(fitted_height(
-                root.property("implicitHeight") or 0, self._main.height()))
+                root.property("implicitHeight") or 0, self._main.height(),
+                EDITING_SHARE if editing else MOST_OF_WINDOW))
         else:
             self.view.setFixedWidth(
                 math.ceil(root.property("implicitWidth") or 0))
