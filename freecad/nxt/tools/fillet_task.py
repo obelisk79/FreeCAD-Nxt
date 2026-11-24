@@ -18,12 +18,11 @@ import FreeCADGui as Gui
 import Part
 
 from ..app.i18n import translate
-from ..core import units, view3d, widgets
+from ..core import units, view3d
 from ..core.qt import QtCore, QtWidgets
 from ..ui import quick_host
 from . import blend_fillet, expressions
-from .float_input import Field
-from .section_field import _Floating
+from .float_input import Field, ShownBox
 
 #: One wheel notch on the floating radius box, in mm.
 STEP = 0.1
@@ -151,40 +150,6 @@ class RadiusField(Field):
         viewport = view3d.active_viewport()
         if viewport is not None:
             viewport.setFocus()
-
-
-class RadiusBox(_Floating):
-    """The radius field, beside the first arrow's tip."""
-
-    source = "FloatingValue.qml"
-
-    def __init__(self, task: FilletTask) -> None:
-        super().__init__()
-        self.field = RadiusField(task)
-        self._claimed = False
-        # As the floating fields of Part Design features: a click in the
-        # box gives it the keyboard, and it takes it once when it opens.
-        self.field.grabbed.connect(self._take_keyboard)
-
-    def context(self) -> dict[str, Any]:
-        return {"expressions": expressions.helper(), "field": self.field}
-
-    def refresh(self) -> None:
-        self.field.sync()
-
-    def place(self, view: Any, tip: Any) -> None:
-        super().place(view, tip)
-        if not self._claimed and widgets.alive(self._widget) \
-                and self._widget.isVisible():
-            self._claimed = True
-            QtCore.QTimer.singleShot(
-                0, lambda: self.field.focusRequested.emit(True))
-
-    def _take_keyboard(self) -> None:
-        widget = self._widget
-        if widgets.alive(widget) and widget.isVisible():
-            widget.activateWindow()
-            widget.setFocus(QtCore.Qt.FocusReason.MouseFocusReason)
 
 
 class FilletBridge(QtCore.QObject):
@@ -390,7 +355,7 @@ class FilletTask:
             lambda: QtCore.QTimer.singleShot(0, self._fit_height))
         QtCore.QTimer.singleShot(0, self._fit_height)
         self._handles: Any = None
-        self._box = RadiusBox(self)
+        self._box = ShownBox(RadiusField(self), claim=True)
         self._view: Any = None
         self._start_view()
         self._show_base(True)

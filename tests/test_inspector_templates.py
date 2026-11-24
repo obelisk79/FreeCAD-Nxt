@@ -84,6 +84,10 @@ def names(group: dict) -> list[str]:
     return out + [item["name"] for item in group.get("after", ())]
 
 
+def extent_of(groups: list[dict]) -> dict:
+    return next(g for g in groups if g["name"] == "Extent")
+
+
 def modern(**values: Any) -> Feature:
     """A Pad as FreeCAD 27 has it: Sides, and a type for each side."""
     pad = Feature(**values)
@@ -102,9 +106,9 @@ class PadTests(unittest.TestCase):
 
     def test_the_cards_come_first_in_the_templates_order(self) -> None:
         groups = layout(modern())
-        self.assertEqual([g["name"] for g in groups[:2]],
-                         ["Extent", "Result"])
-        extent = groups[0]
+        self.assertEqual([g["name"] for g in groups[:3]],
+                         ["Operation", "Extent", "Result"])
+        extent = groups[1]
         self.assertEqual([i["name"] for i in extent["items"]], ["SideType"])
         self.assertEqual(len(extent["columns"]), 1)
         self.assertEqual(extent["columns"][0]["title"], "")
@@ -114,7 +118,7 @@ class PadTests(unittest.TestCase):
                          ["UseCustomVector"])
 
     def test_extent_has_no_heading_and_sides_no_label(self) -> None:
-        extent = layout(modern())[0]
+        extent = extent_of(layout(modern()))
         self.assertFalse(extent["heading"])
         self.assertTrue(extent["open"])
         self.assertEqual(extent["items"][0]["label"], "")
@@ -141,19 +145,19 @@ class PadTests(unittest.TestCase):
         self.assertNotIn("ShapeMaterial", shown)
 
     def test_type_leads_length_and_reversed_trails_direction(self) -> None:
-        extent = layout(modern())[0]
+        extent = extent_of(layout(modern()))
         length, taper = extent["columns"][0]["items"]
         self.assertEqual(length["lead"]["name"], "Type")
         self.assertTrue(taper["narrow"])
         self.assertEqual(extent["after"][0]["trail"]["name"], "Reversed")
 
     def test_a_type_without_a_value_shows_alone(self) -> None:
-        extent = layout(modern(Type="UpToLast"))[0]
+        extent = extent_of(layout(modern(Type="UpToLast")))
         first = extent["columns"][0]["items"][0]
         self.assertEqual((first["name"], first["label"]), ("Type", "Up to"))
 
     def test_two_sides_add_a_second_column(self) -> None:
-        extent = layout(modern(SideType="Two sides"))[0]
+        extent = extent_of(layout(modern(SideType="Two sides")))
         self.assertEqual([c["title"] for c in extent["columns"]],
                          ["First side", "Second side"])
         self.assertEqual([i["name"] for i in extent["columns"][1]["items"]],
@@ -167,7 +171,7 @@ class PadTests(unittest.TestCase):
         self.assertNotIn("Midplane", everything)
 
     def test_editors(self) -> None:
-        extent = layout(modern())[0]
+        extent = extent_of(layout(modern()))
         sides = extent["items"][0]
         self.assertEqual(sides["editor"], "segmented")
         kind = extent["columns"][0]["items"][0]["lead"]
@@ -176,18 +180,18 @@ class PadTests(unittest.TestCase):
         self.assertNotIn("TwoLengths", kind["options"])
 
     def test_direction_is_two_named_states(self) -> None:
-        direction = layout(modern())[0]["after"][0]
+        direction = extent_of(layout(modern()))["after"][0]
         self.assertEqual(direction["optionLabels"],
                          ["Sketch normal", "Custom"])
 
     def test_fields_follow_the_type(self) -> None:
-        extent = layout(modern(Type="UpToFace"))[0]
+        extent = extent_of(layout(modern(Type="UpToFace")))
         self.assertIn("Offset", names(extent))
         self.assertNotIn("Length", names(extent))
         self.assertNotIn("TaperAngle", names(extent))
 
     def test_an_older_freecad_with_two_lengths(self) -> None:
-        extent = layout(Feature(Type="TwoLengths"))[0]
+        extent = extent_of(layout(Feature(Type="TwoLengths")))
         self.assertEqual(len(extent["columns"]), 2)
         self.assertIn("Length2", names(extent))
         self.assertIn("TwoLengths",
@@ -204,8 +208,9 @@ class PadTests(unittest.TestCase):
         self.assertEqual(len(placed), len(set(placed)))
 
     def test_a_pocket_shares_it_and_a_mixed_selection_does_not(self) -> None:
-        self.assertEqual(layout(Feature("PartDesign::Pocket"))[0]["name"],
-                         "Extent")
+        self.assertEqual(
+            extent_of(layout(Feature("PartDesign::Pocket")))["name"],
+            "Extent")
         both = layout(Feature(), Feature("PartDesign::Fillet"))
         self.assertNotIn("Extent", [g["name"] for g in both])
 
@@ -526,6 +531,108 @@ class SketchTests(unittest.TestCase):
     def test_constraints_stay_under_everything_else(self) -> None:
         shown = [i["name"] for g in layout(Sketch())[3:] for i in g["items"]]
         self.assertIn("Constraints", shown)
+
+
+HELIX_MODES = ["pitch-height-angle", "pitch-turns-angle",
+               "height-turns-angle", "height-turns-growth"]
+
+
+class Helix(Feature):
+    """An additive or subtractive helix's shown properties."""
+
+    def __init__(self, type_id: str = "PartDesign::AdditiveHelix",
+                 **values: Any) -> None:
+        super().__init__(type_id)
+        subtractive = type_id == "PartDesign::SubtractiveHelix"
+        self._props = {
+            "Label": ("Base", "App::PropertyString", "Helix"),
+            "Profile": ("SketchBased", "App::PropertyLinkSub", None),
+            "ReferenceAxis": ("Helix", "App::PropertyLinkSub", None),
+            "Mode": ("Helix", "App::PropertyEnumeration", HELIX_MODES[0]),
+            "Pitch": ("Helix", "App::PropertyLength", Quantity("10 mm")),
+            "Height": ("Helix", "App::PropertyLength", Quantity("30 mm")),
+            "Turns": ("Helix", "App::PropertyFloatConstraint", 3.0),
+            "Angle": ("Helix", "App::PropertyAngle", Quantity("0 °")),
+            "Growth": ("Helix", "App::PropertyDistance", Quantity("0 mm")),
+            "LeftHanded": ("Helix", "App::PropertyBool", False),
+            "Reversed": ("Helix", "App::PropertyBool", False),
+            "Tolerance": ("Helix", "App::PropertyFloatConstraint", 0.1),
+            "Midplane": ("SketchBased", "App::PropertyBool", False),
+            "Refine": ("Part Design", "App::PropertyBool", False),
+        }
+        if subtractive:
+            self._props["Operation"] = ("Part Design",
+                                        "App::PropertyEnumeration",
+                                        "Subtraction")
+        self.PropertiesList = list(self._props)
+        for name, (_g, _t, value) in self._props.items():
+            setattr(self, name, values.get(name, value))
+
+    def getEnumerationsOfProperty(self, prop: str) -> list[str]:  # noqa: N802
+        return (["Subtraction", "Common"] if prop == "Operation"
+                else HELIX_MODES)
+
+
+class HelixTests(unittest.TestCase):
+
+    def test_cards_in_order(self) -> None:
+        groups = layout(Helix())
+        self.assertEqual([g["name"] for g in groups[:4]],
+                         ["Operation", "Profile", "Helix", "Result"])
+        self.assertEqual(names(groups[1]), ["Profile", "ReferenceAxis"])
+        self.assertEqual(groups[1]["items"][1]["trail"]["name"], "Reversed")
+
+    def test_the_mode_decides_the_values_shown(self) -> None:
+        def shown(mode: str) -> list[str]:
+            return names(layout(Helix(Mode=mode))[2])[1:-1]
+        self.assertEqual(shown("pitch-height-angle"),
+                         ["Pitch", "Height", "Angle"])
+        self.assertEqual(shown("pitch-turns-angle"),
+                         ["Pitch", "Turns", "Angle"])
+        self.assertEqual(shown("height-turns-growth"),
+                         ["Height", "Turns", "Growth"])
+
+    def test_unused_properties_are_hidden(self) -> None:
+        shown = [i["name"] for g in layout(Helix()) for i in g["items"]]
+        self.assertNotIn("Midplane", shown)
+
+
+class VariantTests(unittest.TestCase):
+
+    def variant(self, obj: Any) -> dict:
+        return layout(obj)[0]["items"][0]
+
+    def test_an_additive_feature_offers_all_three(self) -> None:
+        entry = self.variant(Helix())
+        self.assertEqual(entry["name"], templates.VARIANT)
+        self.assertEqual(entry["options"],
+                         ["Union", "Subtraction", "Common"])
+        self.assertEqual(entry["optionLabels"],
+                         ["Add", "Cut", "Keep common"])
+        self.assertEqual((entry["text"], entry["editor"], entry["label"]),
+                         ("Union", "segmented", ""))
+
+    def test_a_subtractive_feature_shows_its_operation(self) -> None:
+        helix = Helix("PartDesign::SubtractiveHelix", Operation="Common")
+        self.assertEqual(self.variant(helix)["text"], "Common")
+
+    def test_operation_itself_is_not_shown_again(self) -> None:
+        helix = Helix("PartDesign::SubtractiveHelix")
+        shown = [i["name"] for g in layout(helix) for i in g["items"]]
+        self.assertNotIn("Operation", shown)
+
+    def test_two_features_offer_no_switch(self) -> None:
+        groups = layout(Helix(), Helix())
+        shown = [i["name"] for g in groups for i in g["items"]]
+        self.assertNotIn(templates.VARIANT, shown)
+
+    def test_every_add_subtract_template_pairs_its_kinds(self) -> None:
+        templates.invalidate()
+        pairs = {t.id: t.variants for t in templates.loaded()}
+        for template_id in ("pd-extrude", "pd-revolve", "pd-loft",
+                            "pd-pipe", "pd-helix"):
+            self.assertIsNotNone(pairs[template_id], template_id)
+        self.assertIsNone(pairs["pd-fillet"])
 
 
 if __name__ == "__main__":

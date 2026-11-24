@@ -282,6 +282,25 @@ class RollbackTests(unittest.TestCase):
         self.assertFalse(self.pocket.ViewObject.Visibility)
 
 
+class GuideTests(unittest.TestCase):
+    def test_plane_and_axes_show_while_editing_then_go_back(self) -> None:
+        obj = types.SimpleNamespace(ViewObject=types.SimpleNamespace(
+            Visibility=False, ShowPlane=False, ShowPlacement=True))
+        guides = attach_task.Guides(obj)
+        self.assertTrue(obj.ViewObject.Visibility)
+        self.assertTrue(obj.ViewObject.ShowPlane)
+        self.assertTrue(obj.ViewObject.ShowPlacement)
+        guides.restore()
+        self.assertFalse(obj.ViewObject.Visibility)
+        self.assertFalse(obj.ViewObject.ShowPlane)
+        self.assertTrue(obj.ViewObject.ShowPlacement)
+
+    def test_a_view_without_them_is_left_alone(self) -> None:
+        obj = types.SimpleNamespace(ViewObject=types.SimpleNamespace())
+        attach_task.Guides(obj).restore()
+        self.assertEqual(vars(obj.ViewObject), {})
+
+
 class BinderTests(unittest.TestCase):
     def test_a_binder_is_made_attachable_when_asked(self) -> None:
         binder = Thing("Binder", attachable=False,

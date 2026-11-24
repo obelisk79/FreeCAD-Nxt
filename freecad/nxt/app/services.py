@@ -346,6 +346,10 @@ class Services(QtCore.QObject):
 
     # -- theme -- #
 
+    def floating(self) -> Any:
+        """The floating value boxes (float_input.py), or None."""
+        return self._floating
+
     def theme(self) -> Any:
         """Colours for what Nxt shows outside the panel."""
         if self._theme is None:
@@ -413,6 +417,11 @@ def stop() -> None:
 
 def instance() -> Services | None:
     return _services
+
+
+def floating() -> Any:
+    """The floating value boxes, or None while the services are not running."""
+    return None if _services is None else _services.floating()
 
 
 def isolation() -> Any:

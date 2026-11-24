@@ -734,7 +734,12 @@ class TipDragTests(unittest.TestCase):
             "B": node(body="A", stack=[]), "C": node(body="A", stack=[]),
             "D": node(body="A", stack=[]),
         }
-        self.bridge._snapshot.retip = lambda _b, _t: []
+        nodes = self.bridge._snapshot.nodes
+
+        def retip(body: str, tip: str | None) -> list[str]:
+            nodes[body].tip = tip       # as Snapshot.retip: the tip shown
+            return []
+        self.bridge._snapshot.retip = retip
         idle = types.SimpleNamespace(start=lambda: None, stop=lambda: None)
         bars = self.bridge._rollback
         bars._drain_timer = bars._finish_timer = idle

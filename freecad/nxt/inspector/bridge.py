@@ -11,7 +11,7 @@ import FreeCADGui as Gui
 
 from ..app import i18n
 from ..core.qt import QtCore, QtWidgets
-from ..tools import task_sync
+from ..tools import task_sync, variant
 from . import layout as inspector
 from . import templates as inspector_templates
 from . import variables
@@ -283,6 +283,10 @@ class InspectorBridge(QtCore.QObject):
 
     def _set_value(self, prop: str, value: Any, unit: str) -> None:
         objects = self._objects()
+        if prop == inspector_templates.VARIANT:
+            if len(objects) == 1:
+                variant.choose(objects[0], str(value))
+            return
         edits: list[tuple[str, Any]] = [(prop, value)]
         if self._tab == inspector.DATA:
             coupled = inspector_templates.coupled(

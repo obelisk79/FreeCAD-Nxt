@@ -43,6 +43,10 @@ NEW_FOR_S = 5.0
 ATTACHES_ON_ASK = ("PartDesign::SubShapeBinder",)
 ADDED_EXTENSION = "Part::AttachExtensionPython"
 BODY = "PartDesign::Body"
+#: View provider switches turned on while the attachment is edited: the
+#: object itself, as Part's editor shows it (the plane and axes are drawn
+#: only while it is), a sketch's plane, and the placement's axes.
+GUIDES = ("Visibility", "ShowPlane", "ShowPlacement")
 #: What a Body's history is made of, and its tip may be set to.
 SOLID = "PartDesign::Feature"
 
@@ -325,6 +329,29 @@ def _show(obj: Any, shown: bool) -> None:
         view.Visibility = shown
 
 
+class Guides:
+    """The object's plane and axes, shown while its attachment is edited.
+
+    As FreeCAD's own attachment dialog shows them; each switch is put
+    back as it was. Set and put back outside the edit's undo step: inside
+    it, Cancel would undo the putting back.
+    """
+
+    def __init__(self, obj: Any) -> None:
+        self._view: Any = getattr(obj, "ViewObject", None)
+        self._before: dict[str, bool] = {}
+        for name in GUIDES:
+            if hasattr(self._view, name):
+                self._before[name] = bool(getattr(self._view, name))
+                setattr(self._view, name, True)
+
+    def restore(self) -> None:
+        before, self._before = self._before, {}
+        for name, shown in before.items():
+            with contextlib.suppress(Exception):    # the object is gone
+                setattr(self._view, name, shown)
+
+
 class AttachTask(Attachment):
     """Nxt's own task dialog for one object's attachment."""
 
@@ -337,11 +364,15 @@ class AttachTask(Attachment):
         self.form.setWindowTitle(translate("Nxt", "Attachment"))
         self.bridge.setParent(self.form)
         self.rollback = Rollback(obj)
+        # FreeCAD's dialog, which the cards stand in for elsewhere, shows
+        # these itself and puts them back as it closes.
+        self.guides = Guides(obj)
         try:
             self.doc.openTransaction(translate("Nxt", "Edit attachment"))
             self.start()
         except Exception:
             self.doc.abortTransaction()
+            self.guides.restore()
             self.rollback.restore()
             raise
 
@@ -357,6 +388,7 @@ class AttachTask(Attachment):
         self.finish()
         self.doc.recompute()
         self.doc.commitTransaction()
+        self.guides.restore()
         self.rollback.restore()
         Gui.Control.closeDialog()
         return True
@@ -364,6 +396,7 @@ class AttachTask(Attachment):
     def reject(self) -> bool:
         self.finish()
         self.doc.abortTransaction()
+        self.guides.restore()
         self.rollback.restore()
         self.doc.recompute()
         Gui.Control.closeDialog()

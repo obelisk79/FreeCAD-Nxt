@@ -90,7 +90,10 @@ class OffsetField(Field):
 
 
 class _Floating:
-    """A QML item floating in the 3D view beside a model point."""
+    """A QML item floating in the 3D view beside a model point.
+
+    Value boxes go through float_input.FloatingInput.show instead.
+    """
 
     source = ""
     #: Where the item's top left sits from the point, in pixels; None
@@ -160,22 +163,6 @@ class _Floating:
             self._widget.hide()
             self._widget.deleteLater()
         self._widget = None
-
-
-class OffsetBox(_Floating):
-    """The section's offset field, at the arrow's tip."""
-
-    source = "FloatingValue.qml"
-
-    def __init__(self, section: Any) -> None:
-        super().__init__()
-        self.field = OffsetField(section)
-
-    def context(self) -> dict[str, Any]:
-        return {"expressions": expressions.helper(), "field": self.field}
-
-    def refresh(self) -> None:
-        self.field.sync()
 
 
 class ToolActions(QtCore.QObject):

@@ -55,6 +55,12 @@ _LOFT: dict[str, tuple[str, str]] = {
     "Closed": ("checkBoxClosed", CHECK),
 }
 
+#: TaskHelixParameters.ui. The panel writes the rest to the feature as
+#: they change, and OK writes them back from it: those are set directly.
+_HELIX: dict[str, tuple[str, str]] = {
+    "ReferenceAxis": ("axis", COMBO),
+}
+
 #: Per feature type, property -> (task field, how it is set).
 FIELDS: dict[str, dict[str, tuple[str, str]]] = {
     "PartDesign::Pad": _EXTRUDE,
@@ -63,6 +69,8 @@ FIELDS: dict[str, dict[str, tuple[str, str]]] = {
     "PartDesign::Groove": _REVOLVE,
     "PartDesign::AdditiveLoft": _LOFT,
     "PartDesign::SubtractiveLoft": _LOFT,
+    "PartDesign::AdditiveHelix": _HELIX,
+    "PartDesign::SubtractiveHelix": _HELIX,
 }
 #: Those whose start has a drag handle (float_input.py).
 OFFSET_STARTS = ("PartDesign::Pad", "PartDesign::Pocket")

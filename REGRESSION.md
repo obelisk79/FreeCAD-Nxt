@@ -50,6 +50,10 @@ phase; the full list after phases 3 and 4. Note the build, the session type
 - [ ] Pad/Pocket template: Sides, Type dropdown, second column, Direction, Start, Profile
 - [ ] Inspector edits during a Pad task move the handles and survive OK
 - [ ] Dropdown that changes the form does not freeze the panel
+- [ ] Helix template and task: axis list, each Mode's fields, Turning, OK writes them
+- [ ] Add/Cut/Keep common in a task (new and edited feature, each kind): OK keeps the switch, Cancel undoes it all
+- [ ] Switching kind relinks what follows (fillet, sketch on a face, Tip) and keeps a custom label
+- [ ] Switching kind from the inspector, outside a task: one undo step
 
 ## 3D editing aids
 - [ ] S Floating value fields: type, Tab, wheel, expression with suggestions placed by the field

@@ -18,10 +18,9 @@ VALUE_COLUMN = 1
 
 
 def _view(data: bool) -> Any:
-    app = QtWidgets.QApplication.instance()
-    if app is None:
+    if QtWidgets.QApplication.instance() is None:
         return None
-    for widget in app.allWidgets():
+    for widget in QtWidgets.QApplication.allWidgets():
         if (widget.objectName() == VIEWS[data]
                 and widget.metaObject().className() == EDITOR_CLASS):
             return widget

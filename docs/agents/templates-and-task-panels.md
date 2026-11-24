@@ -35,6 +35,11 @@ at the top of `partdesign.toml`; read it before writing one.
   the 3D handle stays available.
 - `whole = true` on links where picking an edge should mean the whole
   sketch.
+- **One template per additive/subtractive pair.** `variants` names the
+  two TypeIds; a first heading-less card holds `:variant`, one segmented
+  choice of Add / Cut / Keep common. Across kinds it replaces the feature
+  with the other type (`tools/variant.py`); inside a task the switch joins
+  the edit's undo step, so Cancel takes it back.
 
 ## Adding a task panel for a feature
 

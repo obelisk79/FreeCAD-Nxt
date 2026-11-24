@@ -643,11 +643,12 @@ class Section:
         self._on_event = self._event
         cut = getattr(obj, "Cut", None)
         self._cut_name = cut.Name if cut is not None else ""
-        from .section_field import OffsetBox, ToolButtons
+        from .float_input import ShownBox
+        from .section_field import OffsetField, ToolButtons
         self.editing = True
         #: The task panel while editing (section_task.py).
         self.task: Any = None
-        self._offset_box = OffsetBox(self)
+        self._offset_box = ShownBox(OffsetField(self))
         self._flip_button = ToolButtons(self)
         self._clicks = _ArrowClicks(self)
         view.addEventCallbackPivy(coin.SoEvent.getClassTypeId(),

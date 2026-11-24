@@ -1,4 +1,4 @@
-"""Pad and Pocket's task dialogs, laid out by the inspector's template.
+"""Part Design task dialogs, laid out by the inspector's template.
 
 FreeCAD opens its own dialog whenever a feature is edited. The dialog
 stays, for its preview and its OK and Cancel; its parameters box is
@@ -27,7 +27,7 @@ from .task_sync import SWAPPED
 #: The dialog boxes replaced: FreeCAD's class for each feature's box.
 REPLACED = frozenset({"TaskPadParameters", "TaskPocketParameters",
                       "TaskRevolutionParameters", "TaskLoftParameters",
-                      "TaskPipeParameters"})
+                      "TaskPipeParameters", "TaskHelixParameters"})
 #: Further boxes of those dialogs, whose settings the cards also hold:
 #: hidden, not replaced (a pipe's orientation and sections).
 FOLDED = frozenset({"TaskPipeOrientation", "TaskPipeScaling"})

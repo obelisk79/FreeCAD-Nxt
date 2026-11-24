@@ -21,6 +21,9 @@ from . import variables
 
 #: Editors a template may request for a property.
 EDITORS = frozenset({"", "dropdown", "segmented", "switch"})
+#: The item naming a feature's boolean operation across its additive and
+#: subtractive kinds (tools/variant.py); no property of FreeCAD's.
+VARIANT = ":variant"
 
 
 @dataclass(frozen=True)
@@ -107,6 +110,8 @@ class Template:
     couples: tuple[Couple, ...] = ()
     #: (property, group): left out, but shown under another group.
     group_as: tuple[tuple[str, str], ...] = ()
+    #: (additive TypeId, subtractive TypeId): one feature, either kind.
+    variants: tuple[str, str] | None = None
 
     def matches(self, type_id: str) -> bool:
         return any(fnmatchcase(type_id, pattern) for pattern in self.types)
@@ -186,10 +191,15 @@ def parse(data: dict[str, Any]) -> list[Template]:
                         for c in raw.get("couple", ()))
         group_as = tuple((str(prop), str(group)) for prop, group
                          in dict(raw.get("group_as", {})).items())
+        variants = tuple(str(t) for t in raw.get("variants", ()))
+        if variants and len(variants) != 2:
+            raise ValueError("%s: variants takes two types" % raw["id"])
         out.append(Template(str(raw["id"]), tuple(raw.get("types", ())),
                             cards, dict(raw.get("choices", {})), hide_if,
                             tuple(str(p) for p in raw.get("hide", ())),
-                            couples, group_as))
+                            couples, group_as,
+                            (variants[0], variants[1]) if variants
+                            else None))
     return out
 
 
@@ -279,11 +289,16 @@ def apply(template: Template, objects: list[Any],
     for name, entries in groups.items():
         for entry in entries:
             found[entry["name"]] = entry
+    variant = _variant_entry(template, objects, found.get("Operation"))
+    if variant is not None:
+        found[VARIANT] = variant
     own = (
         [n for n in variables.added(objects[0]) if n in found]
         if objects and any(card.variables for card in template.cards)
         else [])
-    placed = template.names() | set(own) | set(template.hide) | {
+    superseded = {"Operation"} if variant is not None else set()
+    placed = (template.names() | set(own) | set(template.hide)
+              | superseded) | {
         hidden for hidden, by in template.hide_if
         if all(hasattr(o, by) for o in objects)}
     moved = dict(template.group_as)
@@ -352,6 +367,33 @@ def apply(template: Template, objects: list[Any],
                           "summary": summary(every) if closed else "",
                           "template": template.id})
     return cards
+
+
+#: Every boolean operation, the additive kind's first.
+OPERATIONS = ("Union", "Subtraction", "Common")
+
+
+def _variant_entry(template: Template, objects: list[Any],
+                   operation: dict[str, Any] | None
+                   ) -> dict[str, Any] | None:
+    """The operation as one choice: Union is the additive kind.
+
+    One object only: a choice of kind replaces the feature.
+    """
+    if template.variants is None or len(objects) != 1:
+        return None
+    type_id = str(getattr(objects[0], "TypeId", ""))
+    if type_id not in template.variants:
+        return None
+    current = (OPERATIONS[0] if type_id == template.variants[0]
+               else str(getattr(objects[0], "Operation", OPERATIONS[1])))
+    entry = dict(operation) if operation else {
+        "label": "Operation", "wide": False, "unit": "", "checked": False,
+        "links": [], "parts": [], "expression": "", "mixed": False,
+        "tip": "", "chips": []}
+    entry.update(name=VARIANT, kind="enum", text=current,
+                 options=list(OPERATIONS), readOnly=False, editor="")
+    return entry
 
 
 def _variables_card(card: Card, template: Template, objects: list[Any],

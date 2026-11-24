@@ -432,9 +432,19 @@ def moved_box(before: dict[str, str], after: dict[str, str]) -> str | None:
 class _Box:
     """One floating box: its field, and the widget once it is built."""
 
-    def __init__(self, parent: QtCore.QObject) -> None:
-        self.field = Field(parent)
+    def __init__(self, parent: QtCore.QObject,
+                 field: Field | None = None) -> None:
+        self.field = field if field is not None else Field(parent)
         self.widget: Any = None
+
+
+class _Shown:
+    """A box shown for Nxt's own tools: its field, and where it sits."""
+
+    def __init__(self, field: Field, tip: Any, claim: bool) -> None:
+        self.field = field
+        self.tip = tip
+        self.claim = claim
 
 
 class FloatingInput(QtCore.QObject):
@@ -443,6 +453,8 @@ class FloatingInput(QtCore.QObject):
     def __init__(self, parent: QtCore.QObject | None = None) -> None:
         super().__init__(parent)
         self._boxes: dict[str, _Box] = {}
+        #: Boxes Nxt's own tools show, by name, beside a model point.
+        self._shown: dict[str, _Shown] = {}
         self._order: list[str] = []
         self._viewport: Any = None
         self._timer = QtCore.QTimer(self)
@@ -467,10 +479,42 @@ class FloatingInput(QtCore.QObject):
             app.removeEventFilter(self)
         self._drop_widgets()
 
-    def _box(self, name: str) -> _Box:
+    def show(self, name: str, field: Field, tip: Any,
+             claim: bool = False) -> None:
+        """Show `field` beside the model point `tip`, as a feature's box.
+
+        For a tool with no task field of FreeCAD's (Nxt Fillet, a
+        section's offset); `claim` takes the keyboard once it shows.
+        """
+        shown = self._shown.get(name)
+        if shown is None or shown.field is not field:
+            self._forget(name)
+            self._shown[name] = _Shown(field, tip, claim)
+            app = QtWidgets.QApplication.instance()
+            if app is not None and self._viewport is not None:
+                # Ahead of filters installed since: the overlay manager's.
+                app.removeEventFilter(self)
+                app.installEventFilter(self)
+        else:
+            shown.tip = tip
+        self._timer.start(ACTIVE_MS)
+
+    def hide(self, name: str) -> None:
+        """Stop showing a box `show` showed."""
+        if self._shown.pop(name, None) is not None:
+            self._forget(name)
+
+    def _forget(self, name: str) -> None:
+        self._order = [other for other in self._order if other != name]
+        box = self._boxes.pop(name, None)
+        if box is not None and widgets.alive(box.widget):
+            box.widget.hide()
+            box.widget.deleteLater()
+
+    def _box(self, name: str, field: Field | None = None) -> _Box:
         box = self._boxes.get(name)
         if box is None:
-            box = self._boxes[name] = _Box(self)
+            box = self._boxes[name] = _Box(self, field)
             field = box.field
             field.grabbed.connect(lambda: self._take_keyboard(name))
             field.focusRequested.connect(
@@ -533,15 +577,14 @@ class FloatingInput(QtCore.QObject):
             return []
         return [(spin.objectName() or "value", spin, corners)]
 
-    def _update(self) -> bool:
+    def _edit_targets(self) -> tuple[list[tuple[str, Any, Any]], Any]:
+        """The edited feature's boxes, and the feature; ([], None) if none."""
         gui_doc: Any = Gui.ActiveDocument
         edit = gui_doc.getInEdit() if gui_doc is not None else None
         obj = getattr(edit, "Object", None)
         if obj is None:
-            self._session = None
             self._started = None
-            self._claim.stop()
-            return False
+            return [], None
         started = (gui_doc.Document.Name, obj.Name)
         if started != self._started:
             # Retried each tick until the task panel is built.
@@ -549,11 +592,23 @@ class FloatingInput(QtCore.QObject):
                     or not task_sync.wants_offset_start(obj):
                 self._started = started
         if not settings.get("FloatingValues"):
+            return [], None
+        return self._targets(gui_doc.ActiveView, str(obj.TypeId)), obj
+
+    def _update(self) -> bool:
+        gui_doc: Any = Gui.ActiveDocument
+        targets, obj = self._edit_targets()
+        own = ([(name, None, [shown.tip])
+                for name, shown in self._shown.items()]
+               if settings.get("FloatingValues") else [])
+        if obj is None and not own:
+            self._session = None
+            self._claim.stop()
+            return False
+        targets = targets + own
+        if not targets or gui_doc is None:
             return False
         view = gui_doc.ActiveView
-        targets = self._targets(view, str(obj.TypeId))
-        if not targets:
-            return False
         viewport = view3d.active_viewport()
         if viewport is None:
             return False
@@ -569,8 +624,12 @@ class FloatingInput(QtCore.QObject):
                 app.installEventFilter(self)
         placed: list[tuple[_Box, Any, placement.Rect]] = []
         for name, spin, corners in targets:
-            box = self._box(name)
-            box.field.bind(spin, label_for(name), obj)
+            if spin is None:
+                box = self._box(name, self._shown[name].field)
+                box.field.sync()
+            else:
+                box = self._box(name)
+                box.field.bind(spin, label_for(name), obj)
             widget = self._ensure_widget(box, viewport)
             arrow = placement.bounding(
                 self._to_widget(view, viewport, c) for c in corners)
@@ -599,10 +658,13 @@ class FloatingInput(QtCore.QObject):
                     and box.widget.isVisible():
                 box.widget.hide()
         first, first_widget = placed[0][0], placed[0][1]
-        session = (gui_doc.Document.Name, obj.Name)
+        session = self._session_of(gui_doc, obj, first)
         if session != self._session:
             self._session = session
-            self._claim.start(time.monotonic())
+            if session is None:
+                self._claim.stop()
+            else:
+                self._claim.start(time.monotonic())
         has_focus = any(w.hasFocus() for _b, w, _a in placed)
         if self._claim.wanted(time.monotonic(), has_focus) \
                 and not first_widget.hasFocus():
@@ -612,6 +674,16 @@ class FloatingInput(QtCore.QObject):
                 box.field.released = False
                 viewport.setFocus()
         return True
+
+    def _session_of(self, gui_doc: Any, obj: Any,
+                    first: _Box) -> tuple[str, str] | None:
+        """What one keyboard claim is for: the edit, or a claiming box."""
+        if obj is not None:
+            return (gui_doc.Document.Name, obj.Name)
+        for name, shown in self._shown.items():
+            if shown.claim and self._boxes.get(name) is first:
+                return (gui_doc.Document.Name, name)
+        return None
 
     @staticmethod
     def _to_widget(view: Any, viewport: Any,
@@ -759,12 +831,7 @@ class FloatingInput(QtCore.QObject):
 
     @staticmethod
     def _send_wheel(widget: Any, angle: int, tenfold: bool) -> None:
-        root = widget.rootObject() if hasattr(widget, "rootObject") else None
-        if root is not None:
-            QtCore.QMetaObject.invokeMethod(
-                root, "turn", QtCore.Qt.ConnectionType.DirectConnection,
-                QtCore.Q_ARG("QVariant", angle),
-                QtCore.Q_ARG("QVariant", tenfold))
+        send_wheel(widget, angle, tenfold)
 
     @staticmethod
     def _send_tab(widget: Any, backward: bool) -> None:
@@ -778,3 +845,37 @@ class FloatingInput(QtCore.QObject):
         for box in self._boxes.values():
             if widgets.alive(box.widget) and box.widget.isVisible():
                 box.widget.hide()
+
+
+def send_wheel(widget: Any, angle: int, tenfold: bool) -> None:
+    """Turn a FloatingValue.qml box by a wheel's `angle`."""
+    root = widget.rootObject() if hasattr(widget, "rootObject") else None
+    if root is not None:
+        QtCore.QMetaObject.invokeMethod(
+            root, "turn", QtCore.Qt.ConnectionType.DirectConnection,
+            QtCore.Q_ARG("QVariant", angle),
+            QtCore.Q_ARG("QVariant", tenfold))
+
+
+class ShownBox:
+    """A tool's value box, shown by FloatingInput beside a model point."""
+
+    def __init__(self, field: Field, claim: bool = False) -> None:
+        self.field = field
+        self._claim = claim
+        self._name = "nxt-%x" % id(self)
+
+    def place(self, _view: Any, tip: Any) -> None:
+        """Show the box beside `tip`, or move it there."""
+        from ..app import services
+        floating = services.floating()
+        if floating is not None:
+            floating.show(self._name, self.field, tip, self._claim)
+
+    def hide(self) -> None:
+        from ..app import services
+        floating = services.floating()
+        if floating is not None:
+            floating.hide(self._name)
+
+    remove = hide
