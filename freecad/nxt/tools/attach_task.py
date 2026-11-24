@@ -25,7 +25,6 @@ import FreeCADGui as Gui
 from ..app.i18n import translate
 from ..core import log, units, widgets
 from ..core.qt import QtCore, QtWidgets
-from ..ui import quick_host
 from . import attach_ways
 from .attach_ways import DETACHED, MOST_REFERENCES
 from .editing import DATUMS
@@ -268,18 +267,12 @@ class AttachTask(Attachment):
 
     def __init__(self, obj: Any) -> None:
         super().__init__(obj)
-        from ..app import services
-        from ..ui.theme import Theme
-        theme = services.theme() or Theme(None)
-        self.form = quick_host.make_view(
-            None, "AttachTask.qml", {"theme": theme, "attach": self.bridge})
+        # Fitted as the other task panels are: it takes the keyboard and
+        # repaints in FreeCAD's overlay mode.
+        self.form = fitted_view(None, "AttachTask.qml",
+                                {"attach": self.bridge})
         self.form.setWindowTitle(translate("Nxt", "Attachment"))
         self.bridge.setParent(self.form)
-        root = self.form.rootObject()
-        # Resized later, never inside the frame that changed the height.
-        root.implicitHeightChanged.connect(
-            lambda: QtCore.QTimer.singleShot(0, self._fit_height))
-        QtCore.QTimer.singleShot(0, self._fit_height)
         self.doc.openTransaction(translate("Nxt", "Edit attachment"))
         self.start()
 
@@ -304,16 +297,6 @@ class AttachTask(Attachment):
         self.doc.recompute()
         Gui.Control.closeDialog()
         return True
-
-    def _fit_height(self) -> None:
-        try:
-            root = self.form.rootObject()
-        except RuntimeError:    # the panel closed before this ran
-            return
-        if root is not None:
-            height = int(root.property("implicitHeight"))
-            if height != self.form.minimumHeight():
-                self.form.setMinimumHeight(height)
 
 
 class EmbeddedAttachment(Attachment):
