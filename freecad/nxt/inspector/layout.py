@@ -24,6 +24,7 @@ Read-only values are plain text. Groups are cards; the quiet ones
 
 from __future__ import annotations
 
+import contextlib
 import math
 import re
 import traceback
@@ -475,19 +476,27 @@ def _same_direction(first: tuple[float, float, float],
 
 
 def edit_links(objects: list[DocObject], prop: str,
-               remove: str = "", add: list[tuple[Any, str]] | None = None
-               ) -> bool:
-    """Drop the chip keyed `remove`, or add picked pairs, as one undo step."""
+               remove: str = "", add: list[tuple[Any, str]] | None = None,
+               in_task: bool = False, single: bool = False) -> bool:
+    """Drop the chip keyed `remove`, or add picked pairs, as one undo step.
+
+    `in_task`: the edit joins the open task's undo step, so its Cancel
+    takes it back; opening a step of its own would commit the task's.
+    `single`: a pick replaces what the link held (a face to end at).
+    """
     if not objects:
         return False
     doc = getattr(objects[0], "Document", None)
     if doc is None:
         return False
     try:
-        with transaction(doc, "Edit %s" % prop):
+        with (contextlib.nullcontext() if in_task
+              else transaction(doc, "Edit %s" % prop)):
             for obj in objects:
                 type_id = obj.getTypeIdOfProperty(prop)
                 items = link_items(getattr(obj, prop))
+                if single and add:
+                    items = []
                 if remove:
                     index = int(remove)
                     items = [i for n, i in enumerate(items) if n != index]

@@ -163,6 +163,7 @@ class InspectorBridge(QtCore.QObject):
                 task_sync.as_combo(
                     self._groups, lists,
                     {p: pick["picked"] for p, pick in self._picks.items()})
+                task_sync.mark_panel_picks(self._groups, objects[0])
         self._set_notice(objects)
         for group in self._groups:
             if group["name"] in self._opened and not self._filter:
@@ -460,7 +461,10 @@ class InspectorBridge(QtCore.QObject):
         self._defer(lambda: self._remove_link(prop, key))
 
     def _remove_link(self, prop: str, key: str) -> None:
-        if inspector.edit_links(self._objects(), prop, remove=key):
+        objects = self._objects()
+        if inspector.edit_links(objects, prop, remove=key,
+                                in_task=self._task):
+            self._tell_task(objects, prop)
             self.refresh()
 
     @QtCore.Slot(str)
@@ -479,12 +483,17 @@ class InspectorBridge(QtCore.QObject):
                 self._recompute(objects)
             self.refresh()
             return
+        objects = self._objects()
+        if self._task and len(objects) == 1 \
+                and task_sync.panel_picks(objects[0], prop):
+            task_sync.stop_panel_pick(objects[0], prop)     # its ✓
+            self.refresh()
+            return
         if self._picking:
             done = self._picking == prop
             self._end_pick()
             if done:
                 return
-        objects = self._objects()
         if not objects or self._tab != inspector.DATA:
             return
         self._picking, self._pick_for = prop, objects
@@ -506,9 +515,20 @@ class InspectorBridge(QtCore.QObject):
         template = inspector_templates.for_objects(self._pick_for)
         if template is not None and template.item(self._picking).whole:
             pairs = _whole_sketches(pairs)
+        single = self._task and task_sync.is_reference(self._pick_for,
+                                                       self._picking)
         if pairs and inspector.edit_links(self._pick_for, self._picking,
-                                          add=pairs):
+                                          add=pairs[-1:] if single else pairs,
+                                          in_task=self._task, single=single):
+            self._tell_task(self._pick_for, self._picking)
+            if single:
+                self._end_pick()
             self.refresh()
+
+    def _tell_task(self, objects: list[Any], prop: str) -> None:
+        """The panel's own field takes the link, or OK writes back its own."""
+        if self._task and len(objects) == 1:
+            task_sync.reference_to_task(objects[0], prop)
 
     def _end_pick(self) -> None:
         if not self._picking:

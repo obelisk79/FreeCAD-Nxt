@@ -131,6 +131,51 @@ class TaskTests(unittest.TestCase):
         self.pad.StartType = "Reference"
         self.assertFalse(task_sync.wants_offset_start(self.pad))
 
+    def face_field(self) -> tuple[Any, Any]:
+        line = QtWidgets.QLineEdit(self.main)
+        line.setObjectName("lineFaceName")
+        button = QtWidgets.QToolButton(self.main)
+        button.setObjectName("buttonFace")
+        button.setCheckable(True)
+        button.setChecked(True)         # the panel is picking a face itself
+        return line, button
+
+    def test_a_picked_face_reaches_the_panels_field(self) -> None:
+        line, button = self.face_field()
+        base = types.SimpleNamespace(Name="Pad001", Label="Base")
+        self.pad.UpToFace = (base, ["Face6"])
+        task_sync.reference_to_task(self.pad, "UpToFace")
+        self.assertEqual(line.text(), "Base:Face6")
+        self.assertEqual((line.property("FeatureName"),
+                          line.property("FaceName")), ("Pad001", "Face6"))
+        self.assertFalse(button.isChecked())
+
+    def test_a_removed_face_empties_the_panels_field(self) -> None:
+        line, _button = self.face_field()
+        line.setText("Base:Face6")
+        line.setProperty("FeatureName", "Pad001")
+        self.pad.UpToFace = None
+        task_sync.reference_to_task(self.pad, "UpToFace")
+        self.assertEqual(line.text(), "")
+        self.assertIsNone(line.property("FeatureName"))
+
+    def test_the_panels_own_picking_shows_on_its_card(self) -> None:
+        _line, button = self.face_field()
+        groups = [{"items": [{"name": "UpToFace", "kind": "link"},
+                             {"name": "Length", "kind": "quantity"}]}]
+        task_sync.mark_panel_picks(groups, self.pad)
+        self.assertEqual([i.get("picking") for i in groups[0]["items"]],
+                         [True, None])
+        task_sync.stop_panel_pick(self.pad, "UpToFace")
+        self.assertFalse(button.isChecked())
+
+    def test_references_are_picked_never_typed(self) -> None:
+        self.face_field()
+        self.assertTrue(task_sync.is_reference([self.pad], "UpToFace"))
+        self.assertFalse(task_sync.is_reference([self.pad], "Length"))
+        self.assertFalse(task_sync.set_in_task([self.pad], "UpToFace",
+                                               "Pad001"))
+
     def test_left_to_the_property_otherwise(self) -> None:
         self.assertFalse(task_sync.set_in_task([self.pad], "Length",
                                                "=Sketch.Width"))

@@ -42,7 +42,7 @@ Item {
 """
 
 
-def lead_box(spec: dict[str, Any]) -> Any:
+def lead_box(spec: dict[str, Any], name: str = "linkLead") -> Any:
     view = QtQuick.QQuickView()
     view.engine().addImportPath(str(QML))
     view.rootContext().setContextProperty("theme", THEME)
@@ -54,7 +54,7 @@ def lead_box(spec: dict[str, Any]) -> Any:
     root = view.rootObject()
     root.setProperty("spec", spec)
     APP.processEvents()
-    return root.findChild(QtCore.QObject, "linkLead")
+    return root.findChild(QtCore.QObject, name)
 
 
 APP = QtGui.QGuiApplication.instance() or QtGui.QGuiApplication(sys.argv)
@@ -80,6 +80,26 @@ class LinkLeadTests(unittest.TestCase):
     def test_no_lead_no_box(self) -> None:
         box = lead_box(self.spec(lead=False))
         self.assertFalse(box.property("visible"))
+
+
+class InviteTests(unittest.TestCase):
+    def invite(self, **spec: Any) -> Any:
+        return lead_box({"kind": "link", "name": "UpToFace", "chips": [],
+                         **spec}, "invite")
+
+    def test_an_empty_link_says_what_to_pick(self) -> None:
+        invite = self.invite(pickHint="Select a face")
+        self.assertTrue(invite.property("visible"))
+
+    def test_no_invitation_once_linked_or_while_picking(self) -> None:
+        chip = [{"key": "0", "label": "Pad.Face6", "sub": "Face6"}]
+        self.assertFalse(self.invite(pickHint="Select a face", chips=chip)
+                         .property("visible"))
+        self.assertFalse(self.invite(pickHint="Select a face", readOnly=True)
+                         .property("visible"))
+
+    def test_without_a_prompt_the_plus_stays(self) -> None:
+        self.assertFalse(self.invite().property("visible"))
 
 
 if __name__ == "__main__":

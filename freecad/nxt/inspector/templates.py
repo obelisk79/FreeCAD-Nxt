@@ -49,6 +49,9 @@ class Item:
     beside: tuple["Item", ...] = ()
     #: A link: a sketch picked by an edge or point is the whole sketch.
     whole: bool = False
+    #: An empty link's invitation to pick ("Select a face"), and what
+    #: picking for it asks for.
+    prompt: str = ""
 
     def names(self) -> list[str]:
         return [self.prop, *(n for n in (self.lead, self.trail) if n),
@@ -165,7 +168,8 @@ def _item(raw: Any) -> Item:
                 str(raw.get("lead", "")), str(raw.get("trail", "")),
                 str(raw.get("glyph", "")), bool(raw.get("narrow", False)),
                 bool(raw.get("bare", False)),
-                whole=bool(raw.get("whole", False)))
+                whole=bool(raw.get("whole", False)),
+                prompt=str(raw.get("prompt", "")))
 
 
 def parse(data: dict[str, Any]) -> list[Template]:
@@ -454,6 +458,8 @@ def _shaped(template: Template, item: Item, generic: dict[str, Any],
         entry["wide"] = bool(item.wide)
     if item.editor:
         entry["editor"] = item.editor
+    if item.prompt:
+        entry["pickHint"] = template_text(item.prompt, template.id)
     if entry["kind"] == "bool" and item.labels:
         entry["optionLabels"] = [template_text(label, template.id)
                                  for label in item.labels]

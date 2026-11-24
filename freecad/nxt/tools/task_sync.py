@@ -18,6 +18,21 @@ from ..core.qt import QtWidgets
 #: as its items and set by the item's text.
 QUANTITY, CHECK, INDEX, MODE = "quantity", "check", "index", "mode"
 COMBO = "combo"
+#: A face or plane the panel holds in a line edit (FeatureName and FaceName
+#: properties) and writes back on OK: set by picking, never typed.
+REFERENCE = "reference"
+#: Each reference field's toggle, checked while the panel itself picks.
+PICK_BUTTONS = {
+    "lineFaceName": "buttonFace",
+    "lineFaceName2": "buttonFace2",
+    "lineStartReference": "buttonStartReference",
+}
+#: The ends and start every extrusion and revolution panel holds.
+_REFERENCES: dict[str, tuple[str, str]] = {
+    "UpToFace": ("lineFaceName", REFERENCE),
+    "UpToFace2": ("lineFaceName2", REFERENCE),
+    "StartReference": ("lineStartReference", REFERENCE),
+}
 
 _EXTRUDE: dict[str, tuple[str, str]] = {
     "SideType": ("sidesMode", INDEX),
@@ -33,6 +48,7 @@ _EXTRUDE: dict[str, tuple[str, str]] = {
     "StartOffset": ("startOffsetEdit", QUANTITY),
     "Reversed": ("checkBoxReversed", CHECK),
     "AlongSketchNormal": ("checkBoxAlongDirection", CHECK),
+    **_REFERENCES,
 }
 
 #: TaskRevolutionParameters.ui, Revolution's and Groove's.
@@ -46,6 +62,7 @@ _REVOLVE: dict[str, tuple[str, str]] = {
     "StartOffset": ("startOffsetEdit", QUANTITY),
     "Reversed": ("checkBoxReversed", CHECK),
     "ReferenceAxis": ("axis", COMBO),
+    **_REFERENCES,
 }
 
 #: TaskLoftParameters.ui. Its profile and sections it writes to the
@@ -154,7 +171,7 @@ def set_in_task(objects: list[Any], prop: str, value: Any,
         return False
     name, how = fields[prop]
     widget = _field(name)
-    if widget is None:
+    if widget is None or how == REFERENCE:
         return False
     try:
         if how == COMBO:
@@ -185,6 +202,88 @@ def set_in_task(objects: list[Any], prop: str, value: Any,
     except (RuntimeError, AttributeError, ValueError):
         return False
     return True
+
+
+def is_reference(objects: list[Any], prop: str) -> bool:
+    """`prop` is a reference the open panel holds for one object."""
+    if len(objects) != 1:
+        return False
+    fields = FIELDS.get(str(getattr(objects[0], "TypeId", "")), {})
+    return fields.get(prop, ("", ""))[1] == REFERENCE
+
+
+def _pick_button(obj: Any, prop: str) -> Any:
+    if not is_reference([obj], prop) or not _in_edit(obj):
+        return None
+    name = FIELDS[str(obj.TypeId)][prop][0]
+    return _field(PICK_BUTTONS[name])
+
+
+def panel_picks(obj: Any, prop: str) -> bool:
+    """The panel itself waits for a click on `prop`'s reference.
+
+    It does so on choosing "Up to face" with no face yet: a click in the
+    3D view is all it takes.
+    """
+    button = _pick_button(obj, prop)
+    try:
+        return button is not None and button.isChecked()
+    except RuntimeError:
+        return False
+
+
+def stop_panel_pick(obj: Any, prop: str) -> None:
+    button = _pick_button(obj, prop)
+    with contextlib.suppress(RuntimeError):
+        if button is not None:
+            button.setChecked(False)
+
+
+def mark_panel_picks(groups: list[Any], obj: Any) -> None:
+    """Show as picking each reference the panel is picking for."""
+    picking = {p for p in FIELDS.get(str(getattr(obj, "TypeId", "")), {})
+               if panel_picks(obj, p)}
+    if not picking:
+        return
+
+    def visit(node: Any) -> None:
+        if isinstance(node, list):
+            for item in node:
+                visit(item)
+        elif isinstance(node, dict):
+            if node.get("name") in picking and "kind" in node:
+                node["picking"] = True
+            for value in node.values():
+                if isinstance(value, (list, dict)):
+                    visit(value)
+    visit(groups)
+
+
+def reference_to_task(obj: Any, prop: str) -> None:
+    """Show the panel's field what `prop` now holds, so OK writes it back.
+
+    The panel's own picking is turned off: the pick has been made.
+    """
+    if not is_reference([obj], prop) or not _in_edit(obj):
+        return
+    name = FIELDS[str(obj.TypeId)][prop][0]
+    widget = _field(name)
+    if widget is None:
+        return
+    value = getattr(obj, prop, None)
+    target = value[0] if value else None
+    subs = value[1] if value and len(value) > 1 else []
+    sub = subs if isinstance(subs, str) else (list(subs) or [""])[0]
+    try:
+        widget.setProperty("FeatureName", target.Name if target else None)
+        widget.setProperty("FaceName", sub)
+        widget.setText(("%s:%s" % (target.Label, sub) if sub
+                        else target.Label) if target else "")
+        button = _field(PICK_BUTTONS[name])
+        if button is not None and button.isChecked():
+            button.setChecked(False)
+    except RuntimeError:
+        pass        # the panel closed meanwhile
 
 
 #: An offset start shows the offset handle; at zero, the same solid.

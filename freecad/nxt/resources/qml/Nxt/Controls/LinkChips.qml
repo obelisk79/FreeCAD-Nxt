@@ -15,6 +15,12 @@ Flow {
     signal opened(string key)
     signal pickRequested()
 
+    //: Empty, with something to ask for: one chip saying what to pick,
+    //: which starts picking, in place of the bare +.
+    readonly property bool inviting: chips.items.length === 0
+                                     && chips.editable && !chips.picking
+                                     && chips.hint !== ""
+
     spacing: 4
 
     Repeater {
@@ -103,8 +109,52 @@ Flow {
     }
 
     Rectangle {
+        id: invite
+        objectName: "invite"
+        visible: chips.inviting
+        width: inviteRow.implicitWidth + 16
+        height: theme.fieldHeight
+        radius: height / 2
+        activeFocusOnTab: visible
+        color: inviteTap.pressed ? theme.pressed
+             : inviteHover.hovered ? theme.hover : "transparent"
+        border.width: invite.activeFocus ? 2 : 1
+        border.color: invite.activeFocus || inviteHover.hovered
+                      ? theme.accent : theme.border
+
+        Row {
+            id: inviteRow
+            x: 8
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: 4
+            Text {
+                anchors.verticalCenter: parent.verticalCenter
+                text: "+"
+                font.pixelSize: theme.fontRow
+                color: theme.accent
+            }
+            Text {
+                anchors.verticalCenter: parent.verticalCenter
+                text: chips.hint
+                font.pixelSize: theme.fontSmall
+                font.italic: true
+                color: inviteHover.hovered ? theme.text : theme.textDim
+            }
+        }
+        HoverHandler { id: inviteHover }
+        TapHandler { id: inviteTap; onTapped: chips.pickRequested() }
+        Keys.onSpacePressed: chips.pickRequested()
+        NxtToolTip {
+            shown: inviteHover.hovered
+            text: qsTr("Pick in the tree or 3D view")
+        }
+        Accessible.role: Accessible.Button
+        Accessible.name: chips.hint
+    }
+
+    Rectangle {
         id: plus
-        visible: chips.editable
+        visible: chips.editable && !chips.inviting
         width: theme.fieldHeight
         height: theme.fieldHeight
         radius: height / 2

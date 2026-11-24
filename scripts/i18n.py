@@ -39,7 +39,7 @@ PLACEHOLDER = re.compile(r"%[0-9]+|%[sd]|{[A-Za-z0-9_]*}")
 #: A property's name as its label: as inspector.layout.label_for.
 SPACED = re.compile(r"(?<=[a-z0-9])(?=[A-Z])")
 #: Template keys whose values are shown to the user.
-SHOWN_KEYS = ("title", "hint", "label")
+SHOWN_KEYS = ("title", "hint", "label", "prompt")
 
 
 def find_tool(name: str) -> Path | None:

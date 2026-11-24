@@ -45,7 +45,7 @@
 #                 omit_if = { value = "Property" },
 #                 lead = "Property", trail = "Property", glyph = "...",
 #                 narrow = true/false, bare = true/false,
-#                 whole = true/false }
+#                 whole = true/false, prompt = "..." }
 #             editor: "dropdown" (an enumeration's default), "segmented"
 #             (every choice in view, joined: for a few choices that change
 #             the shape; on a yes/no, `labels` names its two states) or
@@ -60,7 +60,9 @@
 #             (what the value means); trail a yes/no as a glyph button
 #             after the editor. narrow takes half the editor column; bare
 #             drops the label. whole: on a link, a sketch picked by one of
-#             its edges or points stands for the whole sketch.
+#             its edges or points stands for the whole sketch. prompt: on
+#             an empty link, what to pick ("Select a face"), as a chip
+#             that starts picking.
 #
 # Names a FreeCAD version does not have are skipped, so one template covers
 # versions with Midplane/TwoLengths and those with SideType.
@@ -137,8 +139,8 @@ after = [
 title = "First side"
 items = [
     { prop = "Length", lead = "Type", show_if = { Type = ["Length", "TwoLengths"] } },
-    { prop = "UpToFace", label = "Up to", lead = "Type", show_if = { Type = "UpToFace" } },
-    { prop = "UpToShape", label = "Up to", lead = "Type", show_if = { Type = "UpToShape" } },
+    { prop = "UpToFace", prompt = "Select a face", label = "Up to", lead = "Type", show_if = { Type = "UpToFace" } },
+    { prop = "UpToShape", prompt = "Select a shape or faces", label = "Up to", lead = "Type", show_if = { Type = "UpToShape" } },
     { prop = "Type", label = "Up to", editor = "dropdown", omit_if = { TwoLengths = "SideType" }, show_if = { Type = ["UpToLast", "UpToFirst", "ThroughAll"] } },
     { prop = "TaperAngle", label = "Taper", narrow = true, show_if = { Type = ["Length", "TwoLengths"] } },
     { prop = "Offset", narrow = true, show_if = { Type = ["UpToLast", "UpToFirst", "UpToFace", "UpToShape"] } },
@@ -149,8 +151,8 @@ title = "Second side"
 show_if = { SideType = "Two sides", Type = "TwoLengths" }
 items = [
     { prop = "Length2", label = "Length", lead = "Type2", show_if = { Type2 = "Length" } },
-    { prop = "UpToFace2", label = "Up to", lead = "Type2", show_if = { Type2 = "UpToFace" } },
-    { prop = "UpToShape2", label = "Up to", lead = "Type2", show_if = { Type2 = "UpToShape" } },
+    { prop = "UpToFace2", prompt = "Select a face", label = "Up to", lead = "Type2", show_if = { Type2 = "UpToFace" } },
+    { prop = "UpToShape2", prompt = "Select a shape or faces", label = "Up to", lead = "Type2", show_if = { Type2 = "UpToShape" } },
     { prop = "Type2", label = "Up to", editor = "dropdown", omit_if = { TwoLengths = "SideType" }, show_if = { Type2 = ["UpToLast", "UpToFirst", "ThroughAll"] } },
     { prop = "TaperAngle2", label = "Taper", narrow = true, show_if = { Type2 = "Length" } },
     { prop = "Offset2", label = "Offset", narrow = true, show_if = { Type2 = ["UpToLast", "UpToFirst", "UpToFace", "UpToShape"] } },
@@ -162,7 +164,7 @@ heading = false
 items = [
     [{ prop = "StartOffset", label = "Start offset" },
      { prop = "StartType", bare = true, editor = "segmented", labels = ["Profile", "Reference"] }],
-    { prop = "StartReference", label = "Reference", show_if = { StartType = "Reference" } },
+    { prop = "StartReference", prompt = "Select a face or plane", label = "Reference", show_if = { StartType = "Reference" } },
 ]
 
 [[template.card]]
@@ -253,8 +255,8 @@ items = [
 title = "First side"
 items = [
     { prop = "Angle", lead = "Type", show_if = { Type = "Angle" } },
-    { prop = "UpToFace", label = "Up to", lead = "Type", show_if = { Type = "UpToFace" } },
-    { prop = "UpToShape", label = "Up to", lead = "Type", show_if = { Type = "UpToShape" } },
+    { prop = "UpToFace", prompt = "Select a face", label = "Up to", lead = "Type", show_if = { Type = "UpToFace" } },
+    { prop = "UpToShape", prompt = "Select a shape or faces", label = "Up to", lead = "Type", show_if = { Type = "UpToShape" } },
     { prop = "Type", label = "Up to", editor = "dropdown", omit_if = { "?TwoAngles" = "SideType" }, show_if = { Type = ["UpToLast", "UpToFirst", "ThroughAll"] } },
 ]
 
@@ -263,8 +265,8 @@ title = "Second side"
 show_if = { SideType = "Two sides" }
 items = [
     { prop = "Angle2", label = "Angle", lead = "Type2", show_if = { Type2 = "Angle" } },
-    { prop = "UpToFace2", label = "Up to", lead = "Type2", show_if = { Type2 = "UpToFace" } },
-    { prop = "UpToShape2", label = "Up to", lead = "Type2", show_if = { Type2 = "UpToShape" } },
+    { prop = "UpToFace2", prompt = "Select a face", label = "Up to", lead = "Type2", show_if = { Type2 = "UpToFace" } },
+    { prop = "UpToShape2", prompt = "Select a shape or faces", label = "Up to", lead = "Type2", show_if = { Type2 = "UpToShape" } },
     { prop = "Type2", label = "Up to", editor = "dropdown", omit_if = { "?TwoAngles" = "SideType" }, show_if = { Type2 = ["UpToLast", "UpToFirst", "ThroughAll"] } },
 ]
 
@@ -274,7 +276,7 @@ heading = false
 items = [
     [{ prop = "StartOffset", label = "Start offset" },
      { prop = "StartType", bare = true, editor = "segmented", labels = ["Profile", "Reference"] }],
-    { prop = "StartReference", label = "Reference", show_if = { StartType = "Reference" } },
+    { prop = "StartReference", prompt = "Select a face or plane", label = "Reference", show_if = { StartType = "Reference" } },
 ]
 
 [[template.card]]

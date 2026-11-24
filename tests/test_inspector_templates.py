@@ -313,6 +313,10 @@ class ShowIfTests(unittest.TestCase):
         self.assertTrue(templates.shown(
             item, [Feature(Midplane=True)]))
 
+    def test_an_end_face_says_what_to_pick(self) -> None:
+        template = templates.for_objects([Feature()])
+        self.assertEqual(template.item("UpToFace").prompt, "Select a face")
+
     def test_the_shipped_files_load(self) -> None:
         templates.invalidate()
         ids = [t.id for t in templates.loaded()]
