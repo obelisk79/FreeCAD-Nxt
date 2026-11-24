@@ -135,6 +135,8 @@ Rectangle {
 
         ListView {
             id: treeList
+            //: Right of the dependency arrows, in the list; -1 without any.
+            property real arrowsRight: -1
             anchors.fill: parent
             anchors.leftMargin: treePane.overlayBarSpace
             anchors.topMargin: 3
@@ -149,6 +151,12 @@ Rectangle {
             keyNavigationEnabled: false
             // In the overlay, empty-space presses belong to the model behind.
             interactive: !host.viewOverlay
+            // A mouse drag moves rows, never the list (#141): only touch
+            // flicks it. Qt 6.9 and later; older Qt keeps flicking.
+            Component.onCompleted: {
+                if ("acceptedButtons" in treeList)
+                    treeList.acceptedButtons = Qt.NoButton;
+            }
 
             WheelHandler {
                 target: null

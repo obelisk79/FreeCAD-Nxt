@@ -20,8 +20,9 @@ GROUP = "FreeCAD-Nxt"
 #: What the quick panel offers. The page offers these and more.
 QUICK = ("PartLayout", "RowDensity", "ReferenceChips",
          "EditOnDoubleClick", "DependencyArrows", "HighlightRelated",
-         "DetailAutoShow", "TreeLines", "RepairProfiles", "OverlayMode",
-         "QuickMass", "AutoRename", "ToolStrip", "AmbientOcclusion")
+         "DetailStrip", "DetailAutoShow", "TreeLines", "RepairProfiles",
+         "OverlayMode", "QuickMass", "AutoRename", "ToolStrip",
+         "AmbientOcclusion")
 
 #: Settings the theme reads: changing one restyles the panel.
 _VIEW = frozenset({"RowDensity", "ReferenceChips", "UnderConstrainedMarks",
@@ -69,6 +70,10 @@ def apply(keys: set[str] | frozenset[str]) -> None:
             bridge = panel.bridge()
             if bridge is not None:
                 bridge.refresh_auto_detail()
+        if "DetailStrip" in keys:
+            bridge = panel.bridge()
+            if bridge is not None:
+                bridge.refresh_detail_strip()
     if menu_button.SETTING in keys:
         menu_button.apply()
     if "QuickMass" in keys:
@@ -221,6 +226,9 @@ class NxtPreferencesPage:
         self._lines = QtWidgets.QCheckBox(translate(
             "Nxt", "Show tree lines"), tree)
         layout.addRow(self._lines)
+        self._detail_strip = QtWidgets.QCheckBox(translate(
+            "Nxt", "Show detail strips under rows"), tree)
+        layout.addRow(self._detail_strip)
         self._auto_detail = QtWidgets.QCheckBox(translate(
             "Nxt", "Show a row's details when it is clicked"), tree)
         layout.addRow(self._auto_detail)
@@ -344,6 +352,7 @@ class NxtPreferencesPage:
         self._attach.setChecked(bool(settings.get("AttachSketchByPoints")))
         self._arrows.setChecked(bool(settings.get("DependencyArrows")))
         self._related.setChecked(bool(settings.get("HighlightRelated")))
+        self._detail_strip.setChecked(bool(settings.get("DetailStrip")))
         self._auto_detail.setChecked(bool(settings.get("DetailAutoShow")))
         self._lines.setChecked(bool(settings.get("TreeLines")))
         self._visible.setChecked(bool(settings.get("Visible")))
@@ -375,6 +384,7 @@ class NxtPreferencesPage:
         settings.put("AttachSketchByPoints", self._attach.isChecked())
         settings.put("DependencyArrows", self._arrows.isChecked())
         settings.put("HighlightRelated", self._related.isChecked())
+        settings.put("DetailStrip", self._detail_strip.isChecked())
         settings.put("DetailAutoShow", self._auto_detail.isChecked())
         settings.put("TreeLines", self._lines.isChecked())
         settings.put("Visible", self._visible.isChecked())
@@ -417,6 +427,8 @@ class NxtPreferencesPage:
         self._arrows.setChecked(bool(settings.DEFAULTS["DependencyArrows"]))
         self._related.setChecked(
             bool(settings.DEFAULTS["HighlightRelated"]))
+        self._detail_strip.setChecked(
+            bool(settings.DEFAULTS["DetailStrip"]))
         self._auto_detail.setChecked(
             bool(settings.DEFAULTS["DetailAutoShow"]))
         self._lines.setChecked(bool(settings.DEFAULTS["TreeLines"]))

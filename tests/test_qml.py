@@ -266,6 +266,8 @@ def make_bridge():
         "rowReleased": QtCore.Signal(),
         "detailAutoShow": QtCore.Property(bool, lambda self: True,
                                           constant=True),
+        "detailStrip": QtCore.Property(bool, lambda self: True,
+                                       constant=True),
         "pinnedDetails": QtCore.Property(list, lambda self: ["Sketch"],
                                          constant=True),
         "propertyInspectorRequested": QtCore.Signal(int),

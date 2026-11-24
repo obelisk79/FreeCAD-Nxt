@@ -128,8 +128,13 @@ Popup {
             text: qsTr("Show tree lines")
         }
         Setting {
+            key: "DetailStrip"
+            text: qsTr("Show detail strips")
+        }
+        Setting {
             key: "DetailAutoShow"
             text: qsTr("Show details on click")
+            visible: settingsPopup.values["DetailStrip"] !== false
         }
         Setting {
             key: "QuickMass"

@@ -1311,6 +1311,10 @@ The sketch&apos;s axes, by their geometry index.</extracomment>
         <extracomment>Set on a box of FreeCAD&apos;s that the panel hid, and so may show again. FreeCAD&apos;s boxes in the sketch dialog -&gt; the list each one is, if the panel offers to show it; the solver message is never shown. The box the panel&apos;s cards take the place of. Switches FreeCAD keeps in parameters: key -&gt; (group, name, default). Switches that are properties of the sketch&apos;s view provider. Which geometry is drawn, and picked, on top: parameters, top first. Each holds 1 (normal), 2 (construction) or 3 (external). FreeCAD&apos;s command that selects what a status link is about. Sketcher&apos;s own &quot;Auto-update&quot; switch: recompute after every edit. A stock list was asked for, or sent away.</extracomment>
         <translation>Ausdruck an %s entfernt</translation>
     </message>
+    <message>
+        <source>Show detail strips under rows</source>
+        <translation>Detailleisten unter Zeilen zeigen</translation>
+    </message>
 </context>
 <context>
     <name>NxtMenu</name>
@@ -2888,6 +2892,10 @@ The sketch&apos;s axes, by their geometry index.</extracomment>
         <source>Keep these details open</source>
         <translation>Details offen halten</translation>
     </message>
+    <message>
+        <source>Click for the Property Inspector</source>
+        <translation>Klicken für den Eigenschafteninspektor</translation>
+    </message>
 </context>
 <context>
     <name>TreeSettings</name>
@@ -2998,6 +3006,10 @@ The sketch&apos;s axes, by their geometry index.</extracomment>
     <message>
         <source>More preferences…</source>
         <translation>Weitere Einstellungen…</translation>
+    </message>
+    <message>
+        <source>Show detail strips</source>
+        <translation>Detailleisten zeigen</translation>
     </message>
 </context>
 <context>

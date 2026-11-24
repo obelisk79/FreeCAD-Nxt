@@ -74,6 +74,7 @@ DEFAULTS: dict[str, bool | int | float | str] = {
     "TreeEditHidesHandles": False,
     "TreeLines": False,
     "DetailAutoShow": False,
+    "DetailStrip": True,
     "HighlightRelated": False,
     "DependencyArrows": False,
     # Which relationship hints the user has learned (tree/hints.py).

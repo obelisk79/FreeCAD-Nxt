@@ -72,6 +72,10 @@ Canvas {
     readonly property real headLength: 8
     readonly property real headHalfWidth: 3
 
+    //: Widest bulge an arrow takes past the gutter, and its badge's radius.
+    readonly property real mostBulge: 10 + 4 * 7
+    readonly property real badgeRadius: 7
+
     //: Gap between a hint and the arrow it ends at.
     readonly property real hintGap: 4
 
@@ -113,8 +117,10 @@ Canvas {
         var ctx = getContext("2d");
         ctx.reset();
         var d = arrows.arrowData;
-        if (!d || d.source < 0 || !d.links || d.links.length === 0)
+        if (!d || d.source < 0 || !d.links || d.links.length === 0) {
+            list.arrowsRight = -1;
             return;
+        }
         ctx.font = theme.fontAside + "px sans-serif";
         var room = 0;
         for (var h = 0; h < d.links.length; ++h) {
@@ -124,6 +130,8 @@ Canvas {
         }
         placeGutter(room);
         var x0 = gutterX;
+        list.arrowsRight = x0 + Math.max(mostBulge + badgeRadius, headLength
+                                         + headHalfWidth * 2);
         // Scrolled out of sight, the selection's arrows start at the
         // edge it went past, as a link's out of sight end there.
         var src = rowY(d.source);
@@ -143,7 +151,7 @@ Canvas {
             var yEnd = off ? (y < 0 ? 3 : height - 3) : y;
             if (!off)
                 rows.push(link.row);
-            var bulge = 10 + (i % 5) * 7;
+            var bulge = 10 + (i % 5) * 7;   // up to mostBulge
             var ya = link.dir === "in" ? yEnd : src;
             var yb = link.dir === "in" ? src : yEnd;
             ya += link.dir === "in" ? 0 : 3;

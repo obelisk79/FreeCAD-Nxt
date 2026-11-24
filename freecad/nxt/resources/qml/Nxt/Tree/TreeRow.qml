@@ -56,7 +56,20 @@ Item {
     property bool renaming: false
 
     // Docked: beside the dock border (-1). In the 3D view: clear of the widest pill.
+    // After a frame: the click may select the row, and its dependency
+    // arrows are drawn only then.
     function openInspector() {
+        inspectDelay.restart();
+    }
+    Timer {
+        id: inspectDelay
+        interval: row.frameMs
+        onTriggered: row.showInspector()
+    }
+    //: About two frames at 60 Hz.
+    readonly property int frameMs: 32
+
+    function showInspector() {
         var corner = row.mapToGlobal(0, 0);
         var left = -1;
         if (host.viewOverlay) {
@@ -67,6 +80,10 @@ Item {
                     edge = Math.max(edge, rows[i].pillRight);
             }
             left = row.mapToGlobal(edge, 0).x;
+            // Clear of the dependency arrows, which reach past the pills.
+            var list = ListView.view;
+            if (list && list.arrowsRight >= 0)
+                left = Math.max(left, list.mapToGlobal(list.arrowsRight, 0).x);
         }
         nxt.openPropertyInspector(row.name, left, corner.y);
     }
@@ -171,6 +188,7 @@ Item {
     // (propertyCount is read only once the strip is open).
     readonly property bool hasDetail: !row.isTotal
     readonly property bool showDetail: row.detailOpen && row.hasDetail
+                                       && nxt.detailStrip
 
     // Docked, a relationship hint (DependencyArrows.qml) fits between
     // the name's end and the chips.
@@ -256,11 +274,16 @@ Item {
              + (row.suppressed ? "\n" + qsTr("Suppressed") : "");
     }
 
+    // With the strips off the tip says all the strip would, and a click
+    // opens the Property Inspector.
     readonly property string markTip: {
-        var note = row.notes && row.notes.length > 0 ? row.notes[0] : "";
-        var more = row.hasDetail
+        var notes = row.notes || [];
+        var note = nxt.detailStrip ? (notes.length > 0 ? notes[0] : "")
+                                   : notes.join("\n");
+        var more = !row.hasDetail ? ""
+                 : nxt.detailStrip
                    ? "\n" + qsTr("Click for details") + "\n" + row.inspectTip
-                   : "";
+                   : "\n" + qsTr("Click for the Property Inspector");
         if (row.markLevel >= 3)
             return (note || qsTr("Error")) + more;
         if (row.markLevel === 2)
@@ -270,8 +293,10 @@ Item {
                     ? qsTr("Under-constrained: %1 degrees of freedom")
                           .arg(row.dof)
                     : qsTr("Not fully constrained")) + more;
-        return row.hasDetail ? qsTr("Show details") + "\n" + row.inspectTip
-                             : "";
+        if (!row.hasDetail)
+            return "";
+        return nxt.detailStrip ? qsTr("Show details") + "\n" + row.inspectTip
+                               : qsTr("Click for the Property Inspector");
     }
     readonly property string inspectTip:
         qsTr("Ctrl+click for the Property Inspector")
@@ -730,7 +755,12 @@ Item {
                              : (row.hasDetail && row.showControls) ? 1 : 0
                         opacity: row.markLevel > 0 ? 1.0 : 0.45
                         active: row.detailOpen
-                        onClicked: nxt.toggleDetail(row.name)
+                        onClicked: {
+                            if (nxt.detailStrip)
+                                nxt.toggleDetail(row.name);
+                            else
+                                row.openInspector();
+                        }
                         onCtrlClicked: row.openInspector()
 
                         HoverHandler { id: markHover }

@@ -62,6 +62,7 @@ class TreeBridge(QtCore.QObject):
     rowHeld = QtCore.Signal(int)
     rowReleased = QtCore.Signal()
     detailAutoShowChanged = QtCore.Signal()
+    detailStripChanged = QtCore.Signal()
     pinnedDetailsChanged = QtCore.Signal()
     linkArrowsChanged = QtCore.Signal()
 
@@ -706,7 +707,9 @@ class TreeBridge(QtCore.QObject):
 
     @QtCore.Slot(str, result=bool)
     def toggleDetail(self, name: str) -> bool:
-        """Open or close a row's detail strip."""
+        """Open or close a row's detail strip; never while they are off."""
+        if not settings.get("DetailStrip"):
+            return False
         opened = self._tree.toggle_detail(name)
         if not opened:
             self._closed_by_hand([name])
@@ -727,7 +730,8 @@ class TreeBridge(QtCore.QObject):
     def _auto_show_detail(self) -> None:
         """Open the clicked row's strip and close the last unpinned one."""
         name = self._auto_name
-        if not settings.get("DetailAutoShow") or not name \
+        if not settings.get("DetailAutoShow") \
+                or not settings.get("DetailStrip") or not name \
                 or self._selected_names() != [name]:
             return
         last = self._auto_detail
@@ -755,6 +759,18 @@ class TreeBridge(QtCore.QObject):
                 self._pinned = set()
                 self.pinnedDetailsChanged.emit()
         self.detailAutoShowChanged.emit()
+
+    def refresh_detail_strip(self) -> None:
+        """Apply a DetailStrip change; turning it off closes every strip."""
+        if not settings.get("DetailStrip"):
+            self._auto_timer.stop()
+            self._tree.close_details()
+            self._closed_by_hand(None)
+        self.detailStripChanged.emit()
+
+    @QtCore.Property(bool, notify=detailStripChanged)
+    def detailStrip(self) -> bool:  # noqa: N802 - QML API
+        return bool(settings.get("DetailStrip"))
 
     @QtCore.Property(bool, notify=detailAutoShowChanged)
     def detailAutoShow(self) -> bool:  # noqa: N802 - QML API
