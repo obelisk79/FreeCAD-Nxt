@@ -211,6 +211,77 @@ class TargetTests(unittest.TestCase):
         self.assertIsNone(self.panels._target())
 
 
+class Feature:
+    """A Body member: solid features build the history, a sketch not."""
+
+    def __init__(self, name: str, solid: bool = True) -> None:
+        self.Name = name
+        self.solid = solid
+        self.InList: list[Any] = []
+        self.ViewObject = types.SimpleNamespace(Visibility=False)
+
+    def isDerivedFrom(self, kind: str) -> bool:  # noqa: N802
+        return kind == attach_task.SOLID and self.solid
+
+
+class Body:
+    def __init__(self, group: list[Feature], tip: Feature | None) -> None:
+        self.Group = group
+        self.Tip = tip
+        self.recomputes = 0
+        self.Document = types.SimpleNamespace(recompute=self._recompute)
+        for feature in group:
+            feature.InList = [self]
+        if tip is not None:
+            tip.ViewObject.Visibility = True
+
+    def _recompute(self, _objects: Any = None) -> None:
+        self.recomputes += 1
+
+    def isDerivedFrom(self, kind: str) -> bool:  # noqa: N802
+        return kind == attach_task.BODY
+
+
+class RollbackTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.pad = Feature("Pad")
+        self.sketch = Feature("Sketch001", solid=False)
+        self.pocket = Feature("Pocket")
+        self.body = Body([self.pad, self.sketch, self.pocket], self.pocket)
+
+    def test_a_sketch_in_the_history_rolls_the_tip_before_it(self) -> None:
+        rollback = attach_task.Rollback(self.sketch)
+        self.assertIs(self.body.Tip, self.pad)
+        self.assertTrue(self.pad.ViewObject.Visibility)
+        self.assertFalse(self.pocket.ViewObject.Visibility)
+        rollback.restore()
+        self.assertIs(self.body.Tip, self.pocket)
+        self.assertTrue(self.pocket.ViewObject.Visibility)
+        self.assertFalse(self.pad.ViewObject.Visibility)
+
+    def test_a_sketch_past_the_tip_leaves_it(self) -> None:
+        self.body.Tip = self.pad
+        rollback = attach_task.Rollback(self.sketch)
+        self.assertFalse(rollback.moved)
+        self.assertIs(self.body.Tip, self.pad)
+        self.assertEqual(self.body.recomputes, 0)
+
+    def test_the_first_feature_rolls_to_the_start(self) -> None:
+        self.body.Group.insert(0, sketch := Feature("Sketch", solid=False))
+        sketch.InList = [self.body]
+        attach_task.Rollback(sketch)
+        self.assertIsNone(self.body.Tip)
+
+    def test_outside_a_body_nothing_moves(self) -> None:
+        loose = Feature("Sketch002", solid=False)
+        self.assertFalse(attach_task.Rollback(loose).moved)
+
+    def test_a_hidden_tip_stays_hidden_when_put_back(self) -> None:
+        self.pocket.ViewObject.Visibility = False
+        attach_task.Rollback(self.sketch).restore()
+        self.assertFalse(self.pocket.ViewObject.Visibility)
+
+
 class BinderTests(unittest.TestCase):
     def test_a_binder_is_made_attachable_when_asked(self) -> None:
         binder = Thing("Binder", attachable=False,

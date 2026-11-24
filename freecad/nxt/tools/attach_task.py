@@ -42,6 +42,9 @@ NEW_FOR_S = 5.0
 #: Binders take an attachment only when asked: FreeCAD's editor adds it.
 ATTACHES_ON_ASK = ("PartDesign::SubShapeBinder",)
 ADDED_EXTENSION = "Part::AttachExtensionPython"
+BODY = "PartDesign::Body"
+#: What a Body's history is made of, and its tip may be set to.
+SOLID = "PartDesign::Feature"
 
 
 def attachable(obj: Any) -> bool:
@@ -262,6 +265,66 @@ class Attachment:
         return before
 
 
+class Rollback:
+    """A Body's tip moved to just before an object while it is edited.
+
+    Attached to a feature after it in the history, a sketch would depend
+    on what is built from it. Rolled back, only what came before shows
+    and can be picked. The tip is set outside the edit's undo step, and
+    put back once it is closed.
+    """
+
+    def __init__(self, obj: Any) -> None:
+        self.body: Any = next((parent for parent in obj.InList
+                               if parent.isDerivedFrom(BODY)), None)
+        self._tip: Any = None
+        self._shown = False
+        self.moved = False
+        group = list(getattr(self.body, "Group", ()))
+        tip = getattr(self.body, "Tip", None)
+        if obj not in group or tip not in group \
+                or group.index(tip) < group.index(obj):
+            return
+        before = [feature for feature in group[:group.index(obj)]
+                  if feature.isDerivedFrom(SOLID)]
+        self._tip = tip
+        self._shown = _visible(tip)
+        self._set(before[-1] if before else None)
+        self.moved = True
+
+    def restore(self) -> None:
+        if not self.moved:
+            return
+        self.moved = False
+        try:
+            self._set(self._tip, self._shown)
+        except Exception:  # noqa: BLE001 - the Body went with an undo
+            log.error("could not put the tip back after the attachment")
+
+    def _set(self, feature: Any, shown: bool = True) -> None:
+        """Set the tip and show it alone, as FreeCAD's Move Tip does."""
+        body = self.body
+        previous = body.Tip
+        body.Tip = feature
+        _show(previous, False)
+        _show(feature, shown)
+        try:
+            body.Document.recompute([body])
+        except TypeError:
+            body.Document.recompute()   # older signature, no object list
+
+
+def _visible(obj: Any) -> bool:
+    return bool(getattr(getattr(obj, "ViewObject", None), "Visibility",
+                        False))
+
+
+def _show(obj: Any, shown: bool) -> None:
+    view = getattr(obj, "ViewObject", None)
+    if view is not None and bool(view.Visibility) != shown:
+        view.Visibility = shown
+
+
 class AttachTask(Attachment):
     """Nxt's own task dialog for one object's attachment."""
 
@@ -273,8 +336,14 @@ class AttachTask(Attachment):
                                 {"attach": self.bridge})
         self.form.setWindowTitle(translate("Nxt", "Attachment"))
         self.bridge.setParent(self.form)
-        self.doc.openTransaction(translate("Nxt", "Edit attachment"))
-        self.start()
+        self.rollback = Rollback(obj)
+        try:
+            self.doc.openTransaction(translate("Nxt", "Edit attachment"))
+            self.start()
+        except Exception:
+            self.doc.abortTransaction()
+            self.rollback.restore()
+            raise
 
     # -- FreeCAD task dialog --
 
@@ -288,12 +357,14 @@ class AttachTask(Attachment):
         self.finish()
         self.doc.recompute()
         self.doc.commitTransaction()
+        self.rollback.restore()
         Gui.Control.closeDialog()
         return True
 
     def reject(self) -> bool:
         self.finish()
         self.doc.abortTransaction()
+        self.rollback.restore()
         self.doc.recompute()
         Gui.Control.closeDialog()
         return True
