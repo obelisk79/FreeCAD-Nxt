@@ -124,16 +124,22 @@ Canvas {
         }
         placeGutter(room);
         var x0 = gutterX;
+        // Scrolled out of sight, the selection's arrows start at the
+        // edge it went past, as a link's out of sight end there.
         var src = rowY(d.source);
-        if (src < 0 || src > height)
-            return;         // the selection itself is out of sight
-        var rows = [d.source];
+        var srcAbove = src < 0;
+        var srcOff = srcAbove || src > height;
+        if (srcOff)
+            src = srcAbove ? 3 : height - 3;
+        var rows = srcOff ? [] : [d.source];
 
         for (var i = 0; i < d.links.length; ++i) {
             var link = d.links[i];
             var colour = link.dir === "in" ? theme.arrowIn : theme.arrowOut;
             var y = rowY(link.row);
             var off = y < 0 || y > height;
+            if (srcOff && off && (y < 0) === srcAbove)
+                continue;   // both ends past the same edge
             var yEnd = off ? (y < 0 ? 3 : height - 3) : y;
             if (!off)
                 rows.push(link.row);
@@ -195,6 +201,18 @@ Canvas {
                 ctx.textBaseline = "middle";
                 ctx.fillText(String(link.count), x0 + bulge, by + 0.5);
             }
+        }
+
+        if (srcOff) {
+            var edge = srcAbove ? 0 : height;
+            var away = srcAbove ? 1 : -1;
+            ctx.fillStyle = theme.textDim;
+            ctx.beginPath();
+            ctx.moveTo(x0, edge);
+            ctx.lineTo(x0 - headHalfWidth * 2, edge + away * headLength);
+            ctx.lineTo(x0 + headHalfWidth * 2, edge + away * headLength);
+            ctx.closePath();
+            ctx.fill();
         }
 
         // Hints end where their arrow starts: the pattern is the arrow's.
