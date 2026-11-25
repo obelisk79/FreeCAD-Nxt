@@ -28,7 +28,11 @@ from .task_sync import SWAPPED
 REPLACED = frozenset({"TaskPadParameters", "TaskPocketParameters",
                       "TaskRevolutionParameters", "TaskLoftParameters",
                       "TaskPipeParameters", "TaskHelixParameters",
-                      "TaskBoxPrimitives"})
+                      "TaskBoxPrimitives", "TaskBooleanParameters",
+                      "TaskMirroredParameters", "TaskPatternParameters"})
+#: A dialog whose boxes are left as they are: a MultiTransform holds a
+#: pattern's box for each of its steps, which are not what it edits.
+KEPT_INSIDE = "TaskMultiTransformParameters"
 #: Further boxes of those dialogs, whose settings the cards also hold:
 #: hidden, not replaced (a pipe's orientation and sections).
 FOLDED = frozenset({"TaskPipeOrientation", "TaskPipeScaling"})
@@ -43,6 +47,15 @@ _FILLING = (QtCore.QEvent.Type.ChildAdded, QtCore.QEvent.Type.LayoutRequest,
 
 def _short(widget: Any) -> str:
     return widget.metaObject().className().split("::")[-1]
+
+
+def _inside(widget: Any, kind: str) -> bool:
+    parent = widget.parentWidget()
+    while parent is not None:
+        if _short(parent) == kind:
+            return True
+        parent = parent.parentWidget()
+    return False
 
 
 def _dialog_open() -> bool:
@@ -290,7 +303,8 @@ class TaskLayout(QtCore.QObject):
                     if widget.isVisible():
                         widget.hide()
                     continue
-                if _short(widget) not in REPLACED:
+                if _short(widget) not in REPLACED or _inside(widget,
+                                                             KEPT_INSIDE):
                     continue
                 # The parameters class is the dialog's box itself (a
                 # TaskBox): only it is hidden, never what holds it.

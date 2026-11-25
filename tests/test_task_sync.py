@@ -17,7 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 import fakes  # noqa: E402
-from PySide6 import QtWidgets  # noqa: E402
+from PySide6 import QtCore, QtWidgets  # noqa: E402
 
 App, Gui = fakes.install()
 
@@ -121,6 +121,70 @@ class TaskTests(unittest.TestCase):
         task_sync.set_in_task([self.pad], "Reversed", True)
         self.assertTrue(self.reversed.isChecked())
 
+    def direction_fields(self) -> tuple[Any, list[Any]]:
+        """The Pad panel's direction list and its x, y and z fields."""
+        listed = QtWidgets.QComboBox(self.main)
+        listed.setObjectName("directionCB")
+        listed.addItems(["Sketch normal", "Select reference…",
+                         "Custom direction"])
+        fields = []
+        for name in ("XDirectionEdit", "YDirectionEdit", "ZDirectionEdit"):
+            field = QtWidgets.QDoubleSpinBox(self.main)
+            field.setRange(-1e9, 1e9)
+            field.setObjectName(name)
+            fields.append(field)
+        return listed, fields
+
+    def test_a_custom_direction_is_chosen_in_the_panels_list(self) -> None:
+        listed, _fields = self.direction_fields()
+        chosen: list[int] = []
+        listed.activated.connect(chosen.append)
+        self.assertTrue(task_sync.set_in_task([self.pad], "UseCustomVector",
+                                              True))
+        self.assertEqual((listed.currentIndex(), chosen), (2, [2]))
+        task_sync.set_in_task([self.pad], "UseCustomVector", False)
+        self.assertEqual(listed.currentIndex(), 0)
+
+    def test_a_reference_is_an_item_of_the_panels_list(self) -> None:
+        listed, _fields = self.direction_fields()
+        self.assertTrue(task_sync.set_in_task([self.pad], "ReferenceAxis",
+                                              "Select reference…"))
+        self.assertEqual(listed.currentIndex(), 1)
+
+    def test_a_directions_components_go_to_its_fields(self) -> None:
+        _listed, fields = self.direction_fields()
+        self.pad.ExpressionEngine = []
+        self.assertTrue(task_sync.set_parts_in_task(
+            [self.pad], "Direction", [("x", "1"), ("z", "0.5")]))
+        self.assertEqual([f.value() for f in fields], [1.0, 0.0, 0.5])
+
+    def test_a_component_takes_an_expression_or_drops_one(self) -> None:
+        _listed, fields = self.direction_fields()
+        expressions: list[Any] = []
+        self.pad.setExpression = lambda p, e: expressions.append((p, e))
+        self.pad.evalExpression = lambda _e: 2.0
+        bound: list[Any] = []
+
+        class Binding:
+            def __init__(self, widget: Any) -> None:
+                self.widget = widget
+
+            def bind(self, _obj: Any, path: str) -> None:
+                bound.append((self.widget, path))
+
+        Gui.ExpressionBinding = Binding
+        self.pad.ExpressionEngine = []
+        self.assertTrue(task_sync.set_parts_in_task(
+            [self.pad], "Direction", [("y", "=Length / 5")]))
+        self.assertEqual(expressions, [("Direction.y", "Length / 5")])
+        self.assertEqual(bound, [(fields[1], "Direction.y")])
+        self.assertEqual(fields[1].value(), 2.0)
+        # FreeCAD keeps a component's path with a leading dot.
+        self.pad.ExpressionEngine = [(".Direction.y", "Length / 5")]
+        task_sync.set_parts_in_task([self.pad], "Direction", [("y", "0")])
+        self.assertEqual(expressions[-1], ("Direction.y", None))
+        self.assertEqual(fields[1].value(), 0.0)
+
     def test_a_new_edit_starts_at_an_offset(self) -> None:
         start = QtWidgets.QComboBox(self.main)
         start.setObjectName("startMode")
@@ -194,6 +258,134 @@ class TaskTests(unittest.TestCase):
         self.editing = prism
         self.assertTrue(task_sync.set_in_task([prism], "Polygon", "8"))
         self.assertEqual(sides.value(), 8)
+
+    def boolean(self) -> tuple[Any, Any, Any]:
+        bodies = QtWidgets.QListWidget(self.main)
+        bodies.setObjectName("listWidgetBodies")
+        add = QtWidgets.QToolButton(self.main)
+        add.setObjectName("buttonBodyAdd")
+        add.setCheckable(True)
+        shown = {}
+
+        def body(name: str) -> Any:
+            view = types.SimpleNamespace(Visibility=False)
+            shown[name] = view
+            return types.SimpleNamespace(Name=name, Label=name + " label",
+                                         ViewObject=view)
+        tool_a, tool_b = body("BodyA"), body("BodyB")
+        doc = types.SimpleNamespace(
+            Name="Doc", getObject=lambda n: {"BodyA": tool_a,
+                                             "BodyB": tool_b}.get(n))
+        boolean = types.SimpleNamespace(
+            TypeId="PartDesign::Boolean", Name="Boolean", Document=doc,
+            Group=[tool_a, tool_b])
+        self.editing = boolean
+        return boolean, bodies, add
+
+    def test_the_panel_picks_a_booleans_bodies(self) -> None:
+        boolean, _bodies, add = self.boolean()
+        self.assertTrue(task_sync.start_panel_pick(boolean, "Group"))
+        self.assertTrue(add.isChecked())
+        self.assertTrue(task_sync.panel_picks(boolean, "Group"))
+        self.assertFalse(task_sync.start_panel_pick(boolean, "Type"))
+
+    def test_the_panels_list_follows_the_bodies(self) -> None:
+        boolean, bodies, _add = self.boolean()
+        task_sync.list_to_task(boolean, "Group")
+        role = QtCore.Qt.ItemDataRole.UserRole
+        self.assertEqual([bodies.item(r).data(role)
+                          for r in range(bodies.count())],
+                         ["BodyA", "BodyB"])
+        removed = boolean.Group.pop()
+        task_sync.list_to_task(boolean, "Group")
+        self.assertEqual(bodies.count(), 1)
+        self.assertTrue(removed.ViewObject.Visibility)
+
+    def test_a_booleans_bodies_are_never_typed(self) -> None:
+        boolean, _bodies, _add = self.boolean()
+        self.assertFalse(task_sync.set_in_task([boolean], "Group", "BodyA"))
+
+    def pattern(self) -> Any:
+        pattern = Pad()
+        pattern.TypeId = "PartDesign::LinearPattern"
+        pattern.getEnumerationsOfProperty = lambda prop: (  # type: ignore
+            ["Features", "Whole shape"] if prop == "TransformMode"
+            else ["Extent", "Spacing"])
+        self.editing = pattern
+        return pattern
+
+    def test_the_second_direction_has_its_own_fields(self) -> None:
+        first, second = Spin(self.main), Spin(self.main)
+        for spin in (first, second):
+            spin.setObjectName("spinSpacing")
+        pattern = self.pattern()
+        self.assertTrue(task_sync.set_in_task([pattern], "Offset2", "5",
+                                              "mm"))
+        self.assertEqual((first.property("rawValue"),
+                          second.property("rawValue")), (0.0, 5.0))
+
+    def test_a_count_is_offset_as_uintspinbox_keeps_it(self) -> None:
+        class UIntSpinBox(QtWidgets.QSpinBox):
+            """As Gui::UIntSpinBox: Qt's value is the count + INT_MIN."""
+
+        count = UIntSpinBox(self.main)
+        count.setRange(task_sync.UINT_OFFSET, task_sync.UINT_OFFSET + 1000)
+        count.setObjectName("spinOccurrences")
+        pattern = self.pattern()
+        self.assertTrue(task_sync.set_in_task([pattern], "Occurrences",
+                                              "3"))
+        self.assertEqual(count.value() - task_sync.UINT_OFFSET, 3)
+
+    def test_a_path_patterns_mode_is_a_choice_made(self) -> None:
+        modes = QtWidgets.QComboBox(self.main)
+        modes.setObjectName("spacingMode")
+        modes.addItems(["Fixed count", "Fixed spacing", "Both"])
+        chosen: list[int] = []
+        modes.activated.connect(chosen.append)
+        path = Pad()
+        path.TypeId = "PartDesign::PathPattern"
+        path.getEnumerationsOfProperty = lambda _p: [  # type: ignore
+            "Fixed count", "Fixed spacing", "Fixed count and spacing"]
+        self.editing = path
+        self.assertTrue(task_sync.set_in_task([path], "SpacingMode",
+                                              "Fixed spacing"))
+        self.assertEqual((modes.currentIndex(), chosen), (1, [1]))
+
+    def test_what_a_pattern_repeats_is_a_radio_choice(self) -> None:
+        body = QtWidgets.QRadioButton(self.main)
+        body.setObjectName("radioTransformBody")
+        tools = QtWidgets.QRadioButton(self.main)
+        tools.setObjectName("radioTransformToolShapes")
+        clicked: list[str] = []
+        tools.clicked.connect(lambda: clicked.append("tools"))
+        pattern = self.pattern()
+        self.assertTrue(task_sync.set_in_task([pattern], "TransformMode",
+                                              "Features"))
+        self.assertTrue(tools.isChecked())
+        self.assertEqual(clicked, ["tools"])
+        self.assertFalse(task_sync.set_in_task([pattern], "TransformMode",
+                                               "Bogus"))
+
+    def test_the_panel_picks_a_patterns_features(self) -> None:
+        listed = QtWidgets.QListWidget(self.main)
+        listed.setObjectName("listWidgetFeatures")
+        add = QtWidgets.QToolButton(self.main)
+        add.setObjectName("buttonAddFeature")
+        add.setCheckable(True)
+        pattern = self.pattern()
+        self.assertTrue(task_sync.start_panel_pick(pattern, "Originals"))
+        self.assertTrue(add.isChecked())
+        pad = types.SimpleNamespace(
+            Name="Pad", Label="Boss",
+            ViewObject=types.SimpleNamespace(Visibility=False))
+        pattern.Originals = []
+        listed.addItem("Boss")
+        listed.item(0).setData(QtCore.Qt.ItemDataRole.UserRole, "Pad")
+        pattern.Document = types.SimpleNamespace(Name="Doc",
+                                                 getObject=lambda _n: pad)
+        task_sync.list_to_task(pattern, "Originals")
+        self.assertEqual(listed.count(), 0)
+        self.assertFalse(pad.ViewObject.Visibility)     # never shown
 
     def test_left_to_the_property_otherwise(self) -> None:
         self.assertFalse(task_sync.set_in_task([self.pad], "Length",

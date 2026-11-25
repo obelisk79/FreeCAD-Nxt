@@ -52,6 +52,8 @@ class Item:
     #: An empty link's invitation to pick ("Select a face"), and what
     #: picking for it asks for.
     prompt: str = ""
+    #: A link: a pick inside a Body stands for the whole Body.
+    body: bool = False
 
     def names(self) -> list[str]:
         return [self.prop, *(n for n in (self.lead, self.trail) if n),
@@ -169,7 +171,8 @@ def _item(raw: Any) -> Item:
                 str(raw.get("glyph", "")), bool(raw.get("narrow", False)),
                 bool(raw.get("bare", False)),
                 whole=bool(raw.get("whole", False)),
-                prompt=str(raw.get("prompt", "")))
+                prompt=str(raw.get("prompt", "")),
+                body=bool(raw.get("body", False)))
 
 
 def parse(data: dict[str, Any]) -> list[Template]:

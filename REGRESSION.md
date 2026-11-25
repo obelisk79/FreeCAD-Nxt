@@ -55,6 +55,9 @@ phase; the full list after phases 3 and 4. Note the build, the session type
 - [ ] Switching kind relinks what follows (fillet, sketch on a face, Tip) and keeps a custom label
 - [ ] Switching kind from the inspector, outside a task: one undo step
 - [ ] Primitives (each kind, add and cut): cards replace the parameters box, Nxt's attachment replaces FreeCAD's (new and edited), attaching moves it and Cancel undoes it, OK keeps typed sizes, Prism sides
+- [ ] Boolean (new and edited): Add/Cut/Keep common, "Select bodies" lets the panel pick (hides what is in the way), removing a chip shows the body again, OK keeps the list, Cancel undoes it
+- [ ] Mirrored, Linear and Polar patterns (new and edited): Whole body/Features, "Select features" lets the panel pick, plane/direction/axis lists and Select reference, Extent/Spacing fields, Linear's second direction, OK keeps all, Cancel undoes; a MultiTransform's steps keep FreeCAD's boxes
+- [ ] Circular, Path and Point patterns (new and edited): Circles/Symmetry counts stay as typed, Path's By choice shows Count or Spacing, Align shows the axes, Relative to first shows Origin point, OK keeps all, Cancel undoes
 
 ## 3D editing aids
 - [ ] S Floating value fields: type, Tab, wheel, expression with suggestions placed by the field

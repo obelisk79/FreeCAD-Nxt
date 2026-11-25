@@ -324,11 +324,6 @@ check("Type is a drop-down showing its readable label",
 check("no Symmetric switch beside Sides", "Symmetric" in shown
       and not any(i.property("text") == "Symmetric"
                   for i in items_of(root, "NxtSwitch")))
-custom = next(i for i in items_of(root, "QQuickText")
-              if i.property("text") == "Custom")
-click(view, custom)
-check("a two-state choice sets the yes/no",
-      ("value", "UseCustomVector", True, "") in bridge.calls)
 toggles = [i for i in items_of(root, "GlyphToggle")
            if i.property("visible")]
 click(view, next(i for i in toggles if i.property("tip") == "Reversed"))

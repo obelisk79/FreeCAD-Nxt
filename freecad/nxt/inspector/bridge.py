@@ -53,6 +53,22 @@ def _whole_sketches(pairs: list[tuple[Any, str]]) -> list[tuple[Any, str]]:
     return out
 
 
+BODY = "PartDesign::Body"
+
+
+def _whole_bodies(pairs: list[tuple[Any, str]],
+                  owners: list[Any]) -> list[tuple[Any, str]]:
+    """A pick inside a Body stands for the Body; never an owner's own."""
+    own = {getattr(getattr(o, "_Body", None), "Name", "") for o in owners}
+    out: list[tuple[Any, str]] = []
+    for obj, _sub in pairs:
+        body = obj if obj.TypeId == BODY else (
+            getattr(obj, "_Body", None) or obj)
+        if body.Name not in own and all(p[0] is not body for p in out):
+            out.append((body, ""))
+    return out
+
+
 def _say(objects: list[Any], message: str) -> None:
     """Tell the user, beside the model, why an edit did not take."""
     from ..app import services
@@ -484,11 +500,14 @@ class InspectorBridge(QtCore.QObject):
             self.refresh()
             return
         objects = self._objects()
-        if self._task and len(objects) == 1 \
-                and task_sync.panel_picks(objects[0], prop):
-            task_sync.stop_panel_pick(objects[0], prop)     # its ✓
-            self.refresh()
-            return
+        if self._task and len(objects) == 1:
+            if task_sync.panel_picks(objects[0], prop):
+                task_sync.stop_panel_pick(objects[0], prop)     # its ✓
+                self.refresh()
+                return
+            if task_sync.start_panel_pick(objects[0], prop):
+                self.refresh()
+                return
         if self._picking:
             done = self._picking == prop
             self._end_pick()
@@ -513,8 +532,11 @@ class InspectorBridge(QtCore.QObject):
                  if sel.Object.Name not in mine
                  for sub in (list(sel.SubElementNames) or [""])]
         template = inspector_templates.for_objects(self._pick_for)
-        if template is not None and template.item(self._picking).whole:
+        item = template.item(self._picking) if template is not None else None
+        if item is not None and item.whole:
             pairs = _whole_sketches(pairs)
+        elif item is not None and item.body:
+            pairs = _whole_bodies(pairs, self._pick_for)
         single = self._task and task_sync.is_reference(self._pick_for,
                                                        self._picking)
         if pairs and inspector.edit_links(self._pick_for, self._picking,
@@ -529,6 +551,7 @@ class InspectorBridge(QtCore.QObject):
         """The panel's own field takes the link, or OK writes back its own."""
         if self._task and len(objects) == 1:
             task_sync.reference_to_task(objects[0], prop)
+            task_sync.list_to_task(objects[0], prop)
 
     def _end_pick(self) -> None:
         if not self._picking:
@@ -554,11 +577,26 @@ class InspectorBridge(QtCore.QObject):
         edits = [(str(path), str(text)) for path, text in parts]
         self._defer(lambda: self._set_parts(prop, edits))
 
+    def _set_parts_in_task(self, prop: str,
+                           parts: list[tuple[str, str]]) -> bool:
+        """An open panel's vector fields take the edit, as OK reads them."""
+        objects = self._objects()
+        if self._tab != inspector.DATA \
+                or not task_sync.set_parts_in_task(objects, prop, parts):
+            return False
+        self._recompute(objects)
+        self.refresh()
+        return True
+
     def _set_parts(self, prop: str, parts: list[tuple[str, str]]) -> None:
+        if self._set_parts_in_task(prop, parts):
+            return
         if inspector.apply_parts(self._objects(), prop, parts, self._tab):
             self.refresh()
 
     def _set_part(self, prop: str, part: str, text: str) -> None:
+        if self._set_parts_in_task(prop, [(part, text)]):
+            return
         if inspector.apply(self._objects(), prop, text, self._tab,
                            part=part):
             self.refresh()

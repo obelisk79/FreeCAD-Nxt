@@ -47,6 +47,7 @@ class Feature:
             "TaperAngle": ("Pad", "App::PropertyAngle", Quantity("0 °")),
             "TaperAngle2": ("Pad", "App::PropertyAngle", Quantity("0 °")),
             "UseCustomVector": ("Pad", "App::PropertyBool", False),
+            "ReferenceAxis": ("Pad", "App::PropertyLinkSub", None),
             "Refine": ("Part Design", "App::PropertyBool", True),
             "Mystery": ("Pad", "App::PropertyFloat", 1.0),
         }
@@ -116,7 +117,7 @@ class PadTests(unittest.TestCase):
         self.assertEqual([i["name"] for i in extent["columns"][0]["items"]],
                          ["Length", "TaperAngle"])
         self.assertEqual([i["name"] for i in extent["after"]],
-                         ["UseCustomVector"])
+                         ["ReferenceAxis"])
 
     def test_extent_has_no_heading_and_sides_no_label(self) -> None:
         extent = extent_of(layout(modern()))
@@ -180,10 +181,12 @@ class PadTests(unittest.TestCase):
         self.assertEqual(kind["optionLabels"][:2], ["Dimension", "To last"])
         self.assertNotIn("TwoLengths", kind["options"])
 
-    def test_direction_is_two_named_states(self) -> None:
+    def test_direction_is_the_reference_custom_or_not(self) -> None:
+        # In the task it is the panel's own list (task_sync): the sketch
+        # normal, a reference, or a custom vector, as OK writes them.
         direction = extent_of(layout(modern()))["after"][0]
-        self.assertEqual(direction["optionLabels"],
-                         ["Sketch normal", "Custom"])
+        self.assertEqual((direction["name"], direction["label"]),
+                         ("ReferenceAxis", "Direction"))
 
     def test_fields_follow_the_type(self) -> None:
         extent = extent_of(layout(modern(Type="UpToFace")))
@@ -203,7 +206,7 @@ class PadTests(unittest.TestCase):
         rest = [g for g in groups if g.get("template") is None]
         self.assertTrue(rest[0]["rest"])
         kept = [n for g in rest for n in names(g)]
-        self.assertEqual(sorted(kept), ["Label", "Mystery"])
+        self.assertEqual(sorted(kept), ["Label", "Mystery", "UseCustomVector"])
         self.assertFalse(any(g["open"] for g in rest))
         placed = [n for g in groups for n in names(g)]
         self.assertEqual(len(placed), len(set(placed)))
@@ -643,6 +646,95 @@ class PrimitiveTests(unittest.TestCase):
         for kind, sizes in PRIMITIVES.items():
             fields = task_sync.FIELDS["PartDesign::Subtractive" + kind]
             self.assertEqual(sorted(fields), sorted(sizes), kind)
+
+
+class BooleanTests(unittest.TestCase):
+
+    def test_operation_bodies_then_result(self) -> None:
+        boolean = templates.for_objects(
+            [types.SimpleNamespace(TypeId="PartDesign::Boolean")])
+        if boolean is None:
+            self.fail("no Boolean template")
+        self.assertEqual([c.title for c in boolean.cards],
+                         ["Operation", "Bodies", "Result"])
+        self.assertEqual(boolean.choices,
+                         {"Fuse": "Add", "Cut": "Cut",
+                          "Common": "Keep common"})
+        group = boolean.item("Group")
+        self.assertTrue(group.body)
+        self.assertEqual(group.prompt, "Select bodies")
+
+    def test_a_pick_inside_a_body_is_the_body(self) -> None:
+        from freecad.nxt.inspector import bridge
+        own = types.SimpleNamespace(Name="Body", TypeId=bridge.BODY)
+        tool = types.SimpleNamespace(Name="Body001", TypeId=bridge.BODY)
+        pad = types.SimpleNamespace(Name="Pad", TypeId="PartDesign::Pad",
+                                    _Body=tool)
+        mine = types.SimpleNamespace(Name="Pad001", _Body=own,
+                                     TypeId="PartDesign::Pad")
+        boolean = types.SimpleNamespace(Name="Boolean", _Body=own)
+        self.assertEqual(
+            bridge._whole_bodies([(pad, "Face3"), (tool, ""), (mine, "")],
+                                 [boolean]),
+            [(tool, "")])
+
+
+PATTERNS = ("Mirrored", "LinearPattern", "PolarPattern", "CircularPattern",
+            "PathPattern", "PointPattern")
+
+
+class PatternTests(unittest.TestCase):
+
+    def template(self, type_id: str) -> Any:
+        found = templates.for_objects(
+            [types.SimpleNamespace(TypeId=type_id)])
+        if found is None:
+            self.fail("no template for " + type_id)
+        return found
+
+    def test_every_pattern_says_what_it_repeats_first(self) -> None:
+        for kind in PATTERNS:
+            first = self.template("PartDesign::" + kind).cards[0]
+            self.assertEqual([i.prop for i in first.items],
+                             ["TransformMode", "Originals"], kind)
+
+    def test_cards_in_order(self) -> None:
+        self.assertEqual(
+            [c.title for c in self.template("PartDesign::Mirrored").cards],
+            ["Transform", "Plane", "Result"])
+        self.assertEqual(
+            [c.title
+             for c in self.template("PartDesign::LinearPattern").cards],
+            ["Transform", "Direction", "Second direction", "Result"])
+        self.assertEqual(
+            [c.title
+             for c in self.template("PartDesign::PolarPattern").cards],
+            ["Transform", "Axis", "Result"])
+
+    def test_the_newer_patterns_cards(self) -> None:
+        for kind, middle in (("CircularPattern", ["Circles"]),
+                             ("PathPattern", ["Path", "Alignment"]),
+                             ("PointPattern", ["Points"])):
+            self.assertEqual(
+                [c.title
+                 for c in self.template("PartDesign::" + kind).cards],
+                ["Transform", *middle, "Result"], kind)
+
+    def test_a_second_direction_closes_while_unused(self) -> None:
+        second = self.template("PartDesign::LinearPattern").cards[2]
+        self.assertEqual(second.closed_when, (("Occurrences2", (1,)),))
+        self.assertTrue(second.heading)
+
+    def test_every_field_has_a_task_field(self) -> None:
+        from freecad.nxt.tools import task_sync
+        for kind in PATTERNS:
+            template = self.template("PartDesign::" + kind)
+            fields = task_sync.FIELDS["PartDesign::" + kind]
+            # What the panel reads from the feature, set there directly.
+            laid = template.names() - {"Reversed", "Reversed2",
+                                       "FuzzyTolerance", "Refine", "Path",
+                                       "PointObject"}
+            self.assertEqual(laid - set(fields), set(), kind)
 
 
 class VariantTests(unittest.TestCase):

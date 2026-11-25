@@ -12,22 +12,46 @@ from typing import Any
 import FreeCADGui as Gui
 
 from ..core import units
-from ..core.qt import QtWidgets
+from ..core.qt import QtCore, QtWidgets
 
 #: How a field is set. COMBO: a list of the panel's own (an axis), shown
 #: as its items and set by the item's text.
 QUANTITY, CHECK, INDEX, MODE = "quantity", "check", "index", "mode"
 COMBO = "combo"
-#: A whole number in a plain spin box (a prism's sides).
+#: A whole number in a spin box (a prism's sides, a pattern's count).
 SPIN = "spin"
 #: A face or plane the panel holds in a line edit (FeatureName and FaceName
 #: properties) and writes back on OK: set by picking, never typed.
 REFERENCE = "reference"
+#: Bodies the panel lists (a Boolean's) and writes back on OK. Picked by
+#: the panel itself, which hides and shows them as it goes.
+BODIES = "bodies"
+#: Features the panel lists (a pattern's), picked by the panel itself.
+FEATURES = "features"
+LISTS = (BODIES, FEATURES)
+#: An enumeration's combo box whose panel acts on a choice made
+#: (activated), not on the index changing.
+CHOICE = "choice"
+#: An enumeration as radio buttons, named in its values' order with "|".
+RADIO = "radio"
+#: A vector as three number fields, named x, y and z with "|".
+VECTOR = "vector"
+#: A yes/no the panel's direction list says: its custom item, else its
+#: first (the sketch normal).
+CUSTOM_DIRECTION = "custom-direction"
+#: TaskExtrudeParameters' direction list: the sketch normal, "Select
+#: reference...", "Custom direction", then the references picked.
+NORMAL_ITEM, CUSTOM_ITEM = 0, 2
+#: "name#2": the second field of that name (a pattern's second direction
+#: repeats the first's form).
+NTH = "#"
 #: Each reference field's toggle, checked while the panel itself picks.
 PICK_BUTTONS = {
     "lineFaceName": "buttonFace",
     "lineFaceName2": "buttonFace2",
     "lineStartReference": "buttonStartReference",
+    "listWidgetBodies": "buttonBodyAdd",
+    "listWidgetFeatures": "buttonAddFeature",
 }
 #: The ends and start every extrusion and revolution panel holds.
 _REFERENCES: dict[str, tuple[str, str]] = {
@@ -50,6 +74,11 @@ _EXTRUDE: dict[str, tuple[str, str]] = {
     "StartOffset": ("startOffsetEdit", QUANTITY),
     "Reversed": ("checkBoxReversed", CHECK),
     "AlongSketchNormal": ("checkBoxAlongDirection", CHECK),
+    # The direction list says which of these OK writes back: the sketch
+    # normal, a reference, or the custom vector in the three fields.
+    "ReferenceAxis": ("directionCB", COMBO),
+    "UseCustomVector": ("directionCB", CUSTOM_DIRECTION),
+    "Direction": ("XDirectionEdit|YDirectionEdit|ZDirectionEdit", VECTOR),
     **_REFERENCES,
 }
 
@@ -123,6 +152,70 @@ _PRIMITIVES: dict[str, dict[str, tuple[str, str]]] = {
     }.items()
 }
 
+#: TaskBooleanParameters.ui. Its list is the bodies OK writes back.
+_BOOLEAN: dict[str, tuple[str, str]] = {
+    "Type": ("comboType", INDEX),
+    "Group": ("listWidgetBodies", BODIES),
+}
+
+#: TaskTransformedParameters.ui, every pattern's: what it repeats.
+_TRANSFORMED: dict[str, tuple[str, str]] = {
+    "TransformMode": ("radioTransformToolShapes|radioTransformBody", RADIO),
+    "Originals": ("listWidgetFeatures", FEATURES),
+}
+
+
+def _direction(suffix: str = "", nth: str = "",
+               axis: str = "Direction", size: str = "Length"
+               ) -> dict[str, tuple[str, str]]:
+    """PatternParametersWidget.ui: one direction of a pattern.
+
+    OK writes its direction, mode and sizes back; Reversed it reads from
+    the feature.
+    """
+    return {axis + suffix: ("comboDirection" + nth, COMBO),
+            "Mode" + suffix: ("comboMode" + nth, INDEX),
+            size + suffix: ("spinExtent" + nth, QUANTITY),
+            "Offset" + suffix: ("spinSpacing" + nth, QUANTITY),
+            "Occurrences" + suffix: ("spinOccurrences" + nth, SPIN)}
+
+
+#: PatternCircularParametersWidget.ui. OK writes every field back.
+_CIRCULAR: dict[str, tuple[str, str]] = {
+    "Axis": ("axisCombo", COMBO),
+    "RadialDistance": ("radialDistance", QUANTITY),
+    "TangentialDistance": ("tangentialDistance", QUANTITY),
+    "NumberCircles": ("numberCircles", SPIN),
+    "Symmetry": ("symmetry", SPIN),
+    "StartAtShape": ("centerAroundFeature", CHECK),
+    "BinormalAxis": ("tangentAxisCombo", COMBO),
+    "FlipBinormalAxis": ("flipTangentDirection", CHECK),
+}
+
+#: PatternPathParametersWidget.ui. Its path is read from the feature.
+_PATH: dict[str, tuple[str, str]] = {
+    "SpacingMode": ("spacingMode", CHOICE),
+    "Count": ("count", SPIN),
+    "Spacing": ("spacing", QUANTITY),
+    "StartOffset": ("startOffset", QUANTITY),
+    "EndOffset": ("endOffset", QUANTITY),
+    "CyclicOffset": ("cyclicOffset", QUANTITY),
+    "ReversePath": ("reversePath", CHECK),
+    "Align": ("align", CHECK),
+    "TangentAxis": ("tangentAxis", COMBO),
+    "FlipTangentAxis": ("flipTangentAxis", CHECK),
+    "VerticalAxis": ("verticalAxis", COMBO),
+    "FlipVerticalAxis": ("flipVerticalAxis", CHECK),
+    "RelativeToFirst": ("relativeToFirst", CHECK),
+    "OriginPointIndex": ("originPointIndex", SPIN),
+}
+
+#: PatternPointParametersWidget.ui. Its points are read from the feature.
+_POINT: dict[str, tuple[str, str]] = {
+    "RelativeToFirst": ("relativeToFirst", CHECK),
+    "OriginPointIndex": ("originPointIndex", SPIN),
+}
+
 #: Per feature type, property -> (task field, how it is set).
 FIELDS: dict[str, dict[str, tuple[str, str]]] = {
     "PartDesign::Pad": _EXTRUDE,
@@ -133,6 +226,16 @@ FIELDS: dict[str, dict[str, tuple[str, str]]] = {
     "PartDesign::SubtractiveLoft": _LOFT,
     "PartDesign::AdditiveHelix": _HELIX,
     "PartDesign::SubtractiveHelix": _HELIX,
+    "PartDesign::Boolean": _BOOLEAN,
+    "PartDesign::Mirrored": {**_TRANSFORMED,
+                             "MirrorPlane": ("comboPlane", COMBO)},
+    "PartDesign::LinearPattern": {**_TRANSFORMED, **_direction(),
+                                  **_direction("2", NTH + "2")},
+    "PartDesign::PolarPattern": {**_TRANSFORMED,
+                                 **_direction(axis="Axis", size="Angle")},
+    "PartDesign::CircularPattern": {**_TRANSFORMED, **_CIRCULAR},
+    "PartDesign::PathPattern": {**_TRANSFORMED, **_PATH},
+    "PartDesign::PointPattern": {**_TRANSFORMED, **_POINT},
     **{"PartDesign::%s%s" % (way, kind): fields
        for kind, fields in _PRIMITIVES.items()
        for way in ("Additive", "Subtractive")},
@@ -174,8 +277,15 @@ def _in_edit(obj: Any) -> bool:
 
 
 def _field(name: str) -> Any:
+    """The task's field `name`, or with "#n" the n-th of that name."""
     main = Gui.getMainWindow()
-    return main.findChild(QtWidgets.QWidget, name) if main else None
+    if main is None:
+        return None
+    name, _, nth = name.partition(NTH)
+    if not nth:
+        return main.findChild(QtWidgets.QWidget, name)
+    found = main.findChildren(QtWidgets.QWidget, name)
+    return found[int(nth) - 1] if len(found) >= int(nth) else None
 
 
 def _mode_index(options: list[str], value: str) -> int:
@@ -196,7 +306,10 @@ def _unbind(obj: Any, prop: str, widget: Any) -> None:
     the field bound again, to nothing. Inside the edit's undo step, so
     Cancel brings the expression back.
     """
-    if prop not in dict(getattr(obj, "ExpressionEngine", None) or ()):
+    # A component's path is kept as ".Direction.y".
+    bound = {path.lstrip(".") for path, _expression
+             in getattr(obj, "ExpressionEngine", None) or ()}
+    if prop not in bound:
         return
     obj.setExpression(prop, None)
     binding: Any = Gui.ExpressionBinding     # not in FreeCAD's stubs
@@ -218,9 +331,27 @@ def set_in_task(objects: list[Any], prop: str, value: Any,
     if isinstance(value, str) and value.strip().startswith("="):
         return False
     name, how = fields[prop]
+    if how == RADIO:
+        return _choose_radio(obj, prop, name, str(value))
+    if how == VECTOR:
+        return _set_vector(obj, prop, name, [
+            (axis, str(getattr(value, axis, number)))
+            for axis, number in zip(AXES, _numbers(value), strict=False)])
     widget = _field(name)
-    if widget is None or how == REFERENCE:
+    if widget is None or how in (REFERENCE, *LISTS):
         return False
+    if how == CUSTOM_DIRECTION:
+        on = bool(value) if not isinstance(value, str) \
+            else value.lower() in ("1", "true", "yes")
+        index = CUSTOM_ITEM if on else NORMAL_ITEM
+        try:
+            if index >= widget.count():
+                return False
+            widget.setCurrentIndex(index)
+            widget.activated.emit(index)
+        except RuntimeError:
+            return False
+        return True
     try:
         if how == COMBO:
             index = widget.findText(str(value))
@@ -234,11 +365,11 @@ def set_in_task(objects: list[Any], prop: str, value: Any,
             number = units.internal_value(value)
             if number is None:
                 return False
-            widget.setValue(round(number))
+            widget.setValue(_spin_value(widget, round(number)))
         elif how == CHECK:
             widget.setChecked(bool(value) if not isinstance(value, str)
                               else value.lower() in ("1", "true", "yes"))
-        elif how in (INDEX, MODE):
+        elif how in (INDEX, MODE, CHOICE):
             options = list(obj.getEnumerationsOfProperty(prop) or ())
             index = (_mode_index(options, str(value)) if how == MODE
                      else options.index(str(value))
@@ -246,6 +377,8 @@ def set_in_task(objects: list[Any], prop: str, value: Any,
             if index < 0 or index >= widget.count():
                 return False
             widget.setCurrentIndex(index)
+            if how == CHOICE:
+                widget.activated.emit(index)
         else:
             number = units.internal_value(value, unit)
             if number is None:
@@ -257,6 +390,80 @@ def set_in_task(objects: list[Any], prop: str, value: Any,
     return True
 
 
+#: A vector's components, in its fields' order.
+AXES = ("x", "y", "z")
+
+
+def _numbers(value: Any) -> list[float]:
+    """A vector's x, y and z, from a Vector or its text "(x, y, z)"."""
+    if hasattr(value, "x"):
+        return [float(value.x), float(value.y), float(value.z)]
+    numbers = []
+    for part in str(value).strip("()[] ").split(","):
+        number = units.number_value(part)
+        if number is None:
+            return []
+        numbers.append(number)
+    return numbers if len(numbers) == len(AXES) else []
+
+
+def set_parts_in_task(objects: list[Any], prop: str,
+                      parts: list[tuple[str, str]]) -> bool:
+    """Components of a vector into the open panel's fields, as typed.
+
+    `parts`: (axis, text); "=..." binds an expression to that component.
+    False if the panel holds no such fields.
+    """
+    if len(objects) != 1:
+        return False
+    obj = objects[0]
+    fields = FIELDS.get(str(getattr(obj, "TypeId", "")), {})
+    if fields.get(prop, ("", ""))[1] != VECTOR or not _in_edit(obj):
+        return False
+    return _set_vector(obj, prop, fields[prop][0], parts)
+
+
+def _set_vector(obj: Any, prop: str, names: str,
+                parts: list[tuple[str, str]]) -> bool:
+    widgets = dict(zip(AXES, (_field(n) for n in names.split("|")),
+                       strict=True))
+    if not parts or any(w is None for w in widgets.values()):
+        return False
+    try:
+        for axis, text in parts:
+            widget = widgets.get(axis.rpartition(".")[2])
+            if widget is None:
+                return False
+            path = "%s.%s" % (prop, axis.rpartition(".")[2])
+            if text.strip().startswith("="):
+                if not _bind_expression(obj, path, widget, text):
+                    return False
+                continue
+            number = units.number_value(text)
+            if number is None:
+                return False
+            _unbind(obj, path, widget)
+            widget.setValue(number)
+    except (RuntimeError, AttributeError, ValueError):
+        return False
+    return True
+
+
+def _bind_expression(obj: Any, path: str, widget: Any, text: str) -> bool:
+    """Bind "=..." to `path` and to the field, which writes it on OK."""
+    from . import expressions
+    expression = expressions.strip_marker(text.strip())
+    try:
+        value = obj.evalExpression(expression)
+        obj.setExpression(path, expression)
+    except Exception:
+        return False
+    widget.setValue(float(getattr(value, "Value", value)))
+    binding: Any = Gui.ExpressionBinding     # not in FreeCAD's stubs
+    binding(widget).bind(obj, path)
+    return True
+
+
 def is_reference(objects: list[Any], prop: str) -> bool:
     """`prop` is a reference the open panel holds for one object."""
     if len(objects) != 1:
@@ -265,8 +472,41 @@ def is_reference(objects: list[Any], prop: str) -> bool:
     return fields.get(prop, ("", ""))[1] == REFERENCE
 
 
+#: Gui::UIntSpinBox (a pattern's occurrences) keeps a count n as the
+#: QSpinBox value n + INT_MIN, to reach unsigned values; its own
+#: setValue, which does this, is not reachable from Python.
+UINT_SPIN = "UIntSpinBox"
+UINT_OFFSET = -2 ** 31
+
+
+def _spin_value(widget: Any, count: int) -> int:
+    """What QSpinBox.setValue takes for `count` in this spin box."""
+    if widget.metaObject().className().endswith(UINT_SPIN):
+        return count + UINT_OFFSET
+    return count
+
+
+def _choose_radio(obj: Any, prop: str, names: str, value: str) -> bool:
+    """Click the radio button of `value`, as a user would."""
+    options = list(obj.getEnumerationsOfProperty(prop) or ())
+    buttons = names.split("|")
+    if value not in options or options.index(value) >= len(buttons):
+        return False
+    button = _field(buttons[options.index(value)])
+    if button is None:
+        return False
+    if not button.isChecked():
+        button.click()
+    return True
+
+
+def _how(obj: Any, prop: str) -> str:
+    fields = FIELDS.get(str(getattr(obj, "TypeId", "")), {})
+    return fields.get(prop, ("", ""))[1]
+
+
 def _pick_button(obj: Any, prop: str) -> Any:
-    if not is_reference([obj], prop) or not _in_edit(obj):
+    if _how(obj, prop) not in (REFERENCE, *LISTS) or not _in_edit(obj):
         return None
     name = FIELDS[str(obj.TypeId)][prop][0]
     return _field(PICK_BUTTONS[name])
@@ -283,6 +523,49 @@ def panel_picks(obj: Any, prop: str) -> bool:
         return button is not None and button.isChecked()
     except RuntimeError:
         return False
+
+
+def start_panel_pick(obj: Any, prop: str) -> bool:
+    """Let the panel pick for `prop` itself, if it is its way; True if so.
+
+    A Boolean's panel picks its bodies, hiding what is in the way; a
+    pattern's its features, taking only those that add or cut.
+    """
+    if _how(obj, prop) not in LISTS:
+        return False
+    button = _pick_button(obj, prop)
+    with contextlib.suppress(RuntimeError):
+        if button is not None:
+            button.setChecked(True)
+            return True
+    return False
+
+
+def list_to_task(obj: Any, prop: str) -> None:
+    """The panel's list takes what `prop` now holds, for its OK.
+
+    A body taken out is shown again, as the panel's own Remove does.
+    """
+    how = _how(obj, prop)
+    if how not in LISTS or not _in_edit(obj):
+        return
+    widget = _field(FIELDS[str(obj.TypeId)][prop][0])
+    if widget is None:
+        return
+    bodies = list(getattr(obj, prop, None) or ())
+    kept = {body.Name for body in bodies}
+    role = QtCore.Qt.ItemDataRole.UserRole
+    with contextlib.suppress(RuntimeError):
+        for row in range(widget.count()):
+            name = str(widget.item(row).data(role))
+            gone = obj.Document.getObject(name) if how == BODIES else None
+            if name not in kept and gone is not None \
+                    and gone.ViewObject is not None:
+                gone.ViewObject.Visibility = True
+        widget.clear()
+        for body in bodies:
+            item = QtWidgets.QListWidgetItem(str(body.Label), widget)
+            item.setData(role, body.Name)
 
 
 def stop_panel_pick(obj: Any, prop: str) -> None:
@@ -391,14 +674,15 @@ def select_item(items: list[str]) -> str:
     return ""
 
 
-def _pick_row(prop: str, picked: str) -> dict[str, Any]:
+def _pick_row(prop: str, picked: str, hint: str = PICK_HINT
+              ) -> dict[str, Any]:
     chips = [{"key": "0", "label": picked, "sub": ""}] if picked else []
     return {"name": prop + PICKING, "label": "Reference", "kind": "link",
             "wide": True, "text": "", "unit": "", "checked": False,
             "options": [], "links": [picked] if picked else [],
             "parts": [], "expression": "", "readOnly": False,
             "mixed": False, "tip": "", "editor": "", "chips": chips,
-            "picking": True, "pickHint": PICK_HINT}
+            "picking": True, "pickHint": hint}
 
 
 def as_combo(groups: list[Any], lists: dict[str, tuple[list[str], str]],
@@ -417,14 +701,18 @@ def as_combo(groups: list[Any], lists: dict[str, tuple[list[str], str]],
                 visit(item)
                 name = item.get("name") if isinstance(item, dict) else None
                 if name in lists and name in picking:
-                    node.insert(index + 1, _pick_row(name, picking[name]))
+                    node.insert(index + 1, _pick_row(
+                        name, picking[name],
+                        item.get("pickHint") or PICK_HINT))
         elif isinstance(node, dict):
             name = node.get("name")
             if name in lists and "kind" in node:
                 items, current = lists[name]
+                # The panel's list stays usable while FreeCAD marks the
+                # property read-only (a Pad's reference, while custom).
                 node.update(kind="enum", editor="dropdown", options=items,
                             optionLabels=items, text=current, links=[],
-                            chips=[], unit="")
+                            chips=[], unit="", readOnly=False)
             for value in node.values():
                 if isinstance(value, (list, dict)):
                     visit(value)

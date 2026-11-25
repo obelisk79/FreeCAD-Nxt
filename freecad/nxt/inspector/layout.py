@@ -406,8 +406,17 @@ def _parse_colour(text: str) -> tuple[float, float, float] | None:
 def _assign_part(container: Any, prop: str, path: str, text: str) -> None:
     """Set one component of a vector or placement."""
     value = getattr(container, prop)
+    if path in AXES and text.strip().startswith("="):
+        # A component bound to an expression, as FreeCAD's own panels do.
+        expression = property_kinds.expression_of(text)
+        container.evalExpression(expression)
+        container.setExpression("%s.%s" % (prop, path), expression)
+        return
     number = units.number_value(text)
     if path in AXES:
+        if (".%s.%s" % (prop, path)) in dict(
+                getattr(container, "ExpressionEngine", None) or ()):
+            container.setExpression("%s.%s" % (prop, path), None)
         setattr(value, path, number)
     elif path.startswith("Base."):
         setattr(value.Base, path[len("Base."):], number)
@@ -475,6 +484,10 @@ def _same_direction(first: tuple[float, float, float],
     return dot / lengths > 1 - SAME_DIRECTION
 
 
+#: A group's members: changed through the group (setObjects).
+GROUP = "Group"
+
+
 def edit_links(objects: list[DocObject], prop: str,
                remove: str = "", add: list[tuple[Any, str]] | None = None,
                in_task: bool = False, single: bool = False) -> bool:
@@ -509,7 +522,11 @@ def edit_links(objects: list[DocObject], prop: str,
                              if not (i[0] is picked[0]
                                      and (not i[1] or not picked[1]))]
                     items.append(picked)
-                setattr(obj, prop, link_value(type_id, items))
+                value = link_value(type_id, items)
+                if prop == GROUP and hasattr(obj, "setObjects"):
+                    obj.setObjects(value)   # a group's members, its way
+                else:
+                    setattr(obj, prop, value)
     except Exception:
         App.Console.PrintError("Nxt: could not change %s\n" % prop)
         App.Console.PrintError(traceback.format_exc())

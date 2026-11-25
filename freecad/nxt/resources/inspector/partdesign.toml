@@ -45,7 +45,7 @@
 #                 omit_if = { value = "Property" },
 #                 lead = "Property", trail = "Property", glyph = "...",
 #                 narrow = true/false, bare = true/false,
-#                 whole = true/false, prompt = "..." }
+#                 whole = true/false, prompt = "...", body = true/false }
 #             editor: "dropdown" (an enumeration's default), "segmented"
 #             (every choice in view, joined: for a few choices that change
 #             the shape; on a yes/no, `labels` names its two states) or
@@ -62,7 +62,8 @@
 #             drops the label. whole: on a link, a sketch picked by one of
 #             its edges or points stands for the whole sketch. prompt: on
 #             an empty link, what to pick ("Select a face"), as a chip
-#             that starts picking.
+#             that starts picking. body: on a link, a pick inside a Body
+#             stands for the Body (a Boolean's tool bodies).
 #
 # Names a FreeCAD version does not have are skipped, so one template covers
 # versions with Midplane/TwoLengths and those with SideType.
@@ -127,10 +128,9 @@ items = [
     { prop = "SideType", bare = true, editor = "segmented" },
 ]
 after = [
-    { prop = "UseCustomVector", label = "Direction", editor = "segmented", labels = ["Sketch normal", "Custom"], trail = "Reversed" },
-    { prop = "Direction", show_if = { UseCustomVector = true } },
-    { prop = "ReferenceAxis", label = "Reference axis", show_if = { UseCustomVector = true } },
-    { prop = "AlongSketchNormal", label = "Along normal", editor = "switch", show_if = { UseCustomVector = true } },
+    { prop = "ReferenceAxis", label = "Direction", trail = "Reversed" },
+    { prop = "Direction", label = "Custom", show_if = { UseCustomVector = true } },
+    { prop = "AlongSketchNormal", label = "Along normal", editor = "switch" },
 ]
 
 # One column per side: how far, what that means (inside the field), and
@@ -761,5 +761,291 @@ items = [
 title = "Result"
 heading = false
 items = [
+    { prop = "Refine", label = "Merge faces", editor = "switch" },
+]
+
+# A Boolean: what it does with the bodies it takes (Add, Cut and Keep
+# common, as the switch on other features words them), which bodies,
+# and the result. In the task the panel picks the bodies itself, hiding
+# what is in the way; a body taken out is shown again.
+[[template]]
+id = "pd-boolean"
+types = ["PartDesign::Boolean"]
+
+[template.choices]
+Fuse = "Add"
+Cut = "Cut"
+Common = "Keep common"
+
+[[template.card]]
+title = "Operation"
+heading = false
+items = [
+    { prop = "Type", label = "Operation", bare = true, editor = "segmented" },
+]
+
+[[template.card]]
+title = "Bodies"
+heading = false
+items = [
+    { prop = "Group", label = "Bodies", prompt = "Select bodies", body = true },
+]
+
+[[template.card]]
+title = "Result"
+heading = false
+items = [
+    { prop = "FuzzyTolerance", label = "Fuzzy tolerance", narrow = true },
+    { prop = "Refine", label = "Merge faces", editor = "switch" },
+]
+
+# Patterns: what is repeated (the whole body, or chosen features), how,
+# and the result. Instances suppressed in the 3D view, and uneven
+# spacings, stay under Everything else. In the task the panel picks the
+# features itself, taking only those that add or cut.
+[[template]]
+id = "pd-mirrored"
+types = ["PartDesign::Mirrored"]
+
+[template.choices]
+"Whole shape" = "Whole body"
+Features = "Features"
+
+[[template.card]]
+title = "Transform"
+heading = false
+items = [
+    { prop = "TransformMode", bare = true, editor = "segmented" },
+    { prop = "Originals", label = "Features", prompt = "Select features", show_if = { TransformMode = "Features" } },
+]
+
+[[template.card]]
+title = "Plane"
+heading = false
+items = [
+    { prop = "MirrorPlane", label = "Plane", prompt = "Select a plane or face" },
+]
+
+[[template.card]]
+title = "Result"
+heading = false
+items = [
+    { prop = "FuzzyTolerance", label = "Fuzzy tolerance", narrow = true },
+    { prop = "Refine", label = "Merge faces", editor = "switch" },
+]
+
+# A linear pattern: one direction, and a second that starts closed while
+# it repeats nothing (one occurrence).
+[[template]]
+id = "pd-linear-pattern"
+types = ["PartDesign::LinearPattern"]
+
+[template.choices]
+"Whole shape" = "Whole body"
+Features = "Features"
+Extent = "Overall length"
+Spacing = "Spacing"
+
+[[template.card]]
+title = "Transform"
+heading = false
+items = [
+    { prop = "TransformMode", bare = true, editor = "segmented" },
+    { prop = "Originals", label = "Features", prompt = "Select features", show_if = { TransformMode = "Features" } },
+]
+
+[[template.card]]
+title = "Direction"
+heading = false
+items = [
+    { prop = "Direction", label = "Direction", prompt = "Select an edge or axis", trail = "Reversed" },
+    { prop = "Mode", bare = true, editor = "segmented" },
+    { prop = "Length", label = "Length", show_if = { Mode = "Extent" } },
+    { prop = "Offset", label = "Spacing", show_if = { Mode = "Spacing" } },
+    { prop = "Occurrences", label = "Occurrences", narrow = true },
+]
+
+[[template.card]]
+title = "Second direction"
+closed_when = { Occurrences2 = 1 }
+items = [
+    { prop = "Direction2", label = "Direction", prompt = "Select an edge or axis", trail = "Reversed2" },
+    { prop = "Mode2", bare = true, editor = "segmented" },
+    { prop = "Length2", label = "Length", show_if = { Mode2 = "Extent" } },
+    { prop = "Offset2", label = "Spacing", show_if = { Mode2 = "Spacing" } },
+    { prop = "Occurrences2", label = "Occurrences", narrow = true },
+]
+
+[[template.card]]
+title = "Result"
+heading = false
+items = [
+    { prop = "FuzzyTolerance", label = "Fuzzy tolerance", narrow = true },
+    { prop = "Refine", label = "Merge faces", editor = "switch" },
+]
+
+# A polar pattern: about an axis, by its overall angle or the angle
+# between occurrences.
+[[template]]
+id = "pd-polar-pattern"
+types = ["PartDesign::PolarPattern"]
+
+[template.choices]
+"Whole shape" = "Whole body"
+Features = "Features"
+Extent = "Overall angle"
+Spacing = "Spacing"
+
+[[template.card]]
+title = "Transform"
+heading = false
+items = [
+    { prop = "TransformMode", bare = true, editor = "segmented" },
+    { prop = "Originals", label = "Features", prompt = "Select features", show_if = { TransformMode = "Features" } },
+]
+
+[[template.card]]
+title = "Axis"
+heading = false
+items = [
+    { prop = "Axis", label = "Axis", prompt = "Select an edge or axis", trail = "Reversed" },
+    { prop = "Mode", bare = true, editor = "segmented" },
+    { prop = "Angle", label = "Angle", show_if = { Mode = "Extent" } },
+    { prop = "Offset", label = "Spacing", show_if = { Mode = "Spacing" } },
+    { prop = "Occurrences", label = "Occurrences", narrow = true },
+]
+
+[[template.card]]
+title = "Result"
+heading = false
+items = [
+    { prop = "FuzzyTolerance", label = "Fuzzy tolerance", narrow = true },
+    { prop = "Refine", label = "Merge faces", editor = "switch" },
+]
+
+# A circular pattern: rings of occurrences about an axis, how far apart
+# the rings and the occurrences on each are, and the plane they lie in.
+[[template]]
+id = "pd-circular-pattern"
+types = ["PartDesign::CircularPattern"]
+
+[template.choices]
+"Whole shape" = "Whole body"
+Features = "Features"
+
+[[template.card]]
+title = "Transform"
+heading = false
+items = [
+    { prop = "TransformMode", bare = true, editor = "segmented" },
+    { prop = "Originals", label = "Features", prompt = "Select features", show_if = { TransformMode = "Features" } },
+]
+
+[[template.card]]
+title = "Circles"
+heading = false
+items = [
+    { prop = "Axis", prompt = "Select an edge or axis" },
+    { prop = "NumberCircles", label = "Circles", narrow = true },
+    { prop = "RadialDistance", label = "Ring spacing" },
+    { prop = "TangentialDistance", label = "Spacing on ring" },
+    { prop = "Symmetry", narrow = true },
+    { prop = "StartAtShape", label = "Start at feature", editor = "switch" },
+    { prop = "BinormalAxis", label = "Binormal axis", prompt = "Select an edge or axis", trail = "FlipBinormalAxis" },
+]
+
+[[template.card]]
+title = "Result"
+heading = false
+items = [
+    { prop = "FuzzyTolerance", label = "Fuzzy tolerance", narrow = true },
+    { prop = "Refine", label = "Merge faces", editor = "switch" },
+]
+
+# A path pattern: occurrences along edges, by count, spacing or both,
+# within offsets from its ends; turned to follow the path if aligned.
+# FreeCAD hides Count, Spacing and the axes when they do not apply.
+[[template]]
+id = "pd-path-pattern"
+types = ["PartDesign::PathPattern"]
+
+[template.choices]
+"Whole shape" = "Whole body"
+Features = "Features"
+"Fixed count" = "Count"
+"Fixed spacing" = "Spacing"
+"Fixed count and spacing" = "Both"
+
+[[template.card]]
+title = "Transform"
+heading = false
+items = [
+    { prop = "TransformMode", bare = true, editor = "segmented" },
+    { prop = "Originals", label = "Features", prompt = "Select features", show_if = { TransformMode = "Features" } },
+]
+
+[[template.card]]
+title = "Path"
+heading = false
+items = [
+    { prop = "Path", prompt = "Select edges", trail = "ReversePath" },
+    { prop = "SpacingMode", label = "By", editor = "segmented" },
+    { prop = "Count", label = "Occurrences", narrow = true },
+    "Spacing",
+    [{ prop = "StartOffset", label = "Offsets", narrow = true },
+     { prop = "EndOffset", bare = true, narrow = true }],
+    { prop = "CyclicOffset", label = "Cyclic offset", narrow = true },
+]
+
+[[template.card]]
+title = "Alignment"
+heading = false
+items = [
+    { prop = "Align", label = "Align to path", editor = "switch" },
+    { prop = "TangentAxis", label = "Tangent axis", prompt = "Select an edge or axis", trail = "FlipTangentAxis" },
+    { prop = "VerticalAxis", label = "Vertical axis", prompt = "Select an edge or axis", trail = "FlipVerticalAxis" },
+    { prop = "RelativeToFirst", label = "Relative to first", editor = "switch" },
+    { prop = "OriginPointIndex", label = "Origin point", narrow = true, show_if = { RelativeToFirst = true } },
+]
+
+[[template.card]]
+title = "Result"
+heading = false
+items = [
+    { prop = "FuzzyTolerance", label = "Fuzzy tolerance", narrow = true },
+    { prop = "Refine", label = "Merge faces", editor = "switch" },
+]
+
+# A point pattern: an occurrence at each point of a sketch or shape.
+[[template]]
+id = "pd-point-pattern"
+types = ["PartDesign::PointPattern"]
+
+[template.choices]
+"Whole shape" = "Whole body"
+Features = "Features"
+
+[[template.card]]
+title = "Transform"
+heading = false
+items = [
+    { prop = "TransformMode", bare = true, editor = "segmented" },
+    { prop = "Originals", label = "Features", prompt = "Select features", show_if = { TransformMode = "Features" } },
+]
+
+[[template.card]]
+title = "Points"
+heading = false
+items = [
+    { prop = "PointObject", label = "Points", prompt = "Select a sketch or points" },
+    { prop = "RelativeToFirst", label = "Relative to first", editor = "switch" },
+    { prop = "OriginPointIndex", label = "Origin point", narrow = true, show_if = { RelativeToFirst = true } },
+]
+
+[[template.card]]
+title = "Result"
+heading = false
+items = [
+    { prop = "FuzzyTolerance", label = "Fuzzy tolerance", narrow = true },
     { prop = "Refine", label = "Merge faces", editor = "switch" },
 ]
