@@ -301,6 +301,61 @@ class GuideTests(unittest.TestCase):
         self.assertEqual(vars(obj.ViewObject), {})
 
 
+class Primitive:
+    """A Part Design primitive: attachment properties, no Attacher."""
+
+    def __init__(self) -> None:
+        self.AttachmentSupport: list[Any] = []
+        self.MapMode = "Deactivated"
+        self.refs: list[tuple[Any, str]] = []
+        self.AttacherType = "Attacher::AttachEngine3D"
+        self.State: list[str] = []
+        self.recomputes = 0
+
+    def recompute(self) -> None:
+        self.recomputes += 1
+
+    def getStatusString(self) -> str:  # noqa: N802
+        return "Too few references"
+
+
+class PrimitiveTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.made: list[str] = []
+
+        def engine(kind: str) -> Engine:
+            self.made.append(kind)
+            return Engine(None)
+        sys.modules["Part"] = types.SimpleNamespace(  # type: ignore
+            AttachEngine=engine)
+
+    def tearDown(self) -> None:
+        sys.modules.pop("Part", None)
+
+    def test_a_primitive_is_attachable(self) -> None:
+        self.assertTrue(attach_task.attachable(Primitive()))
+
+    def test_its_engine_is_made_of_its_type(self) -> None:
+        primitive = Primitive()
+        primitive.MapMode = "FlatFace"
+        engine = attach_task.engine_of(primitive)
+        self.assertEqual(self.made, ["Attacher::AttachEngine3D"])
+        self.assertEqual(engine.Mode, "FlatFace")
+
+    def test_a_recompute_places_it(self) -> None:
+        primitive = Primitive()
+        self.assertFalse(attach_task.place(primitive))
+        primitive.MapMode = "FlatFace"
+        self.assertTrue(attach_task.place(primitive))
+        self.assertEqual(primitive.recomputes, 2)
+
+    def test_a_failed_placing_says_why(self) -> None:
+        primitive = Primitive()
+        primitive.State = ["Invalid"]
+        with self.assertRaisesRegex(RuntimeError, "Too few references"):
+            attach_task.place(primitive)
+
+
 class BinderTests(unittest.TestCase):
     def test_a_binder_is_made_attachable_when_asked(self) -> None:
         binder = Thing("Binder", attachable=False,

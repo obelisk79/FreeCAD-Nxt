@@ -463,3 +463,303 @@ items = [
     { prop = "Tolerance", label = "Fusion tolerance", narrow = true },
     { prop = "Refine", label = "Merge faces", editor = "switch" },
 ]
+
+# Part Design primitives, additive and subtractive: the operation, the
+# solid's own sizes, and the result. Where a primitive sits is its
+# attachment: under Everything else, and in the task Nxt's attachment
+# cards (tools/attach_task.py), below these.
+
+# A box: its three sizes.
+[[template]]
+id = "pd-box"
+types = ["PartDesign::AdditiveBox", "PartDesign::SubtractiveBox"]
+variants = ["PartDesign::AdditiveBox", "PartDesign::SubtractiveBox"]
+
+[template.choices]
+Union = "Add"
+Subtraction = "Cut"
+Common = "Keep common"
+
+[[template.card]]
+title = "Operation"
+heading = false
+items = [
+    { prop = ":variant", label = "Operation", bare = true, editor = "segmented" },
+]
+
+[[template.card]]
+title = "Box"
+heading = false
+items = [
+    "Length",
+    "Width",
+    "Height",
+]
+
+[[template.card]]
+title = "Result"
+heading = false
+items = [
+    { prop = "Refine", label = "Merge faces", editor = "switch" },
+]
+
+# A cylinder: radius and height, how far round it goes, and its skew.
+[[template]]
+id = "pd-cylinder"
+types = ["PartDesign::AdditiveCylinder", "PartDesign::SubtractiveCylinder"]
+variants = ["PartDesign::AdditiveCylinder", "PartDesign::SubtractiveCylinder"]
+
+[template.choices]
+Union = "Add"
+Subtraction = "Cut"
+Common = "Keep common"
+
+[[template.card]]
+title = "Operation"
+heading = false
+items = [
+    { prop = ":variant", label = "Operation", bare = true, editor = "segmented" },
+]
+
+[[template.card]]
+title = "Cylinder"
+heading = false
+items = [
+    "Radius",
+    "Height",
+    { prop = "Angle", label = "Sweep", narrow = true },
+    [{ prop = "FirstAngle", label = "Skew", narrow = true },
+     { prop = "SecondAngle", bare = true, narrow = true }],
+]
+
+[[template.card]]
+title = "Result"
+heading = false
+items = [
+    { prop = "Refine", label = "Merge faces", editor = "switch" },
+]
+
+# A sphere: its radius, the band of latitude it keeps, and how far round.
+[[template]]
+id = "pd-sphere"
+types = ["PartDesign::AdditiveSphere", "PartDesign::SubtractiveSphere"]
+variants = ["PartDesign::AdditiveSphere", "PartDesign::SubtractiveSphere"]
+
+[template.choices]
+Union = "Add"
+Subtraction = "Cut"
+Common = "Keep common"
+
+[[template.card]]
+title = "Operation"
+heading = false
+items = [
+    { prop = ":variant", label = "Operation", bare = true, editor = "segmented" },
+]
+
+[[template.card]]
+title = "Sphere"
+heading = false
+items = [
+    "Radius",
+    [{ prop = "Angle1", label = "Latitude", narrow = true },
+     { prop = "Angle2", bare = true, narrow = true }],
+    { prop = "Angle3", label = "Sweep", narrow = true },
+]
+
+[[template.card]]
+title = "Result"
+heading = false
+items = [
+    { prop = "Refine", label = "Merge faces", editor = "switch" },
+]
+
+# A cone: base and top radii (a top of zero is a point), height, and how far round.
+[[template]]
+id = "pd-cone"
+types = ["PartDesign::AdditiveCone", "PartDesign::SubtractiveCone"]
+variants = ["PartDesign::AdditiveCone", "PartDesign::SubtractiveCone"]
+
+[template.choices]
+Union = "Add"
+Subtraction = "Cut"
+Common = "Keep common"
+
+[[template.card]]
+title = "Operation"
+heading = false
+items = [
+    { prop = ":variant", label = "Operation", bare = true, editor = "segmented" },
+]
+
+[[template.card]]
+title = "Cone"
+heading = false
+items = [
+    { prop = "Radius1", label = "Base radius" },
+    { prop = "Radius2", label = "Top radius" },
+    "Height",
+    { prop = "Angle", label = "Sweep", narrow = true },
+]
+
+[[template.card]]
+title = "Result"
+heading = false
+items = [
+    { prop = "Refine", label = "Merge faces", editor = "switch" },
+]
+
+# An ellipsoid: a radius along each axis (Y at zero follows X), the
+# band of latitude it keeps, and how far round.
+[[template]]
+id = "pd-ellipsoid"
+types = ["PartDesign::AdditiveEllipsoid", "PartDesign::SubtractiveEllipsoid"]
+variants = ["PartDesign::AdditiveEllipsoid", "PartDesign::SubtractiveEllipsoid"]
+
+[template.choices]
+Union = "Add"
+Subtraction = "Cut"
+Common = "Keep common"
+
+[[template.card]]
+title = "Operation"
+heading = false
+items = [
+    { prop = ":variant", label = "Operation", bare = true, editor = "segmented" },
+]
+
+[[template.card]]
+title = "Ellipsoid"
+heading = false
+hint = "Radius Y at zero matches Radius X."
+items = [
+    { prop = "Radius1", label = "Radius Z" },
+    { prop = "Radius2", label = "Radius X" },
+    { prop = "Radius3", label = "Radius Y" },
+    [{ prop = "Angle1", label = "Latitude", narrow = true },
+     { prop = "Angle2", bare = true, narrow = true }],
+    { prop = "Angle3", label = "Sweep", narrow = true },
+]
+
+[[template.card]]
+title = "Result"
+heading = false
+items = [
+    { prop = "Refine", label = "Merge faces", editor = "switch" },
+]
+
+# A torus: ring and tube radii, the part of the tube it keeps (the wiki
+# warns FreeCAD gives odd results there), and how far round.
+[[template]]
+id = "pd-torus"
+types = ["PartDesign::AdditiveTorus", "PartDesign::SubtractiveTorus"]
+variants = ["PartDesign::AdditiveTorus", "PartDesign::SubtractiveTorus"]
+
+[template.choices]
+Union = "Add"
+Subtraction = "Cut"
+Common = "Keep common"
+
+[[template.card]]
+title = "Operation"
+heading = false
+items = [
+    { prop = ":variant", label = "Operation", bare = true, editor = "segmented" },
+]
+
+[[template.card]]
+title = "Torus"
+heading = false
+items = [
+    { prop = "Radius1", label = "Ring radius" },
+    { prop = "Radius2", label = "Tube radius" },
+    [{ prop = "Angle1", label = "Tube", narrow = true },
+     { prop = "Angle2", bare = true, narrow = true }],
+    { prop = "Angle3", label = "Sweep", narrow = true },
+]
+
+[[template.card]]
+title = "Result"
+heading = false
+items = [
+    { prop = "Refine", label = "Merge faces", editor = "switch" },
+]
+
+# A prism: a regular polygon by its sides and corner radius, its
+# height, and its skew.
+[[template]]
+id = "pd-prism"
+types = ["PartDesign::AdditivePrism", "PartDesign::SubtractivePrism"]
+variants = ["PartDesign::AdditivePrism", "PartDesign::SubtractivePrism"]
+
+[template.choices]
+Union = "Add"
+Subtraction = "Cut"
+Common = "Keep common"
+
+[[template.card]]
+title = "Operation"
+heading = false
+items = [
+    { prop = ":variant", label = "Operation", bare = true, editor = "segmented" },
+]
+
+[[template.card]]
+title = "Prism"
+heading = false
+items = [
+    { prop = "Polygon", label = "Sides", narrow = true },
+    { prop = "Circumradius", label = "Corner radius" },
+    "Height",
+    [{ prop = "FirstAngle", label = "Skew", narrow = true },
+     { prop = "SecondAngle", bare = true, narrow = true }],
+]
+
+[[template.card]]
+title = "Result"
+heading = false
+items = [
+    { prop = "Refine", label = "Merge faces", editor = "switch" },
+]
+
+# A wedge: the base's and the top's spans, each from and to, and its
+# height (Y) from and to.
+[[template]]
+id = "pd-wedge"
+types = ["PartDesign::AdditiveWedge", "PartDesign::SubtractiveWedge"]
+variants = ["PartDesign::AdditiveWedge", "PartDesign::SubtractiveWedge"]
+
+[template.choices]
+Union = "Add"
+Subtraction = "Cut"
+Common = "Keep common"
+
+[[template.card]]
+title = "Operation"
+heading = false
+items = [
+    { prop = ":variant", label = "Operation", bare = true, editor = "segmented" },
+]
+
+[[template.card]]
+title = "Wedge"
+heading = false
+items = [
+    [{ prop = "Xmin", label = "Base X", narrow = true },
+     { prop = "Xmax", bare = true, narrow = true }],
+    [{ prop = "Zmin", label = "Base Z", narrow = true },
+     { prop = "Zmax", bare = true, narrow = true }],
+    [{ prop = "X2min", label = "Top X", narrow = true },
+     { prop = "X2max", bare = true, narrow = true }],
+    [{ prop = "Z2min", label = "Top Z", narrow = true },
+     { prop = "Z2max", bare = true, narrow = true }],
+    [{ prop = "Ymin", label = "Height", narrow = true },
+     { prop = "Ymax", bare = true, narrow = true }],
+]
+
+[[template.card]]
+title = "Result"
+heading = false
+items = [
+    { prop = "Refine", label = "Merge faces", editor = "switch" },
+]

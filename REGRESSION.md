@@ -54,6 +54,7 @@ phase; the full list after phases 3 and 4. Note the build, the session type
 - [ ] Add/Cut/Keep common in a task (new and edited feature, each kind): OK keeps the switch, Cancel undoes it all
 - [ ] Switching kind relinks what follows (fillet, sketch on a face, Tip) and keeps a custom label
 - [ ] Switching kind from the inspector, outside a task: one undo step
+- [ ] Primitives (each kind, add and cut): cards replace the parameters box, Nxt's attachment replaces FreeCAD's (new and edited), attaching moves it and Cancel undoes it, OK keeps typed sizes, Prism sides
 
 ## 3D editing aids
 - [ ] S Floating value fields: type, Tab, wheel, expression with suggestions placed by the field

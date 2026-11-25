@@ -27,7 +27,8 @@ from .task_sync import SWAPPED
 #: The dialog boxes replaced: FreeCAD's class for each feature's box.
 REPLACED = frozenset({"TaskPadParameters", "TaskPocketParameters",
                       "TaskRevolutionParameters", "TaskLoftParameters",
-                      "TaskPipeParameters", "TaskHelixParameters"})
+                      "TaskPipeParameters", "TaskHelixParameters",
+                      "TaskBoxPrimitives"})
 #: Further boxes of those dialogs, whose settings the cards also hold:
 #: hidden, not replaced (a pipe's orientation and sections).
 FOLDED = frozenset({"TaskPipeOrientation", "TaskPipeScaling"})

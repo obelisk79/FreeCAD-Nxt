@@ -6,6 +6,7 @@ Run with: python3 tests/test_inspector_templates.py
 from __future__ import annotations
 
 import sys
+import types
 import unittest
 from pathlib import Path
 from typing import Any
@@ -599,6 +600,49 @@ class HelixTests(unittest.TestCase):
     def test_unused_properties_are_hidden(self) -> None:
         shown = [i["name"] for g in layout(Helix()) for i in g["items"]]
         self.assertNotIn("Midplane", shown)
+
+
+PRIMITIVES = {
+    "Box": ["Length", "Width", "Height"],
+    "Cylinder": ["Radius", "Height", "Angle", "FirstAngle", "SecondAngle"],
+    "Sphere": ["Radius", "Angle1", "Angle2", "Angle3"],
+    "Cone": ["Radius1", "Radius2", "Height", "Angle"],
+    "Ellipsoid": ["Radius1", "Radius2", "Radius3", "Angle1", "Angle2",
+                  "Angle3"],
+    "Torus": ["Radius1", "Radius2", "Angle1", "Angle2", "Angle3"],
+    "Prism": ["Polygon", "Circumradius", "Height", "FirstAngle",
+              "SecondAngle"],
+    "Wedge": ["Xmin", "Xmax", "Zmin", "Zmax", "X2min", "X2max", "Z2min",
+              "Z2max", "Ymin", "Ymax"],
+}
+
+
+class PrimitiveTests(unittest.TestCase):
+
+    def test_each_kind_lays_out_every_size(self) -> None:
+        templates.invalidate()
+        for kind, sizes in PRIMITIVES.items():
+            for way in ("Additive", "Subtractive"):
+                found = templates.for_objects([types.SimpleNamespace(
+                    TypeId="PartDesign::%s%s" % (way, kind))])
+                if found is None:
+                    self.fail("no template for " + kind)
+                self.assertEqual(
+                    found.variants,
+                    ("PartDesign::Additive" + kind,
+                     "PartDesign::Subtractive" + kind))
+                self.assertEqual(
+                    [c.title for c in found.cards],
+                    ["Operation", kind, "Result"])
+                shape = found.cards[1]
+                laid = [n for i in shape.all_items() for n in i.names()]
+                self.assertEqual(sorted(laid), sorted(sizes), kind)
+
+    def test_every_size_has_a_task_field(self) -> None:
+        from freecad.nxt.tools import task_sync
+        for kind, sizes in PRIMITIVES.items():
+            fields = task_sync.FIELDS["PartDesign::Subtractive" + kind]
+            self.assertEqual(sorted(fields), sorted(sizes), kind)
 
 
 class VariantTests(unittest.TestCase):

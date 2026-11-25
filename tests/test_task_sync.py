@@ -176,6 +176,25 @@ class TaskTests(unittest.TestCase):
         self.assertFalse(task_sync.set_in_task([self.pad], "UpToFace",
                                                "Pad001"))
 
+    def test_a_primitives_size_goes_to_its_own_field(self) -> None:
+        radius = Spin(self.main)
+        radius.setObjectName("cylinderRadius")
+        cylinder = Pad()
+        cylinder.TypeId = "PartDesign::SubtractiveCylinder"
+        self.editing = cylinder
+        self.assertTrue(task_sync.set_in_task([cylinder], "Radius", "4",
+                                              "mm"))
+        self.assertEqual(radius.property("rawValue"), 4.0)
+
+    def test_a_prisms_sides_are_a_whole_number(self) -> None:
+        sides = QtWidgets.QSpinBox(self.main)
+        sides.setObjectName("prismPolygon")
+        prism = Pad()
+        prism.TypeId = "PartDesign::AdditivePrism"
+        self.editing = prism
+        self.assertTrue(task_sync.set_in_task([prism], "Polygon", "8"))
+        self.assertEqual(sides.value(), 8)
+
     def test_left_to_the_property_otherwise(self) -> None:
         self.assertFalse(task_sync.set_in_task([self.pad], "Length",
                                                "=Sketch.Width"))

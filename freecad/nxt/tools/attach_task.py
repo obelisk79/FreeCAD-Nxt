@@ -51,9 +51,42 @@ GUIDES = ("Visibility", "ShowPlane", "ShowPlacement")
 SOLID = "PartDesign::Feature"
 
 
+#: The engine for an object whose Python side has no Attacher (a Part
+#: Design primitive's), when it names none.
+ENGINE_3D = "Attacher::AttachEngine3D"
+
+
 def attachable(obj: Any) -> bool:
-    return obj is not None and hasattr(obj, "Attacher") \
-        and hasattr(obj, "AttachmentSupport")
+    """`obj` has an attachment.
+
+    A primitive's Python side lacks the extension's Attacher and
+    positionBySupport, but not its properties.
+    """
+    return obj is not None and hasattr(obj, "AttachmentSupport") \
+        and hasattr(obj, "MapMode")
+
+
+def engine_of(obj: Any) -> Any:
+    engine = getattr(obj, "Attacher", None)
+    if engine is None:
+        import Part
+        engine = Part.AttachEngine(
+            str(getattr(obj, "AttacherType", "") or ENGINE_3D))
+    engine.readParametersFromFeature(obj)
+    return engine
+
+
+def place(obj: Any) -> bool:
+    """Put `obj` where its attachment says; True if it is attached.
+
+    Without positionBySupport a recompute places it, as FreeCAD does.
+    """
+    if hasattr(obj, "positionBySupport"):
+        return bool(obj.positionBySupport())
+    obj.recompute()
+    if "Invalid" in (getattr(obj, "State", None) or ()):
+        raise RuntimeError(str(obj.getStatusString()))
+    return str(obj.MapMode) != DETACHED
 
 
 def make_attachable(obj: Any) -> bool:
@@ -107,8 +140,7 @@ class Attachment:
     def __init__(self, obj: Any) -> None:
         self.obj = obj
         self.doc = obj.Document
-        self.engine = obj.Attacher
-        self.engine.readParametersFromFeature(obj)
+        self.engine = engine_of(obj)
         self.suggestion: dict[str, Any] = {}
         #: A way chosen before the picks it needs: its mode.
         self.wanted = ""
@@ -253,7 +285,7 @@ class Attachment:
         self.error = ""
         try:
             self.engine.writeParametersToFeature(self.obj)
-            self.attached = bool(self.obj.positionBySupport())
+            self.attached = place(self.obj)
         except Exception as err:  # noqa: BLE001 - FreeCAD says why
             self.error = str(err) or type(err).__name__
             self.attached = False

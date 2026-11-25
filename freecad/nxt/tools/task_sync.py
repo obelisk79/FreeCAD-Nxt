@@ -18,6 +18,8 @@ from ..core.qt import QtWidgets
 #: as its items and set by the item's text.
 QUANTITY, CHECK, INDEX, MODE = "quantity", "check", "index", "mode"
 COMBO = "combo"
+#: A whole number in a plain spin box (a prism's sides).
+SPIN = "spin"
 #: A face or plane the panel holds in a line edit (FeatureName and FaceName
 #: properties) and writes back on OK: set by picking, never typed.
 REFERENCE = "reference"
@@ -78,6 +80,49 @@ _HELIX: dict[str, tuple[str, str]] = {
     "ReferenceAxis": ("axis", COMBO),
 }
 
+#: TaskPrimitiveParameters.ui: one box for every primitive, each with its
+#: own fields, prefixed by its kind. OK writes every field back.
+_PRIMITIVES: dict[str, dict[str, tuple[str, str]]] = {
+    kind: {prop: (field, how) for prop, field, how in props}
+    for kind, props in {
+        "Box": [("Length", "boxLength", QUANTITY),
+                ("Width", "boxWidth", QUANTITY),
+                ("Height", "boxHeight", QUANTITY)],
+        "Cylinder": [("Radius", "cylinderRadius", QUANTITY),
+                     ("Height", "cylinderHeight", QUANTITY),
+                     ("Angle", "cylinderAngle", QUANTITY),
+                     ("FirstAngle", "cylinderXSkew", QUANTITY),
+                     ("SecondAngle", "cylinderYSkew", QUANTITY)],
+        "Sphere": [("Radius", "sphereRadius", QUANTITY),
+                   ("Angle1", "sphereAngle1", QUANTITY),
+                   ("Angle2", "sphereAngle2", QUANTITY),
+                   ("Angle3", "sphereAngle3", QUANTITY)],
+        "Cone": [("Radius1", "coneRadius1", QUANTITY),
+                 ("Radius2", "coneRadius2", QUANTITY),
+                 ("Height", "coneHeight", QUANTITY),
+                 ("Angle", "coneAngle", QUANTITY)],
+        "Ellipsoid": [("Radius1", "ellipsoidRadius1", QUANTITY),
+                      ("Radius2", "ellipsoidRadius2", QUANTITY),
+                      ("Radius3", "ellipsoidRadius3", QUANTITY),
+                      ("Angle1", "ellipsoidAngle1", QUANTITY),
+                      ("Angle2", "ellipsoidAngle2", QUANTITY),
+                      ("Angle3", "ellipsoidAngle3", QUANTITY)],
+        "Torus": [("Radius1", "torusRadius1", QUANTITY),
+                  ("Radius2", "torusRadius2", QUANTITY),
+                  ("Angle1", "torusAngle1", QUANTITY),
+                  ("Angle2", "torusAngle2", QUANTITY),
+                  ("Angle3", "torusAngle3", QUANTITY)],
+        "Prism": [("Polygon", "prismPolygon", SPIN),
+                  ("Circumradius", "prismCircumradius", QUANTITY),
+                  ("Height", "prismHeight", QUANTITY),
+                  ("FirstAngle", "prismXSkew", QUANTITY),
+                  ("SecondAngle", "prismYSkew", QUANTITY)],
+        "Wedge": [(prop, "wedge" + prop, QUANTITY) for prop in (
+            "Xmin", "Xmax", "Ymin", "Ymax", "Zmin", "Zmax",
+            "X2min", "X2max", "Z2min", "Z2max")],
+    }.items()
+}
+
 #: Per feature type, property -> (task field, how it is set).
 FIELDS: dict[str, dict[str, tuple[str, str]]] = {
     "PartDesign::Pad": _EXTRUDE,
@@ -88,6 +133,9 @@ FIELDS: dict[str, dict[str, tuple[str, str]]] = {
     "PartDesign::SubtractiveLoft": _LOFT,
     "PartDesign::AdditiveHelix": _HELIX,
     "PartDesign::SubtractiveHelix": _HELIX,
+    **{"PartDesign::%s%s" % (way, kind): fields
+       for kind, fields in _PRIMITIVES.items()
+       for way in ("Additive", "Subtractive")},
 }
 #: Those whose start has a drag handle (float_input.py).
 OFFSET_STARTS = ("PartDesign::Pad", "PartDesign::Pocket")
@@ -182,6 +230,11 @@ def set_in_task(objects: list[Any], prop: str, value: Any,
             # The panel acts on a choice the user makes (activated), not
             # on the index changing: say it was chosen.
             widget.activated.emit(index)
+        elif how == SPIN:
+            number = units.internal_value(value)
+            if number is None:
+                return False
+            widget.setValue(round(number))
         elif how == CHECK:
             widget.setChecked(bool(value) if not isinstance(value, str)
                               else value.lower() in ("1", "true", "yes"))
